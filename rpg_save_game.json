@@ -1,0 +1,176 @@
+{
+  "players": [
+    {
+      "x": 35,
+      "y": 4,
+      "name": "1",
+      "char_class": "warrior",
+      "hp": 160,
+      "max_hp": 160,
+      "base_attack": 25,
+      "base_defense": 14,
+      "level": 3,
+      "xp": 50,
+      "mana": 10,
+      "max_mana": 10,
+      "skill_cooldown": 3,
+      "inventory": [
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Weapon",
+          "name": "Halberd",
+          "rarity": "rare",
+          "attack_bonus": 13,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "halberd_1"
+        },
+        {
+          "type": "Weapon",
+          "name": "War Axe",
+          "rarity": "uncommon",
+          "attack_bonus": 10,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "war_axe1"
+        },
+        {
+          "type": "Weapon",
+          "name": "War Axe",
+          "rarity": "uncommon",
+          "attack_bonus": 10,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "war_axe1"
+        },
+        {
+          "type": "Armor",
+          "name": "Scale Mail",
+          "rarity": "common",
+          "defense_bonus": 5,
+          "allowed_classes": [
+            "warrior",
+            "archer"
+          ],
+          "sprite_name": "scale_mail1"
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Potion",
+          "name": "Greater Healing",
+          "rarity": "uncommon",
+          "hp_gain": 40
+        },
+        {
+          "type": "Weapon",
+          "name": "Halberd",
+          "rarity": "rare",
+          "attack_bonus": 13,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "halberd_1"
+        },
+        {
+          "type": "Weapon",
+          "name": "Golden Sword",
+          "rarity": "epic",
+          "attack_bonus": 22,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "golden_sword"
+        },
+        {
+          "type": "Armor",
+          "name": "Plate Mail",
+          "rarity": "rare",
+          "defense_bonus": 10,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "plate_mail1"
+        },
+        {
+          "type": "Weapon",
+          "name": "Battle Axe",
+          "rarity": "uncommon",
+          "attack_bonus": 8,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "battle_axe1"
+        },
+        {
+          "type": "Weapon",
+          "name": "Sling",
+          "rarity": "common",
+          "attack_bonus": 3,
+          "allowed_classes": [
+            "archer"
+          ],
+          "sprite_name": "sling1"
+        },
+        {
+          "type": "Armor",
+          "name": "Banded Mail",
+          "rarity": "uncommon",
+          "defense_bonus": 7,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "banded_mail1"
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Potion",
+          "name": "Greater Healing",
+          "rarity": "uncommon",
+          "hp_gain": 40
+        }
+      ],
+      "weapon": {
+        "name": "Golden Sword",
+        "attack_bonus": 22,
+        "allowed_classes": [
+          "warrior"
+        ],
+        "rarity": "epic",
+        "sprite_name": "golden_sword"
+      },
+      "armor": {
+        "name": "Scale Mail",
+        "defense_bonus": 5,
+        "allowed_classes": [
+          "warrior",
+          "archer"
+        ],
+        "rarity": "common",
+        "sprite_name": "scale_mail1"
+      }
+    }
+  ],
+  "dungeon_level": 4,
+  "current_player_idx": 0,
+  "game_state": "playing",
+  "camera_x": 20,
+  "camera_y": 0
+}
