@@ -1,66 +1,116 @@
 {
   "players": [
     {
-      "x": 35,
-      "y": 4,
+      "x": 23,
+      "y": 5,
       "name": "1",
       "char_class": "warrior",
-      "hp": 160,
-      "max_hp": 160,
-      "base_attack": 25,
-      "base_defense": 14,
-      "level": 3,
-      "xp": 50,
-      "mana": 10,
-      "max_mana": 10,
-      "skill_cooldown": 3,
+      "hp": 240,
+      "max_hp": 240,
+      "base_attack": 45,
+      "base_defense": 22,
+      "level": 7,
+      "xp": 150,
+      "mana": 30,
+      "max_mana": 30,
+      "skill_cooldown": 0,
       "inventory": [
         {
-          "type": "Potion",
-          "name": "Superior Healing",
-          "rarity": "rare",
-          "hp_gain": 60
-        },
-        {
           "type": "Weapon",
-          "name": "Halberd",
-          "rarity": "rare",
-          "attack_bonus": 13,
+          "name": "Iron Sword",
+          "rarity": "common",
+          "attack_bonus": 5,
           "allowed_classes": [
             "warrior"
           ],
-          "sprite_name": "halberd_1"
+          "sprite_name": "long_sword1"
         },
         {
           "type": "Weapon",
-          "name": "War Axe",
-          "rarity": "uncommon",
-          "attack_bonus": 10,
+          "name": "Short Sword",
+          "rarity": "common",
+          "attack_bonus": 4,
           "allowed_classes": [
             "warrior"
           ],
-          "sprite_name": "war_axe1"
+          "sprite_name": "short_sword1"
         },
         {
           "type": "Weapon",
-          "name": "War Axe",
-          "rarity": "uncommon",
-          "attack_bonus": 10,
+          "name": "Iron Sword",
+          "rarity": "common",
+          "attack_bonus": 5,
           "allowed_classes": [
             "warrior"
           ],
-          "sprite_name": "war_axe1"
+          "sprite_name": "long_sword1"
         },
         {
           "type": "Armor",
-          "name": "Scale Mail",
+          "name": "Troll Hide",
+          "rarity": "uncommon",
+          "defense_bonus": 4,
+          "allowed_classes": [
+            "archer"
+          ],
+          "sprite_name": "troll_hide"
+        },
+        {
+          "type": "Armor",
+          "name": "Ring Mail",
           "rarity": "common",
-          "defense_bonus": 5,
+          "defense_bonus": 4,
           "allowed_classes": [
             "warrior",
             "archer"
           ],
-          "sprite_name": "scale_mail1"
+          "sprite_name": "ring_mail1"
+        },
+        {
+          "type": "Armor",
+          "name": "Troll Hide",
+          "rarity": "uncommon",
+          "defense_bonus": 4,
+          "allowed_classes": [
+            "archer"
+          ],
+          "sprite_name": "troll_hide"
+        },
+        {
+          "type": "Armor",
+          "name": "Chain Mail",
+          "rarity": "uncommon",
+          "defense_bonus": 6,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "chain_mail1"
+        },
+        {
+          "type": "Armor",
+          "name": "Chain Mail",
+          "rarity": "uncommon",
+          "defense_bonus": 6,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "chain_mail1"
+        },
+        {
+          "type": "Weapon",
+          "name": "War Axe",
+          "rarity": "uncommon",
+          "attack_bonus": 10,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "war_axe1"
+        },
+        {
+          "type": "Potion",
+          "name": "Healing Potion",
+          "rarity": "common",
+          "hp_gain": 25
         },
         {
           "type": "Potion",
@@ -70,29 +120,9 @@
         },
         {
           "type": "Potion",
-          "name": "Greater Healing",
-          "rarity": "uncommon",
-          "hp_gain": 40
-        },
-        {
-          "type": "Weapon",
-          "name": "Halberd",
-          "rarity": "rare",
-          "attack_bonus": 13,
-          "allowed_classes": [
-            "warrior"
-          ],
-          "sprite_name": "halberd_1"
-        },
-        {
-          "type": "Weapon",
-          "name": "Golden Sword",
-          "rarity": "epic",
-          "attack_bonus": 22,
-          "allowed_classes": [
-            "warrior"
-          ],
-          "sprite_name": "golden_sword"
+          "name": "Minor Healing",
+          "rarity": "common",
+          "hp_gain": 15
         },
         {
           "type": "Armor",
@@ -105,6 +135,29 @@
           "sprite_name": "plate_mail1"
         },
         {
+          "type": "Potion",
+          "name": "Greater Healing",
+          "rarity": "uncommon",
+          "hp_gain": 40
+        },
+        {
+          "type": "Armor",
+          "name": "Ring Mail",
+          "rarity": "common",
+          "defense_bonus": 4,
+          "allowed_classes": [
+            "warrior",
+            "archer"
+          ],
+          "sprite_name": "ring_mail1"
+        },
+        {
+          "type": "Potion",
+          "name": "Minor Healing",
+          "rarity": "common",
+          "hp_gain": 15
+        },
+        {
           "type": "Weapon",
           "name": "Battle Axe",
           "rarity": "uncommon",
@@ -115,62 +168,63 @@
           "sprite_name": "battle_axe1"
         },
         {
-          "type": "Weapon",
-          "name": "Sling",
-          "rarity": "common",
-          "attack_bonus": 3,
-          "allowed_classes": [
-            "archer"
-          ],
-          "sprite_name": "sling1"
-        },
-        {
-          "type": "Armor",
-          "name": "Banded Mail",
-          "rarity": "uncommon",
-          "defense_bonus": 7,
-          "allowed_classes": [
-            "warrior"
-          ],
-          "sprite_name": "banded_mail1"
-        },
-        {
           "type": "Potion",
           "name": "Superior Healing",
           "rarity": "rare",
           "hp_gain": 60
         },
         {
-          "type": "Potion",
-          "name": "Greater Healing",
+          "type": "Weapon",
+          "name": "Battle Axe",
           "rarity": "uncommon",
-          "hp_gain": 40
+          "attack_bonus": 8,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "battle_axe1"
+        },
+        {
+          "type": "Armor",
+          "name": "Ring Mail",
+          "rarity": "common",
+          "defense_bonus": 4,
+          "allowed_classes": [
+            "warrior",
+            "archer"
+          ],
+          "sprite_name": "ring_mail1"
         }
       ],
       "weapon": {
-        "name": "Golden Sword",
-        "attack_bonus": 22,
+        "name": "War Axe",
+        "attack_bonus": 10,
         "allowed_classes": [
           "warrior"
         ],
-        "rarity": "epic",
-        "sprite_name": "golden_sword"
+        "rarity": "uncommon",
+        "sprite_name": "war_axe1"
       },
       "armor": {
-        "name": "Scale Mail",
-        "defense_bonus": 5,
+        "name": "Chain Mail",
+        "defense_bonus": 6,
         "allowed_classes": [
-          "warrior",
-          "archer"
+          "warrior"
         ],
-        "rarity": "common",
-        "sprite_name": "scale_mail1"
+        "rarity": "uncommon",
+        "sprite_name": "chain_mail1"
       }
     }
   ],
-  "dungeon_level": 4,
+  "dungeon_level": 5,
   "current_player_idx": 0,
   "game_state": "playing",
-  "camera_x": 20,
-  "camera_y": 0
+  "camera_x": 13,
+  "camera_y": 0,
+  "obtained_items": [
+    "Plate Mail",
+    "Battle Axe",
+    "Ring Mail",
+    "Chain Mail",
+    "Iron Sword"
+  ]
 }

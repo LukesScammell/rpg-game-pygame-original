@@ -331,20 +331,113 @@ except FileNotFoundError:
 small_font = pygame.font.Font(None, 24)
 
 # --- Sound Assets ---
+sounds = {}
 music_loaded = False
-try:
-    pygame.mixer.music.load(os.path.join("assets", "music.ogg"))
-    music_loaded = True
-    sword_sound = pygame.mixer.Sound(os.path.join("assets", "sword.wav"))
-    magic_sound = pygame.mixer.Sound(os.path.join("assets", "magic.wav"))
-    arrow_sound = pygame.mixer.Sound(os.path.join("assets", "arrow.wav"))
-    damage_sound = pygame.mixer.Sound(os.path.join("assets", "damage.wav"))
-except pygame.error:
-    print("Warning: Could not load sound assets. Game will run without sound.")
-    sword_sound = None
-    magic_sound = None
-    arrow_sound = None
-    damage_sound = None
+
+def load_sounds():
+    """Load all sound effects from the RPG Sound Pack."""
+    global sounds, music_loaded
+    sound_pack_path = "RPG Sound Pack"
+    
+    print("Loading sound effects...")
+    
+    # Battle sounds
+    battle_sounds = {
+        "sword_attack": "battle/swing.wav",
+        "sword_attack2": "battle/swing2.wav", 
+        "sword_attack3": "battle/swing3.wav",
+        "magic_spell": "battle/magic1.wav",
+        "spell_cast": "battle/spell.wav",
+        "sword_draw": "battle/sword-unsheathe.wav",
+        "sword_draw2": "battle/sword-unsheathe2.wav"
+    }
+    
+    # Interface sounds
+    interface_sounds = {
+        "menu_select": "interface/interface1.wav",
+        "menu_confirm": "interface/interface2.wav",
+        "menu_back": "interface/interface3.wav",
+        "button_hover": "interface/interface4.wav",
+        "error": "interface/interface5.wav",
+        "success": "interface/interface6.wav"
+    }
+    
+    # Inventory sounds
+    inventory_sounds = {
+        "pickup_coin": "inventory/coin.wav",
+        "pickup_coin2": "inventory/coin2.wav",
+        "pickup_armor": "inventory/chainmail1.wav",
+        "pickup_cloth": "inventory/cloth.wav",
+        "pickup_metal": "inventory/metal-small1.wav",
+        "pickup_bottle": "inventory/bottle.wav",
+        "equip_armor": "inventory/armor-light.wav",
+        "drop_item": "inventory/wood-small.wav"
+    }
+    
+    # World sounds
+    world_sounds = {
+        "door_open": "world/door.wav"
+    }
+    
+    # Enemy sounds
+    enemy_sounds = {
+        "goblin_hit": "NPC/misc/wolfman.wav",  # Using misc sound for goblin
+        "orc_attack": "NPC/ogre/ogre1.wav",
+        "orc_hit": "NPC/ogre/ogre2.wav",
+        "troll_attack": "NPC/giant/giant1.wav",
+        "dragon_roar": "NPC/gutteral beast/beast1.wav"
+    }
+    
+    # Load all sound categories
+    all_sounds = {**battle_sounds, **interface_sounds, **inventory_sounds, **world_sounds, **enemy_sounds}
+    
+    loaded_count = 0
+    for sound_name, sound_path in all_sounds.items():
+        try:
+            full_path = os.path.join(sound_pack_path, sound_path)
+            if os.path.exists(full_path):
+                sounds[sound_name] = pygame.mixer.Sound(full_path)
+                print(f"  Loaded: {sound_name}")
+                loaded_count += 1
+            else:
+                print(f"  Warning: Sound not found: {full_path}")
+        except pygame.error as e:
+            print(f"  Error loading {sound_name}: {e}")
+    
+    print(f"Sound loading complete. Loaded {loaded_count} sound effects.")
+    
+    # Try to load background music (if available)
+    try:
+        music_path = os.path.join("assets", "music.ogg")
+        if os.path.exists(music_path):
+            pygame.mixer.music.load(music_path)
+            music_loaded = True
+            print("Background music loaded successfully.")
+    except pygame.error:
+        print("No background music found.")
+
+def play_sound(sound_name, volume=1.0):
+    """Play a sound effect if it exists."""
+    if sound_name in sounds and sounds[sound_name]:
+        sound = sounds[sound_name]
+        sound.set_volume(volume)
+        sound.play()
+
+def play_random_sound(sound_list, volume=1.0):
+    """Play a random sound from a list of sound names."""
+    if sound_list:
+        import random
+        sound_name = random.choice(sound_list)
+        play_sound(sound_name, volume)
+
+# Load all sounds
+load_sounds()
+
+# Legacy sound variables for compatibility
+sword_sound = sounds.get("sword_attack")
+magic_sound = sounds.get("magic_spell") 
+arrow_sound = sounds.get("sword_attack")  # Using sword sound for arrows temporarily
+damage_sound = sounds.get("sword_attack2")
 
 # --- UI Elements ---
 UI = {
@@ -1061,25 +1154,32 @@ class Game:
     def handle_inventory_input(self, key):
         """Handle input while inventory is open."""
         if key == pygame.K_ESCAPE or key == pygame.K_i:
+            play_sound("menu_back", 0.5)
             self.inventory_state = "closed"
         elif key == pygame.K_q:  # Quit to main menu from inventory
+            play_sound("menu_confirm", 0.5)
             self.inventory_state = "closed"
             self.save_game()
             self.game_state = "main_menu"
             self.reset_game_state()
         elif key == pygame.K_LEFT and self.selected_player_idx > 0:
+            play_sound("menu_select", 0.4)
             self.selected_player_idx -= 1
             self.selected_item_idx = 0
         elif key == pygame.K_RIGHT and self.selected_player_idx < len(self.players) - 1:
+            play_sound("menu_select", 0.4)
             self.selected_player_idx += 1
             self.selected_item_idx = 0
         elif key == pygame.K_UP and self.selected_item_idx > 0:
+            play_sound("menu_select", 0.3)
             self.selected_item_idx -= 1
         elif key == pygame.K_DOWN:
             current_player = self.players[self.selected_player_idx]
             if self.selected_item_idx < len(current_player.inventory) - 1:
+                play_sound("menu_select", 0.3)
                 self.selected_item_idx += 1
         elif key == pygame.K_RETURN:
+            play_sound("menu_confirm", 0.5)
             self.use_inventory_item()
         elif key == pygame.K_DELETE or key == pygame.K_x:
             self.drop_inventory_item()
@@ -1094,35 +1194,41 @@ class Game:
                 if current_player.hp < current_player.max_hp:
                     result = item.use(current_player)
                     current_player.inventory.remove(item)
+                    play_sound("pickup_bottle", 0.6)  # Potion use sound
                     self.add_message(result)
                     # Adjust selected index if needed
                     if self.selected_item_idx >= len(current_player.inventory) and self.selected_item_idx > 0:
                         self.selected_item_idx -= 1
                 else:
+                    play_sound("error", 0.5)
                     self.add_message(f"{current_player.name} is already at full health!")
             elif isinstance(item, Weapon):
                 # Equip weapon
                 if current_player.weapon != item:
                     old_weapon = current_player.weapon
                     current_player.weapon = item
+                    play_sound("pickup_metal", 0.7)  # Weapon equip sound
                     self.add_message(f"{current_player.name} equipped {item.name}!")
                     # Put old weapon back in inventory if it's not the starting weapon
                     if old_weapon and old_weapon != item:
                         if old_weapon not in current_player.inventory:
                             current_player.inventory.append(old_weapon)
                 else:
+                    play_sound("error", 0.5)
                     self.add_message(f"{item.name} is already equipped!")
             elif isinstance(item, Armor):
                 # Equip armor
                 if current_player.armor != item:
                     old_armor = current_player.armor
                     current_player.armor = item
+                    play_sound("equip_armor", 0.7)  # Armor equip sound
                     self.add_message(f"{current_player.name} equipped {item.name}!")
                     # Put old armor back in inventory
                     if old_armor and old_armor != item:
                         if old_armor not in current_player.inventory:
                             current_player.inventory.append(old_armor)
                 else:
+                    play_sound("error", 0.5)
                     self.add_message(f"{item.name} is already equipped!")
     
     def drop_inventory_item(self):
@@ -1134,6 +1240,7 @@ class Game:
             # Don't allow dropping equipped items
             if ((isinstance(item, Weapon) and item == current_player.weapon) or
                 (isinstance(item, Armor) and item == current_player.armor)):
+                play_sound("error", 0.5)
                 self.add_message("Cannot drop equipped item!")
                 return
             
@@ -1142,6 +1249,7 @@ class Game:
             item.y = current_player.y
             self.dungeon.items.append(item)
             current_player.inventory.remove(item)
+            play_sound("drop_item", 0.6)  # Item drop sound
             self.add_message(f"{current_player.name} dropped {item.name}")
             
             # Adjust selected index if needed
@@ -2033,6 +2141,16 @@ class Game:
                 self.dungeon.items.remove(item)
                 self.add_message(f"{player.name} picked up {item.name}!")
                 
+                # Play appropriate pickup sound based on item type
+                if isinstance(item, Weapon):
+                    play_sound("pickup_metal", 0.7)
+                elif isinstance(item, Armor):
+                    play_sound("pickup_armor", 0.7)
+                elif isinstance(item, Potion):
+                    play_sound("pickup_bottle", 0.7)
+                else:
+                    play_sound("pickup_coin", 0.7)
+                
                 # Mark item as obtained for single player
                 if hasattr(self, 'obtained_items') and len(self.players) == 1:
                     self.obtained_items.add(item.name)
@@ -2046,6 +2164,7 @@ class Game:
     def open_treasure_chest(self, treasure, player):
         """Open a treasure chest and give items to player."""
         treasure.opened = True
+        play_sound("door_open", 0.8)  # Chest opening sound
         self.add_message(f"{player.name} opened a treasure chest!")
         
         # Give all items from the treasure chest
@@ -2058,18 +2177,22 @@ class Game:
                     self.obtained_items.add(item.name)
                     self.dungeon.mark_item_obtained(item.name)
                 
-                # Special message for different item types
+                # Play pickup sound and show message
                 if isinstance(item, Weapon):
+                    play_sound("pickup_metal", 0.6)
                     self.add_message(f"Found {item.name}! Attack +{item.attack_bonus}")
                 elif isinstance(item, Armor):
+                    play_sound("pickup_armor", 0.6)
                     self.add_message(f"Found {item.name}! Defense +{item.defense_bonus}")
                 else:
+                    play_sound("pickup_bottle", 0.6)
                     self.add_message(f"Found {item.name}!")
             else:
                 # Drop item on ground if inventory full
                 item.x = treasure.x
                 item.y = treasure.y
                 self.dungeon.items.append(item)
+                play_sound("drop_item", 0.5)
                 self.add_message(f"Inventory full! {item.name} dropped on ground.")
 
     def move_player(self, player, direction):
@@ -2492,9 +2615,11 @@ class Game:
         
         # Check battle end conditions
         if not any(p.is_alive() for p in self.players):
+            play_sound("error", 0.7)  # Defeat sound
             self.add_message("Your party has been defeated. Game Over.")
             self.game_state = "game_over"
         elif not any(e.is_alive() for e in self.combat_enemies):
+            play_sound("success", 0.8)  # Victory sound
             self.add_message("You won the battle!")
             
             # Handle enemy weapon drops before removing enemies
@@ -2540,6 +2665,8 @@ class Game:
         player = self.turn_order[self.combat_turn_idx]
         alive_enemies = [e for e in self.combat_enemies if e.is_alive()]
         if alive_enemies:
+            # Play attack sound based on player class
+            play_random_sound(["sword_attack", "sword_attack2", "sword_attack3"], 0.6)
             target = random.choice(alive_enemies)
             damage = max(0, player.attack - target.defense)
             target.take_damage(damage)
@@ -2550,6 +2677,8 @@ class Game:
         """Handle enemy attack."""
         alive_players = [p for p in self.players if p.is_alive()]
         if alive_players:
+            # Play random enemy attack sound
+            play_sound("orc_attack", 0.5)  # Generic enemy attack sound
             target = random.choice(alive_players)
             damage = max(0, enemy.attack - target.defense)
             target.take_damage(damage)
@@ -2576,8 +2705,7 @@ class Game:
             if player.skill_cooldown > 0:
                 self.add_message(f"Power Strike is on cooldown for {player.skill_cooldown} more turns.")
                 return
-            if sword_sound:
-                sword_sound.play()
+            play_sound("sword_draw", 0.7)
             target = random.choice([e for e in enemies if e.is_alive()])
             damage = player.attack * 2
             target.take_damage(damage)
@@ -2587,8 +2715,7 @@ class Game:
             if player.mana < 10:
                 self.add_message("Not enough mana for Fireball.")
                 return
-            if magic_sound:
-                magic_sound.play()
+            play_sound("magic_spell", 0.7)
             self.add_message(f"{player.name} casts Fireball!")
             for enemy in enemies:
                 if enemy.is_alive():
@@ -2600,8 +2727,7 @@ class Game:
             if player.skill_cooldown > 0:
                 self.add_message(f"Double Shot is on cooldown for {player.skill_cooldown} more turns.")
                 return
-            if arrow_sound:
-                arrow_sound.play()
+            play_random_sound(["sword_attack", "sword_attack2"], 0.5)
             self.add_message(f"{player.name} uses Double Shot!")
             for _ in range(2):
                 target = random.choice([e for e in enemies if e.is_alive()])
