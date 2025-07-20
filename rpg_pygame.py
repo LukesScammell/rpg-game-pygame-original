@@ -1146,9 +1146,7 @@ class Game:
         # Camera system
         self.camera_x = 0
         self.camera_y = 0
-        # Animation timing
-        self.last_time = pygame.time.get_ticks()
-        self.clock = pygame.time.Clock()
+        self.clock = pygame.time.Clock()  # For frame rate limiting
         # Inventory system
         self.inventory_state = "closed"  # closed, open, selecting
         self.selected_player_idx = 0
@@ -2322,11 +2320,6 @@ class Game:
                 self.game_over_screen()
 
     def run_game(self):
-        # Calculate delta time for animations
-        current_time = pygame.time.get_ticks()
-        dt = current_time - self.last_time
-        self.last_time = current_time
-        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game_over = True
@@ -2531,8 +2524,8 @@ class Game:
             if enemies_in_pos:
                 self.start_combat(enemies_in_pos)
             else:
-                player.x = new_x
-                player.y = new_y
+                # Move player
+                player.x, player.y = new_x, new_y
                 self.update_camera()  # Update camera after movement
                 for item in list(self.dungeon.items):
                     if item.x == new_x and item.y == new_y:
@@ -2751,15 +2744,17 @@ class Game:
                     text = font.render(enemy.icon, True, RED)
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # Use enemy sprites when available
+                    # Use static sprites
                     sprite_drawn = False
+                    
+                    # Use static enemy sprites
                     enemy_type = enemy.name.lower()
                     sprite_key = f"monster_{enemy_type}"
                     if sprite_key in sprites:
                         screen.blit(sprites[sprite_key], (screen_x, screen_y))
                         sprite_drawn = True
                     
-                    # Fallback to colored rectangle if sprite not available
+                    # Final fallback to colored rectangle if sprite not available
                     if not sprite_drawn:
                         pygame.draw.rect(screen, RED, (screen_x + 2, screen_y + 2, TILE_SIZE - 4, TILE_SIZE - 4))
                 
@@ -2777,6 +2772,8 @@ class Game:
                 else:
                     # Use static sprites
                     sprite_drawn = False
+                    
+                    # Use static player sprites
                     sprite_key = f"player_{player.char_class}"
                     if sprite_key in sprites:
                         screen.blit(sprites[sprite_key], (screen_x, screen_y))
@@ -2931,11 +2928,6 @@ class Game:
 
     def run_combat(self):
         """Run the enhanced turn-based combat system."""
-        # Calculate delta time for animations
-        current_time = pygame.time.get_ticks()
-        dt = current_time - self.last_time
-        self.last_time = current_time
-        
         # Draw the combat screen
         self.draw_combat_screen()
         
@@ -3020,6 +3012,10 @@ class Game:
         player = self.turn_order[self.combat_turn_idx]
         alive_enemies = [e for e in self.combat_enemies if e.is_alive()]
         if alive_enemies:
+            # Play attack animation
+            if hasattr(player, 'start_animation'):
+                player.start_animation("attack", ATTACK_SPEED)
+            
             # Play attack sound based on player class
             play_random_sound(["sword_attack", "sword_attack2", "sword_attack3"], 0.6)
             target = random.choice(alive_enemies)
@@ -3032,6 +3028,10 @@ class Game:
         """Handle enemy attack."""
         alive_players = [p for p in self.players if p.is_alive()]
         if alive_players:
+            # Play attack animation for enemy
+            if hasattr(enemy, 'attack_animation'):
+                enemy.attack_animation()
+            
             # Play random enemy attack sound
             play_sound("orc_attack", 0.5)  # Generic enemy attack sound
             target = random.choice(alive_players)

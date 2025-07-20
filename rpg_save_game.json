@@ -1,19 +1,19 @@
 {
   "players": [
     {
-      "x": 26,
-      "y": 11,
+      "x": 21,
+      "y": 13,
       "name": "1",
       "char_class": "warrior",
-      "hp": 220,
-      "max_hp": 220,
-      "base_attack": 40,
-      "base_defense": 20,
-      "level": 6,
+      "hp": 240,
+      "max_hp": 240,
+      "base_attack": 45,
+      "base_defense": 22,
+      "level": 7,
       "xp": 0,
-      "mana": 25,
-      "max_mana": 25,
-      "skill_cooldown": 0,
+      "mana": 30,
+      "max_mana": 30,
+      "skill_cooldown": 3,
       "inventory": [
         {
           "type": "Armor",
@@ -84,6 +84,12 @@
           "name": "Healing Potion",
           "rarity": "common",
           "hp_gain": 25
+        },
+        {
+          "type": "Potion",
+          "name": "Minor Healing",
+          "rarity": "common",
+          "hp_gain": 15
         }
       ],
       "weapon": {
@@ -110,18 +116,19 @@
   "dungeon_level": 5,
   "current_player_idx": 0,
   "game_state": "playing",
-  "camera_x": 16,
-  "camera_y": 4,
+  "camera_x": 11,
+  "camera_y": 5,
   "obtained_items": [
-    "War Hammer",
     "Sling",
-    "Scale Mail",
-    "Healing Potion",
-    "Executioner's Axe",
-    "War Axe",
-    "Elven Leather",
-    "Battle Axe",
     "Greatsword",
-    "Greater Healing"
+    "Battle Axe",
+    "Minor Healing",
+    "Elven Leather",
+    "War Axe",
+    "Greater Healing",
+    "War Hammer",
+    "Executioner's Axe",
+    "Healing Potion",
+    "Scale Mail"
   ]
 }
