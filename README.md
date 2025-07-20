@@ -1,8 +1,6 @@
-# Python RPG Adventure - Pygame Version (v1.18)
+# Python RPG Adventure - Pygame Version (v1.19)
 
 A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, and immersive dungeon exploration. Created with the help of large language models by **LukesScammell**.
-
-## Features
 
 ## Features
 
@@ -10,7 +8,7 @@ A modern graphical RPG adventure game built with Pygame, featuring enhanced visu
     *   **Comprehensive Visual Overhaul:** Professional color palette, gradient backgrounds, and shadow text rendering
     *   **Advanced Animation System:** Particle effects, smooth transitions, and coordinated visual timing
     *   **Enhanced Combat Interface:** Fixed UI overlapping issues, professional health/mana bars with gradients
-    *   **Modern Inventory System:** Categorized display, rarity color coding, and visual item interaction feedback
+    *   **Enhanced Inventory System:** Visual item sprites displayed alongside text, categorized display, rarity color coding, and interactive feedback
 *   **Dynamic Audio System:** Context-aware background music with 6+ tracks and 26+ professional sound effects
 *   **Full-Screen Gaming Experience:** 1920x1080 optimized display with 64+ professional sprites and 48px tile system
 *   **Dual Display Modes:** Toggle between emoji-based graphics and detailed pixel art sprites with visual previews
@@ -74,26 +72,6 @@ A modern graphical RPG adventure game built with Pygame, featuring enhanced visu
         *   Return to main menu (keeps save for future play)
         *   Exit the game completely
 
-## Features
-
-*   **Enhanced Visual Experience:** Modern UI with advanced visual effects and professional design
-    *   **Comprehensive Visual Overhaul:** Professional color palette, gradient backgrounds, and shadow text rendering
-    *   **Advanced Animation System:** Particle effects, smooth transitions, and coordinated visual timing
-    *   **Enhanced Combat Interface:** Fixed UI overlapping issues, professional health/mana bars with gradients
-    *   **Modern Inventory System:** Categorized display, rarity color coding, and visual item interaction feedback
-*   **Dynamic Audio System:** Context-aware background music with 6+ tracks and 26+ professional sound effects
-*   **Full-Screen Gaming Experience:** 1920x1080 optimized display with 64+ professional sprites and 48px tile system
-*   **Dual Display Modes:** Toggle between emoji-based graphics and detailed pixel art sprites with visual previews
-*   **Customizable Environments:** Choose from multiple wall and floor styles with real-time visual selection
-*   **Strategic Combat System:** Enhanced turn-based battles with visual effects, turn indicators, and skill management
-*   **Complete Inventory Management:** Full item system with use/equip/drop functionality across multiple characters
-*   **Progressive Equipment System:** Extensive weapon/armor progression from basic to epic tier with visual rarity indicators
-*   **Exploration & Discovery:** Treasure chests, fog of war system, dynamic camera following, and rare room generation
-*   **Multi-Character Parties:** Create up to 3 heroes with unique classes and individual inventories
-*   **Professional Asset Integration:** Multiple sprite sources including Crawl tiles and Dungeon Crawl Stone Soup Full
-*   **Persistent Game State:** Comprehensive save/load system with settings preservation and auto-save functionality
-*   **Cross-Platform Compatibility:** Windows/Linux/Mac support with optimized font and audio handling
-
 ## Technical Specifications
 
 **Tested Environment:**
@@ -143,6 +121,29 @@ The game includes a comprehensive settings system accessible from the main menu:
 ---
 
 ## Version History & Development Notes
+
+### v1.19: Enhanced Inventory Visual System
+**Enhanced Item Display & User Experience:**
+- **Visual Item Identification**: Complete inventory overhaul with sprite display system
+  - **Item Sprites in Inventory**: All weapons, armor, and potions now display their actual sprites alongside text descriptions
+  - **Smart Sprite Detection**: Automatic sprite key detection based on item type and sprite naming conventions
+  - **Scaled Visual Display**: Items rendered at optimal 24x24 pixel size for clear visibility in inventory interface
+  - **Dynamic Positioning**: Text automatically repositioned to accommodate sprite display without overlap
+  - **Fallback System**: Graceful handling when item sprites are not found, maintaining text-only display
+- **Professional Item Presentation**: Enhanced visual hierarchy with sprites providing immediate item recognition
+  - **Weapon Sprites**: Swords, hammers, bows, and staffs visually represented with proper scaling
+  - **Armor Sprites**: Leather, chainmail, and plate armor shown with distinctive visual indicators
+  - **Potion Sprites**: Healing potions displayed with recognizable potion bottle graphics
+  - **Consistent Layout**: Uniform spacing and alignment for professional inventory appearance
+
+**User Request**: "could you show the item image on the inventory screen"
+
+**Technical Implementation**:
+- Enhanced `draw_inventory_item()` method with sprite rendering capabilities
+- Added smart sprite key detection for weapons ("weapon_{sprite_name}"), armor ("armor_{sprite_name}"), and potions ("item_potion")
+- Implemented scaled sprite rendering (24x24) with proper positioning relative to text elements
+- Created fallback system maintaining text-only display when sprites unavailable
+- Integrated with existing sprite loading system for seamless asset utilization
 
 ### v1.18: Enhanced Visual Experience & UI Overhaul
 **Enhanced Visual & UI System:**

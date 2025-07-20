@@ -2421,11 +2421,34 @@ class Game:
             rarity_color = rarity_colors.get(item.rarity, ENHANCED_COLORS['text_primary'])
             pygame.draw.rect(screen, rarity_color, (items_start_x - 5, y_pos + 5, 8, 8))
         
+        # Draw item sprite if available and not in emoji mode
+        sprite_x = items_start_x + 15
+        text_x = sprite_x
+        
+        if not game_settings['use_emojis']:
+            sprite_key = None
+            
+            # Determine sprite key based on item type
+            if isinstance(item, Weapon) and hasattr(item, 'sprite_name') and item.sprite_name:
+                sprite_key = f"weapon_{item.sprite_name}"
+            elif isinstance(item, Armor) and hasattr(item, 'sprite_name') and item.sprite_name:
+                sprite_key = f"armor_{item.sprite_name}"
+            elif isinstance(item, Potion):
+                sprite_key = "item_potion"
+            
+            # Draw the sprite if available
+            if sprite_key and sprite_key in sprites:
+                # Scale sprite to fit in inventory (smaller than tile size)
+                sprite_size = 24  # Smaller than TILE_SIZE for inventory
+                item_sprite = pygame.transform.scale(sprites[sprite_key], (sprite_size, sprite_size))
+                screen.blit(item_sprite, (sprite_x, y_pos - 2))
+                text_x = sprite_x + sprite_size + 5  # Move text to the right of sprite
+        
         # Item icon and name
         if game_settings['use_emojis']:
             item_text = f"{item.icon} {item.name}"
         else:
-            item_text = f"• {item.name}"
+            item_text = f"{item.name}"
         
         # Add item description
         if isinstance(item, Weapon):
@@ -2439,7 +2462,7 @@ class Game:
         elif isinstance(item, Potion):
             item_text += f" (Heals {item.hp_gain} HP)"
         
-        draw_text_with_shadow(screen, item_text, items_start_x + 15, y_pos, item_color, small_font, 1)
+        draw_text_with_shadow(screen, item_text, text_x, y_pos, item_color, small_font, 1)
 
     def add_message(self, text):
         self.messages.appendleft(text)
