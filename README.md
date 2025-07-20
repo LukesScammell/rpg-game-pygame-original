@@ -1,10 +1,20 @@
-# Python RPG Adventure - Pygame Version (v1.15)
+# Python RPG Adventure - Pygame Version (v1.15.1)
 
 This file documents the development of a graphical RPG created with Pygame, with the help of a large language model. It tracks the game's evolution through different versions, detailing the features added at each stage and the prompts used to generate them.
 
 This version was started by user **LukesScammell**.
 
-## Version 1.15 Features
+## Version 1.15.1 Features
+
+**Critical Bug Fixes & Stability:**
+- **Combat Skill Crash Fix**: Resolved critical crash when using skills with no alive enemies
+  - Fixed `IndexError: Cannot choose from an empty sequence` in warrior Power Strike and archer Double Shot
+  - Added safety checks to prevent skill targeting when all enemies are defeated
+  - Enhanced archer Double Shot to handle enemies dying between shots
+  - User feedback message: "No enemies to target!" when skills can't be used
+  - Prevents race condition where skills activate after last enemy dies
+
+**Previous Version 1.15 Features:**
 
 **Victory Screen & Game Completion System:**
 - **Complete Victory Screen Implementation**: Proper game completion when defeating the dragon
@@ -166,6 +176,28 @@ The game includes a comprehensive settings system accessible from the main menu:
 *   **Real-time Updates:** Changes take effect immediately in the game
 
 ## Version History
+
+### v1.15.1: Critical Combat Bug Fix
+**Bug Fixes:**
+- **Combat Skill Crash Prevention**: Fixed critical crash occurring when players used skills with no alive enemies
+  - **IndexError Fix**: Resolved `random.choice()` from empty sequence when all enemies were defeated
+  - **Warrior Power Strike**: Added alive enemy check before targeting single enemy
+  - **Archer Double Shot**: Enhanced to handle enemies dying between shots with dynamic target list updates
+  - **Mage Fireball**: Optimized to use pre-filtered alive enemies list for better performance
+  - **User Feedback**: Added clear "No enemies to target!" message when skills cannot be used
+  - **Race Condition Prevention**: Prevents skills from executing when last enemy dies in same turn
+- **Enhanced Combat Flow**: Skills now gracefully handle edge cases during battle end conditions
+  - Early return system when no valid targets exist
+  - Dynamic enemy list updates for multi-target skills
+  - Improved combat stability and user experience
+
+**User Report**: "IndexError: Cannot choose from an empty sequence" crash traceback when using combat skills
+
+**Technical Implementation**:
+- Added `alive_enemies = [e for e in enemies if e.is_alive()]` check at start of `use_skill()`
+- Early return with user message when no enemies available for targeting
+- Enhanced archer logic to refresh target list between Double Shot attacks
+- Optimized mage Fireball to iterate over pre-filtered alive enemies list
 
 ### v1.15: Victory Screen & Game Completion
 **Major Features:**

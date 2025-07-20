@@ -3072,12 +3072,18 @@ class Game:
 
     def use_skill(self, player, enemies):
         """Use player's special skill."""
+        # Check if there are any alive enemies before using skills
+        alive_enemies = [e for e in enemies if e.is_alive()]
+        if not alive_enemies:
+            self.add_message("No enemies to target!")
+            return
+            
         if player.char_class == "warrior":
             if player.skill_cooldown > 0:
                 self.add_message(f"Power Strike is on cooldown for {player.skill_cooldown} more turns.")
                 return
             play_sound("sword_draw", 0.7)
-            target = random.choice([e for e in enemies if e.is_alive()])
+            target = random.choice(alive_enemies)
             damage = player.attack * 2
             target.take_damage(damage)
             self.add_message(f"{player.name} uses Power Strike on {target.name} for {damage} damage!")
@@ -3088,11 +3094,10 @@ class Game:
                 return
             play_sound("magic_spell", 0.7)
             self.add_message(f"{player.name} casts Fireball!")
-            for enemy in enemies:
-                if enemy.is_alive():
-                    damage = player.attack // 2
-                    enemy.take_damage(damage)
-                    self.add_message(f"Fireball hits {enemy.name} for {damage} damage.")
+            for enemy in alive_enemies:
+                damage = player.attack // 2
+                enemy.take_damage(damage)
+                self.add_message(f"Fireball hits {enemy.name} for {damage} damage.")
             player.mana -= 10
         elif player.char_class == "archer":
             if player.skill_cooldown > 0:
@@ -3101,10 +3106,13 @@ class Game:
             play_random_sound(["sword_attack", "sword_attack2"], 0.5)
             self.add_message(f"{player.name} uses Double Shot!")
             for _ in range(2):
-                target = random.choice([e for e in enemies if e.is_alive()])
-                damage = player.attack
-                target.take_damage(damage)
-                self.add_message(f"{player.name} shoots {target.name} for {damage} damage.")
+                if alive_enemies:  # Check if there are still alive enemies for each shot
+                    target = random.choice(alive_enemies)
+                    damage = player.attack
+                    target.take_damage(damage)
+                    self.add_message(f"{player.name} shoots {target.name} for {damage} damage.")
+                    # Update alive enemies list in case the target died
+                    alive_enemies = [e for e in enemies if e.is_alive()]
             player.skill_cooldown = 2
         self.next_turn()
     
