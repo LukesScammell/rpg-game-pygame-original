@@ -11,12 +11,16 @@ SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 MAP_WIDTH = 40
 MAP_HEIGHT = 20
-TILE_SIZE = 24
+TILE_SIZE = 32  # Increased to better fit sprites
+VIEWPORT_WIDTH = 15  # Tiles visible horizontally
+VIEWPORT_HEIGHT = 12  # Tiles visible vertically
+MINIMAP_SIZE = 200  # Size of the minimap
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 15
 MAX_DUNGEON_LEVEL = 5
 HIGHSCORE_FILE = "rpg_highscores.json"
+SETTINGS_FILE = "rpg_settings.json"
 
 # --- Colors ---
 WHITE = (255, 255, 255)
@@ -25,12 +29,190 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 GRAY = (128, 128, 128)
+DARK_GRAY = (64, 64, 64)
+LIGHT_GRAY = (192, 192, 192)
+FOG_COLOR = (40, 40, 60)  # Dark blue-ish for unexplored areas
 
 # --- Pygame Setup ---
 pygame.init()
 pygame.mixer.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Python RPG Adventure")
+
+# --- Settings System ---
+def load_settings():
+    """Load game settings from file."""
+    default_settings = {
+        "use_emojis": True,
+        "wall_sprite": "stone_brick1.png",
+        "floor_sprite": "sandstone_floor0.png"
+    }
+    try:
+        with open(SETTINGS_FILE, 'r') as f:
+            settings = json.load(f)
+            # Ensure all default keys exist
+            for key, value in default_settings.items():
+                if key not in settings:
+                    settings[key] = value
+            return settings
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default_settings
+
+def save_settings(settings):
+    """Save game settings to file."""
+    try:
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f, indent=2)
+    except Exception as e:
+        print(f"Could not save settings: {e}")
+
+# Load game settings
+game_settings = load_settings()
+
+# --- Sprite Loading ---
+sprites = {}
+
+def load_sprites():
+    """Load all sprite images."""
+    global sprites
+    sprite_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-dngn")
+    
+    # Load wall sprites
+    wall_path = os.path.join(sprite_path, "wall")
+    floor_path = os.path.join(sprite_path, "floor")
+    
+    # Load specific wall and floor sprites
+    wall_files = ["stone_brick1.png", "stone_dark0.png", "brick_brown0.png", "marble_wall1.png"]
+    floor_files = ["sandstone_floor0.png", "dirt0.png", "pebble_brown0.png", "marble_floor1.png"]
+    
+    print("Loading wall sprites...")
+    for wall_file in wall_files:
+        try:
+            wall_sprite_path = os.path.join(wall_path, wall_file)
+            if os.path.exists(wall_sprite_path):
+                sprites[f"wall_{wall_file}"] = pygame.image.load(wall_sprite_path)
+                sprites[f"wall_{wall_file}"] = pygame.transform.scale(sprites[f"wall_{wall_file}"], (TILE_SIZE, TILE_SIZE))
+                print(f"  Loaded: {wall_file}")
+            else:
+                print(f"  Warning: Wall sprite not found: {wall_sprite_path}")
+        except pygame.error as e:
+            print(f"  Error loading wall sprite {wall_file}: {e}")
+    
+    print("Loading floor sprites...")
+    for floor_file in floor_files:
+        try:
+            floor_sprite_path = os.path.join(floor_path, floor_file)
+            if os.path.exists(floor_sprite_path):
+                sprites[f"floor_{floor_file}"] = pygame.image.load(floor_sprite_path)
+                sprites[f"floor_{floor_file}"] = pygame.transform.scale(sprites[f"floor_{floor_file}"], (TILE_SIZE, TILE_SIZE))
+                print(f"  Loaded: {floor_file}")
+            else:
+                print(f"  Warning: Floor sprite not found: {floor_sprite_path}")
+        except pygame.error as e:
+            print(f"  Error loading floor sprite {floor_file}: {e}")
+    
+    # Load stairs sprite
+    print("Loading stairs sprite...")
+    try:
+        stairs_path = os.path.join(sprite_path, "dngn_closed_door.png")
+        if os.path.exists(stairs_path):
+            sprites["stairs"] = pygame.image.load(stairs_path)
+            sprites["stairs"] = pygame.transform.scale(sprites["stairs"], (TILE_SIZE, TILE_SIZE))
+            print("  Loaded: stairs (dngn_closed_door.png)")
+        else:
+            print(f"  Warning: Stairs sprite not found: {stairs_path}")
+    except pygame.error as e:
+        print(f"  Error loading stairs sprite: {e}")
+    
+    # Load player sprites
+    print("Loading player sprites...")
+    player_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "player", "base")
+    player_sprites = {
+        "warrior": "human_m.png",       # Male human warrior
+        "mage": "human_f.png",         # Female human mage  
+        "archer": "elf_m.png",         # Male elf archer
+        "rogue": "elf_f.png"           # Female elf rogue
+    }
+    
+    for class_name, sprite_file in player_sprites.items():
+        try:
+            sprite_file_path = os.path.join(player_base_path, sprite_file)
+            if os.path.exists(sprite_file_path):
+                sprites[f"player_{class_name}"] = pygame.image.load(sprite_file_path)
+                sprites[f"player_{class_name}"] = pygame.transform.scale(sprites[f"player_{class_name}"], (TILE_SIZE, TILE_SIZE))
+                print(f"  Loaded: {class_name} ({sprite_file})")
+            else:
+                print(f"  Warning: Player sprite not found: {sprite_file_path}")
+        except pygame.error as e:
+            print(f"  Error loading player sprite {sprite_file}: {e}")
+    
+    # Load monster sprites
+    print("Loading monster sprites...")
+    monster_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-mon")
+    monster_sprites = {
+        "goblin": "goblin.png",
+        "orc": "orc_warrior.png", 
+        "troll": "troll.png",
+        "dragon": "dragon.png"      # Changed from dragon_gold.png to dragon.png
+    }
+    
+    for monster_name, sprite_file in monster_sprites.items():
+        try:
+            sprite_file_path = os.path.join(monster_path, sprite_file)
+            if os.path.exists(sprite_file_path):
+                sprites[f"monster_{monster_name}"] = pygame.image.load(sprite_file_path)
+                sprites[f"monster_{monster_name}"] = pygame.transform.scale(sprites[f"monster_{monster_name}"], (TILE_SIZE, TILE_SIZE))
+                print(f"  Loaded: {monster_name} ({sprite_file})")
+            else:
+                print(f"  Warning: Monster sprite not found: {sprite_file_path}")
+        except pygame.error as e:
+            print(f"  Error loading monster sprite {sprite_file}: {e}")
+    
+    # Load item sprites  
+    print("Loading item sprites...")
+    item_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "item")
+    
+    # Load potions
+    potion_path = os.path.join(item_base_path, "potion", "i-heal-wounds.png")
+    if os.path.exists(potion_path):
+        sprites["item_potion"] = pygame.image.load(potion_path)
+        sprites["item_potion"] = pygame.transform.scale(sprites["item_potion"], (TILE_SIZE, TILE_SIZE))
+        print("  Loaded: potion (i-heal-wounds.png)")
+    else:
+        print("  Warning: Potion sprite not found")
+    
+    # Load weapons
+    weapon_path = os.path.join(item_base_path, "weapon", "long_sword1.png")
+    if os.path.exists(weapon_path):
+        sprites["item_weapon"] = pygame.image.load(weapon_path)
+        sprites["item_weapon"] = pygame.transform.scale(sprites["item_weapon"], (TILE_SIZE, TILE_SIZE))
+        print("  Loaded: weapon (long_sword1.png)")
+    else:
+        print("  Warning: Weapon sprite not found")
+    
+    # For armor, we'll use a fallback since armour is in item/armour folder (need to check that)
+    armor_path = os.path.join(item_base_path, "armour")
+    if os.path.exists(armor_path):
+        # Try to find a leather armor or similar
+        try:
+            armor_files = os.listdir(armor_path)
+            if armor_files:
+                armor_file = armor_files[0]  # Use first available armor sprite
+                full_armor_path = os.path.join(armor_path, armor_file)
+                sprites["item_armor"] = pygame.image.load(full_armor_path)
+                sprites["item_armor"] = pygame.transform.scale(sprites["item_armor"], (TILE_SIZE, TILE_SIZE))
+                print(f"  Loaded: armor ({armor_file})")
+            else:
+                print("  Warning: No armor sprites found")
+        except (FileNotFoundError, pygame.error) as e:
+            print(f"  Warning: Could not load armor sprite: {e}")
+    else:
+        print("  Warning: Armor folder not found")
+    
+    print(f"Sprite loading complete. Loaded {len(sprites)} sprites.")
+
+# Load sprites
+load_sprites()
 
 # --- Font Setup ---
 # Use a font that supports emojis, with a fallback to the default font
@@ -39,6 +221,8 @@ try:
 except FileNotFoundError:
     print("Warning: Segoe UI Emoji font not found. Using default font. Emojis may not render correctly.")
     font = pygame.font.Font(None, 32)
+
+small_font = pygame.font.Font(None, 24)
 
 # --- Sound Assets ---
 music_loaded = False
@@ -228,6 +412,9 @@ class Dungeon:
         self.items = []
         self.enemies = []
         self.stairs_down = None
+        # Fog of war system
+        self.explored = [[False for _ in range(width)] for _ in range(height)]
+        self.visible = [[False for _ in range(width)] for _ in range(height)]
 
     def create_room(self, room):
         for x in range(room.x1 + 1, room.x2):
@@ -302,6 +489,54 @@ class Dungeon:
                 item.y = y
                 self.items.append(item)
 
+    def get_room_at(self, x, y):
+        """Get the room that contains the given coordinates."""
+        for room in self.rooms:
+            if room.x1 < x < room.x2 and room.y1 < y < room.y2:
+                return room
+        return None
+
+    def update_visibility(self, player_x, player_y):
+        """Update fog of war based on player position."""
+        # Clear current visibility
+        for y in range(self.height):
+            for x in range(self.width):
+                self.visible[y][x] = False
+        
+        # Get current room
+        current_room = self.get_room_at(player_x, player_y)
+        
+        if current_room:
+            # Make entire current room visible and explored
+            for x in range(max(0, current_room.x1), min(self.width, current_room.x2 + 1)):
+                for y in range(max(0, current_room.y1), min(self.height, current_room.y2 + 1)):
+                    if 0 <= x < self.width and 0 <= y < self.height:
+                        self.visible[y][x] = True
+                        self.explored[y][x] = True
+        
+        # Also make a small radius around player visible (for corridors)
+        vision_radius = 2
+        for dy in range(-vision_radius, vision_radius + 1):
+            for dx in range(-vision_radius, vision_radius + 1):
+                x, y = player_x + dx, player_y + dy
+                if 0 <= x < self.width and 0 <= y < self.height:
+                    # Only if it's a floor tile (don't see through walls)
+                    if self.grid[y][x] == UI["floor"] or self.grid[y][x] == UI["stairs"]:
+                        self.visible[y][x] = True
+                        self.explored[y][x] = True
+
+    def is_visible(self, x, y):
+        """Check if a position is currently visible."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.visible[y][x]
+        return False
+
+    def is_explored(self, x, y):
+        """Check if a position has been explored before."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return self.explored[y][x]
+        return False
+
 # --- Game ---
 class Game:
     def __init__(self):
@@ -318,9 +553,28 @@ class Game:
         self.combat_enemies = []
         self.turn_order = []
         self.combat_turn_idx = 0
+        # Camera system
+        self.camera_x = 0
+        self.camera_y = 0
 
     def add_message(self, text):
         self.messages.appendleft(text)
+
+    def update_camera(self):
+        """Update camera position to follow the current player."""
+        if self.players:
+            player = self.players[0]  # Follow the first player
+            # Center camera on player
+            self.camera_x = player.x - VIEWPORT_WIDTH // 2
+            self.camera_y = player.y - VIEWPORT_HEIGHT // 2
+            
+            # Keep camera within dungeon bounds
+            self.camera_x = max(0, min(self.camera_x, self.dungeon.width - VIEWPORT_WIDTH))
+            self.camera_y = max(0, min(self.camera_y, self.dungeon.height - VIEWPORT_HEIGHT))
+            
+            # Update fog of war for all players
+            for p in self.players:
+                self.dungeon.update_visibility(p.x, p.y)
 
     def draw_text(self, text, x, y, color=WHITE):
         text_surface = font.render(text, True, color)
@@ -328,8 +582,19 @@ class Game:
 
     def main_menu(self):
         screen.fill(BLACK)
-        self.draw_text("Python RPG Adventure", SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50)
-        self.draw_text("Press ENTER to start", SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2)
+        
+        # Title with better positioning
+        title_y = SCREEN_HEIGHT // 2 - 100
+        self.draw_text("Python RPG Adventure", SCREEN_WIDTH // 2 - 150, title_y)
+        
+        # Menu options with proper spacing
+        self.draw_text("Press ENTER to start", SCREEN_WIDTH // 2 - 120, title_y + 80)
+        self.draw_text("Press S for settings", SCREEN_WIDTH // 2 - 100, title_y + 120)
+        
+        # Show current display mode
+        mode_text = "Current mode: " + ("Emoji" if game_settings['use_emojis'] else "Sprite")
+        self.draw_text(mode_text, SCREEN_WIDTH // 2 - 80, title_y + 160, GRAY)
+        
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -337,11 +602,159 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
                     self.game_state = "setup_num_players"
+                elif event.key == pygame.K_s:
+                    self.game_state = "settings_menu"
+
+    def settings_menu(self):
+        global game_settings
+        screen.fill(BLACK)
+        self.draw_text("Settings", SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 200)
+        
+        # Show emoji setting
+        emoji_status = "ON" if game_settings['use_emojis'] else "OFF"
+        self.draw_text(f"1. Use Emojis: {emoji_status}", 
+                      SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 150)
+        
+        # Only show sprite options if not using emojis
+        if not game_settings['use_emojis']:
+            # Show current wall selection with preview
+            wall_name = game_settings['wall_sprite'].replace('.png', '').replace('_', ' ').title()
+            self.draw_text(f"2. Wall Style: {wall_name}", 
+                          SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 100)
+            
+            # Show wall preview
+            sprite_key = f"wall_{game_settings['wall_sprite']}"
+            if sprite_key in sprites:
+                preview_sprite = pygame.transform.scale(sprites[sprite_key], (48, 48))
+                screen.blit(preview_sprite, (SCREEN_WIDTH // 2 + 150, SCREEN_HEIGHT // 2 - 115))
+            
+            # Show current floor selection with preview
+            floor_name = game_settings['floor_sprite'].replace('.png', '').replace('_', ' ').title()
+            self.draw_text(f"3. Floor Style: {floor_name}", 
+                          SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 50)
+            
+            # Show floor preview
+            sprite_key = f"floor_{game_settings['floor_sprite']}"
+            if sprite_key in sprites:
+                preview_sprite = pygame.transform.scale(sprites[sprite_key], (48, 48))
+                screen.blit(preview_sprite, (SCREEN_WIDTH // 2 + 150, SCREEN_HEIGHT // 2 - 65))
+                
+            # Show instruction for sprite mode
+            self.draw_text("Use numbers 2-3 to change sprite styles", 
+                          SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 20, GRAY)
+        else:
+            # Show emoji mode message
+            self.draw_text("Emoji mode enabled - sprite options hidden", 
+                          SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 80, GRAY)
+        
+        self.draw_text("Press ESC to go back", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 60)
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    game_settings['use_emojis'] = not game_settings['use_emojis']
+                    save_settings(game_settings)
+                elif event.key == pygame.K_2 and not game_settings['use_emojis']:
+                    self.game_state = "wall_selection"
+                elif event.key == pygame.K_3 and not game_settings['use_emojis']:
+                    self.game_state = "floor_selection"
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = "main_menu"
+
+    def wall_selection(self):
+        global game_settings
+        screen.fill(BLACK)
+        wall_options = ["stone_brick1.png", "stone_dark0.png", "brick_brown0.png", "marble_wall1.png"]
+        wall_names = ["Stone Brick", "Stone Dark", "Brick Brown", "Marble Wall"]
+        
+        self.draw_text("Select Wall Style", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 150)
+        
+        # Display wall options with previews
+        for i, (wall, name) in enumerate(zip(wall_options, wall_names)):
+            y_pos = SCREEN_HEIGHT // 2 - 80 + i * 60
+            marker = ">" if wall == game_settings['wall_sprite'] else " "
+            
+            # Draw the sprite preview
+            sprite_key = f"wall_{wall}"
+            if sprite_key in sprites:
+                preview_size = 48  # Larger preview size
+                preview_sprite = pygame.transform.scale(sprites[sprite_key], (preview_size, preview_size))
+                screen.blit(preview_sprite, (SCREEN_WIDTH // 2 - 200, y_pos - 5))
+            
+            # Draw the option text
+            self.draw_text(f"{marker} {i+1}. {name}", 
+                          SCREEN_WIDTH // 2 - 140, y_pos + 10)
+        
+        self.draw_text("Press ESC to go back", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 120)
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]:
+                    idx = int(pygame.key.name(event.key)) - 1
+                    if 0 <= idx < len(wall_options):
+                        game_settings['wall_sprite'] = wall_options[idx]
+                        save_settings(game_settings)
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = "settings_menu"
+
+    def floor_selection(self):
+        global game_settings
+        screen.fill(BLACK)
+        floor_options = ["sandstone_floor0.png", "dirt0.png", "pebble_brown0.png", "marble_floor1.png"]
+        floor_names = ["Sandstone Floor", "Dirt Floor", "Pebble Brown", "Marble Floor"]
+        
+        self.draw_text("Select Floor Style", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 150)
+        
+        # Display floor options with previews
+        for i, (floor, name) in enumerate(zip(floor_options, floor_names)):
+            y_pos = SCREEN_HEIGHT // 2 - 80 + i * 60
+            marker = ">" if floor == game_settings['floor_sprite'] else " "
+            
+            # Draw the sprite preview
+            sprite_key = f"floor_{floor}"
+            if sprite_key in sprites:
+                preview_size = 48  # Larger preview size
+                preview_sprite = pygame.transform.scale(sprites[sprite_key], (preview_size, preview_size))
+                screen.blit(preview_sprite, (SCREEN_WIDTH // 2 - 200, y_pos - 5))
+            
+            # Draw the option text
+            self.draw_text(f"{marker} {i+1}. {name}", 
+                          SCREEN_WIDTH // 2 - 140, y_pos + 10)
+        
+        self.draw_text("Press ESC to go back", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 120)
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]:
+                    idx = int(pygame.key.name(event.key)) - 1
+                    if 0 <= idx < len(floor_options):
+                        game_settings['floor_sprite'] = floor_options[idx]
+                        save_settings(game_settings)
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = "settings_menu"
 
     def setup_num_players(self):
         screen.fill(BLACK)
-        self.draw_text("Enter number of heroes (1-3):", SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50)
-        self.draw_text(str(self.num_players) if self.num_players > 0 else "", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+        title_y = SCREEN_HEIGHT // 2 - 80
+        self.draw_text("Enter number of heroes (1-3):", SCREEN_WIDTH // 2 - 150, title_y)
+        
+        # Show current selection more prominently
+        if self.num_players > 0:
+            self.draw_text(str(self.num_players), SCREEN_WIDTH // 2 - 10, title_y + 50, GREEN)
+        else:
+            self.draw_text("_", SCREEN_WIDTH // 2 - 10, title_y + 50, GRAY)
+            
+        self.draw_text("Press ENTER to continue", SCREEN_WIDTH // 2 - 100, title_y + 100, GRAY)
+        
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -354,8 +767,18 @@ class Game:
 
     def setup_player_name(self):
         screen.fill(BLACK)
-        self.draw_text(f"Enter name for hero {self.current_hero_setup}:", SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50)
-        self.draw_text(self.player_name, SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2)
+        title_y = SCREEN_HEIGHT // 2 - 80
+        self.draw_text(f"Enter name for hero {self.current_hero_setup}:", SCREEN_WIDTH // 2 - 150, title_y)
+        
+        # Show name input with cursor
+        name_display = self.player_name + "_" if len(self.player_name) < 20 else self.player_name
+        self.draw_text(name_display, SCREEN_WIDTH // 2 - 100, title_y + 50)
+        
+        if self.player_name:
+            self.draw_text("Press ENTER to continue", SCREEN_WIDTH // 2 - 100, title_y + 100, GRAY)
+        else:
+            self.draw_text("Type a name for your hero", SCREEN_WIDTH // 2 - 100, title_y + 100, GRAY)
+            
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -365,15 +788,34 @@ class Game:
                     self.game_state = "setup_player_class"
                 elif event.key == pygame.K_BACKSPACE:
                     self.player_name = self.player_name[:-1]
-                else:
+                elif len(self.player_name) < 15 and event.unicode.isprintable():
                     self.player_name += event.unicode
 
     def setup_player_class(self):
         screen.fill(BLACK)
-        self.draw_text(f"Choose class for {self.player_name}:", SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 50)
-        self.draw_text("1. Warrior", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2)
-        self.draw_text("2. Mage", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 40)
-        self.draw_text("3. Archer", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 80)
+        title_y = SCREEN_HEIGHT // 2 - 120
+        self.draw_text(f"Choose class for {self.player_name}:", SCREEN_WIDTH // 2 - 150, title_y)
+        
+        # Show class options with descriptions
+        class_info = {
+            "warrior": ("High HP, strong attacks, Power Strike skill", "⚔️" if game_settings['use_emojis'] else "WAR"),
+            "mage": ("Magic damage, area spells, Fireball skill", "🧙" if game_settings['use_emojis'] else "MAG"),
+            "archer": ("Balanced stats, ranged attacks, Double Shot skill", "🏹" if game_settings['use_emojis'] else "ARC")
+        }
+        
+        classes = ["warrior", "mage", "archer"]
+        for i, class_name in enumerate(classes):
+            y_pos = title_y + 60 + i * 60
+            icon, desc = class_info[class_name]
+            
+            if game_settings['use_emojis']:
+                class_text = f"{i+1}. {icon} {class_name.title()}"
+            else:
+                class_text = f"{i+1}. [{icon}] {class_name.title()}"
+                
+            self.draw_text(class_text, SCREEN_WIDTH // 2 - 200, y_pos)
+            self.draw_text(desc, SCREEN_WIDTH // 2 - 190, y_pos + 25, GRAY)
+        
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -402,6 +844,7 @@ class Game:
         start_room = self.dungeon.rooms[0]
         for player in self.players:
             player.x, player.y = start_room.center()
+        self.update_camera()  # Initialize camera and fog of war
         self.add_message(f"You have entered dungeon level {self.dungeon_level}.")
 
     def main_loop(self):
@@ -414,6 +857,12 @@ class Game:
         while not self.game_over:
             if self.game_state == "main_menu":
                 self.main_menu()
+            elif self.game_state == "settings_menu":
+                self.settings_menu()
+            elif self.game_state == "wall_selection":
+                self.wall_selection()
+            elif self.game_state == "floor_selection":
+                self.floor_selection()
             elif self.game_state == "setup_num_players":
                 self.setup_num_players()
             elif self.game_state == "setup_player_name":
@@ -472,6 +921,7 @@ class Game:
             else:
                 player.x = new_x
                 player.y = new_y
+                self.update_camera()  # Update camera after movement
                 for item in list(self.dungeon.items):
                     if item.x == new_x and item.y == new_y:
                         player.inventory.append(item)
@@ -482,39 +932,264 @@ class Game:
 
     def draw_game(self):
         screen.fill(BLACK)
-        # Draw map
-        for y in range(self.dungeon.height):
-            for x in range(self.dungeon.width):
-                icon = self.dungeon.grid[y][x]
-                text = font.render(icon, True, WHITE)
-                screen.blit(text, (x * TILE_SIZE, y * TILE_SIZE))
+        
+        # Draw main viewport with camera offset
+        viewport_start_x = max(0, self.camera_x)
+        viewport_start_y = max(0, self.camera_y)
+        viewport_end_x = min(self.dungeon.width, self.camera_x + VIEWPORT_WIDTH)
+        viewport_end_y = min(self.dungeon.height, self.camera_y + VIEWPORT_HEIGHT)
+        
+        # Draw map tiles in viewport
+        for world_y in range(viewport_start_y, viewport_end_y):
+            for world_x in range(viewport_start_x, viewport_end_x):
+                screen_x = (world_x - self.camera_x) * TILE_SIZE
+                screen_y = (world_y - self.camera_y) * TILE_SIZE
+                
+                tile_type = self.dungeon.grid[world_y][world_x]
+                is_visible = self.dungeon.is_visible(world_x, world_y)
+                is_explored = self.dungeon.is_explored(world_x, world_y)
+                
+                if is_explored:
+                    if game_settings['use_emojis']:
+                        # Use emojis
+                        color = WHITE if is_visible else GRAY
+                        text = font.render(tile_type, True, color)
+                        screen.blit(text, (screen_x, screen_y))
+                    else:
+                        # Use sprites with fallback
+                        sprite_drawn = False
+                        if tile_type == UI["wall"]:
+                            sprite_key = f"wall_{game_settings['wall_sprite']}"
+                            if sprite_key in sprites:
+                                sprite = sprites[sprite_key].copy()
+                                if not is_visible:
+                                    sprite.set_alpha(128)  # Make dimmer if not visible
+                                screen.blit(sprite, (screen_x, screen_y))
+                                sprite_drawn = True
+                        elif tile_type == UI["floor"]:
+                            sprite_key = f"floor_{game_settings['floor_sprite']}"
+                            if sprite_key in sprites:
+                                sprite = sprites[sprite_key].copy()
+                                if not is_visible:
+                                    sprite.set_alpha(128)  # Make dimmer if not visible
+                                screen.blit(sprite, (screen_x, screen_y))
+                                sprite_drawn = True
+                        elif tile_type == UI["stairs"]:
+                            if "stairs" in sprites:
+                                sprite = sprites["stairs"].copy()
+                                if not is_visible:
+                                    sprite.set_alpha(128)  # Make dimmer if not visible
+                                screen.blit(sprite, (screen_x, screen_y))
+                                sprite_drawn = True
+                        
+                        # Fallback to colored rectangles if sprite not available
+                        if not sprite_drawn:
+                            color = WHITE if is_visible else DARK_GRAY
+                            if tile_type == UI["wall"]:
+                                pygame.draw.rect(screen, GRAY if is_visible else DARK_GRAY, 
+                                               (screen_x, screen_y, TILE_SIZE, TILE_SIZE))
+                            elif tile_type == UI["floor"]:
+                                pygame.draw.rect(screen, (101, 67, 33) if is_visible else (50, 33, 16), 
+                                               (screen_x, screen_y, TILE_SIZE, TILE_SIZE))
+                            elif tile_type == UI["stairs"]:
+                                pygame.draw.rect(screen, (255, 255, 0) if is_visible else (128, 128, 0), 
+                                               (screen_x, screen_y, TILE_SIZE, TILE_SIZE))
+                else:
+                    # Unexplored areas - draw fog
+                    pygame.draw.rect(screen, FOG_COLOR, (screen_x, screen_y, TILE_SIZE, TILE_SIZE))
 
-        # Draw items, enemies, players
+        # Draw items (only if visible)
         for item in self.dungeon.items:
-            text = font.render(item.icon, True, WHITE)
-            screen.blit(text, (item.x * TILE_SIZE, item.y * TILE_SIZE))
+            if (viewport_start_x <= item.x < viewport_end_x and 
+                viewport_start_y <= item.y < viewport_end_y and
+                self.dungeon.is_visible(item.x, item.y)):
+                
+                screen_x = (item.x - self.camera_x) * TILE_SIZE
+                screen_y = (item.y - self.camera_y) * TILE_SIZE
+                
+                if game_settings['use_emojis']:
+                    text = font.render(item.icon, True, WHITE)
+                    screen.blit(text, (screen_x, screen_y))
+                else:
+                    # Use item sprites when available
+                    sprite_drawn = False
+                    if isinstance(item, Potion) and "item_potion" in sprites:
+                        screen.blit(sprites["item_potion"], (screen_x, screen_y))
+                        sprite_drawn = True
+                    elif isinstance(item, Weapon) and "item_weapon" in sprites:
+                        screen.blit(sprites["item_weapon"], (screen_x, screen_y))
+                        sprite_drawn = True
+                    elif isinstance(item, Armor) and "item_armor" in sprites:
+                        screen.blit(sprites["item_armor"], (screen_x, screen_y))
+                        sprite_drawn = True
+                    
+                    # Fallback to colored rectangle if sprite not available
+                    if not sprite_drawn:
+                        pygame.draw.rect(screen, BLUE, (screen_x + 4, screen_y + 4, TILE_SIZE - 8, TILE_SIZE - 8))
+                
+        # Draw enemies (only if visible)
         for enemy in self.dungeon.enemies:
-            text = font.render(enemy.icon, True, RED)
-            screen.blit(text, (enemy.x * TILE_SIZE, enemy.y * TILE_SIZE))
+            if (viewport_start_x <= enemy.x < viewport_end_x and 
+                viewport_start_y <= enemy.y < viewport_end_y and
+                self.dungeon.is_visible(enemy.x, enemy.y)):
+                
+                screen_x = (enemy.x - self.camera_x) * TILE_SIZE
+                screen_y = (enemy.y - self.camera_y) * TILE_SIZE
+                
+                if game_settings['use_emojis']:
+                    text = font.render(enemy.icon, True, RED)
+                    screen.blit(text, (screen_x, screen_y))
+                else:
+                    # Use enemy sprites when available
+                    sprite_drawn = False
+                    enemy_type = enemy.name.lower()
+                    sprite_key = f"monster_{enemy_type}"
+                    if sprite_key in sprites:
+                        screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                        sprite_drawn = True
+                    
+                    # Fallback to colored rectangle if sprite not available
+                    if not sprite_drawn:
+                        pygame.draw.rect(screen, RED, (screen_x + 2, screen_y + 2, TILE_SIZE - 4, TILE_SIZE - 4))
+                
+        # Draw players
         for player in self.players:
-            text = font.render(player.icon, True, GREEN)
-            screen.blit(text, (player.x * TILE_SIZE, player.y * TILE_SIZE))
+            if (viewport_start_x <= player.x < viewport_end_x and 
+                viewport_start_y <= player.y < viewport_end_y):
+                
+                screen_x = (player.x - self.camera_x) * TILE_SIZE
+                screen_y = (player.y - self.camera_y) * TILE_SIZE
+                
+                if game_settings['use_emojis']:
+                    text = font.render(player.icon, True, GREEN)
+                    screen.blit(text, (screen_x, screen_y))
+                else:
+                    # Use player class sprites when available
+                    sprite_drawn = False
+                    sprite_key = f"player_{player.char_class}"
+                    if sprite_key in sprites:
+                        screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                        sprite_drawn = True
+                    
+                    # Fallback to colored rectangle if sprite not available
+                    if not sprite_drawn:
+                        pygame.draw.rect(screen, GREEN, (screen_x + 6, screen_y + 6, TILE_SIZE - 12, TILE_SIZE - 12))
 
+        # Draw minimap
+        self.draw_minimap()
+        
         # Draw UI
         self.draw_ui()
         pygame.display.flip()
 
-    def draw_ui(self):
-        # Draw player status
-        y = 10
-        for p in self.players:
-            self.draw_text(f'{p.icon} {p.name} ({p.char_class}) | {UI["level"]} {p.level} | {UI["hp"]} {p.hp}/{p.max_hp}', 10, y)
-            y += 30
+    def draw_minimap(self):
+        """Draw a small overview map in the top right corner."""
+        minimap_x = SCREEN_WIDTH - MINIMAP_SIZE - 10
+        minimap_y = 10
+        
+        # Draw minimap background
+        minimap_surface = pygame.Surface((MINIMAP_SIZE, MINIMAP_SIZE))
+        minimap_surface.fill(BLACK)
+        
+        # Calculate scale
+        scale_x = MINIMAP_SIZE / self.dungeon.width
+        scale_y = MINIMAP_SIZE / self.dungeon.height
+        scale = min(scale_x, scale_y)
+        
+        # Draw explored areas
+        for y in range(self.dungeon.height):
+            for x in range(self.dungeon.width):
+                if self.dungeon.is_explored(x, y):
+                    pixel_x = int(x * scale)
+                    pixel_y = int(y * scale)
+                    pixel_size = max(1, int(scale))
+                    
+                    tile_type = self.dungeon.grid[y][x]
+                    is_visible = self.dungeon.is_visible(x, y)
+                    
+                    # Choose color based on tile type and visibility
+                    if tile_type == UI["wall"]:
+                        color = GRAY if is_visible else DARK_GRAY
+                    elif tile_type == UI["floor"]:
+                        color = LIGHT_GRAY if is_visible else GRAY
+                    elif tile_type == UI["stairs"]:
+                        color = (255, 255, 0) if is_visible else (128, 128, 0)
+                    else:
+                        color = DARK_GRAY
+                    
+                    pygame.draw.rect(minimap_surface, color, 
+                                   (pixel_x, pixel_y, pixel_size, pixel_size))
+        
+        # Draw players on minimap
+        for player in self.players:
+            pixel_x = int(player.x * scale)
+            pixel_y = int(player.y * scale)
+            pixel_size = max(2, int(scale * 1.5))
+            pygame.draw.rect(minimap_surface, GREEN, 
+                           (pixel_x - pixel_size//2, pixel_y - pixel_size//2, 
+                            pixel_size, pixel_size))
+        
+        # Draw visible enemies on minimap
+        for enemy in self.dungeon.enemies:
+            if self.dungeon.is_visible(enemy.x, enemy.y):
+                pixel_x = int(enemy.x * scale)
+                pixel_y = int(enemy.y * scale)
+                pixel_size = max(1, int(scale))
+                pygame.draw.rect(minimap_surface, RED, 
+                               (pixel_x, pixel_y, pixel_size, pixel_size))
+        
+        # Draw minimap border
+        pygame.draw.rect(minimap_surface, WHITE, (0, 0, MINIMAP_SIZE, MINIMAP_SIZE), 2)
+        
+        # Blit minimap to screen
+        screen.blit(minimap_surface, (minimap_x, minimap_y))
+        
+        # Draw minimap title
+        minimap_text = small_font.render("Map", True, WHITE)
+        screen.blit(minimap_text, (minimap_x, minimap_y - 20))
 
-        # Draw messages
-        y = SCREEN_HEIGHT - 100
-        for i, msg in enumerate(self.messages):
-            self.draw_text(msg, 10, y - i * 20)
+    def draw_ui(self):
+        # Create a semi-transparent background for UI elements
+        ui_surface = pygame.Surface((SCREEN_WIDTH - MINIMAP_SIZE - 30, 150))  # Leave space for minimap
+        ui_surface.set_alpha(200)
+        ui_surface.fill(BLACK)
+        screen.blit(ui_surface, (0, 0))
+        
+        # Draw player status with better spacing
+        y = 15
+        for i, p in enumerate(self.players):
+            # Use conditional icons based on emoji setting
+            if game_settings['use_emojis']:
+                status_text = f'{p.icon} {p.name} ({p.char_class}) | {UI["level"]} {p.level} | {UI["hp"]} {p.hp}/{p.max_hp}'
+            else:
+                # Use text-based display when sprites are enabled
+                status_text = f'{p.name} ({p.char_class}) | Level {p.level} | HP {p.hp}/{p.max_hp}'
+                
+            # Add mana display for mage characters
+            if p.char_class == "mage":
+                if game_settings['use_emojis']:
+                    status_text += f' | {UI["mana"]} {p.mana}/{p.max_mana}'
+                else:
+                    status_text += f' | Mana {p.mana}/{p.max_mana}'
+                    
+            self.draw_text(status_text, 15, y, WHITE)
+            y += 35
+
+        # Draw messages with background (positioned to not overlap with minimap)
+        if self.messages:
+            msg_surface = pygame.Surface((SCREEN_WIDTH - MINIMAP_SIZE - 30, 120))
+            msg_surface.set_alpha(180)
+            msg_surface.fill(BLACK)
+            screen.blit(msg_surface, (0, SCREEN_HEIGHT - 120))
+            
+            y = SCREEN_HEIGHT - 110
+            for i, msg in enumerate(self.messages):
+                if i < 4:  # Limit to 4 messages to prevent overlap
+                    self.draw_text(msg, 15, y - i * 25, WHITE)
+        
+        # Draw current dungeon level
+        level_text = f"Dungeon Level: {self.dungeon_level}"
+        self.draw_text(level_text, 15, 155, LIGHT_GRAY)
 
 
     def start_combat(self, enemies):
@@ -577,6 +1252,13 @@ class Game:
 
     def next_turn(self):
         self.combat_turn_idx = (self.combat_turn_idx + 1) % len(self.turn_order)
+        
+        # Reduce skill cooldowns for players at the start of their turn
+        current_entity = self.turn_order[self.combat_turn_idx]
+        if isinstance(current_entity, Player) and hasattr(current_entity, 'skill_cooldown'):
+            if current_entity.skill_cooldown > 0:
+                current_entity.skill_cooldown -= 1
+        
         # Skip turns for dead entities
         while not self.turn_order[self.combat_turn_idx].is_alive():
             self.combat_turn_idx = (self.combat_turn_idx + 1) % len(self.turn_order)
@@ -584,19 +1266,105 @@ class Game:
 
     def draw_combat_screen(self):
         screen.fill(BLACK)
-        # Draw players
+        
+        # Draw combat title
+        self.draw_text("COMBAT", SCREEN_WIDTH // 2 - 50, 20, WHITE)
+        
+        # Draw players section
+        player_section_x = 50
+        player_section_y = 80
+        self.draw_text("Your Party:", player_section_x, player_section_y, GREEN)
+        
         for i, player in enumerate(self.players):
-            self.draw_text(f'{player.icon} {player.name} {UI["hp"]} {player.hp}/{player.max_hp}', 100, 100 + i * 40)
+            y_pos = player_section_y + 40 + i * 50
+            
+            # Highlight current player's turn
+            current_entity = self.turn_order[self.combat_turn_idx]
+            color = (255, 255, 0) if player == current_entity else WHITE  # Yellow for current turn
+            
+            if game_settings['use_emojis']:
+                status = f'{player.icon} {player.name}'
+            else:
+                status = f'• {player.name} ({player.char_class})'
+            
+            self.draw_text(status, player_section_x, y_pos, color)
+            
+            # Health bar representation
+            hp_text = f"HP: {player.hp}/{player.max_hp}"
+            self.draw_text(hp_text, player_section_x, y_pos + 20, color)
+            
+            # Mana for mages
+            if player.char_class == "mage":
+                mana_text = f"Mana: {player.mana}/{player.max_mana}"
+                self.draw_text(mana_text, player_section_x + 120, y_pos + 20, color)
+            
+            # Skill cooldown indicators
+            if hasattr(player, 'skill_cooldown') and player.skill_cooldown > 0:
+                cooldown_text = f"Cooldown: {player.skill_cooldown}"
+                self.draw_text(cooldown_text, player_section_x + 200, y_pos + 20, (255, 100, 100))
 
-        # Draw enemies
+        # Draw enemies section
+        enemy_section_x = SCREEN_WIDTH - 350
+        enemy_section_y = 80
+        self.draw_text("Enemies:", enemy_section_x, enemy_section_y, RED)
+        
         for i, enemy in enumerate(self.combat_enemies):
-            self.draw_text(f'{enemy.icon} {enemy.name} {UI["hp"]} {enemy.hp}/{enemy.max_hp}', SCREEN_WIDTH - 300, 100 + i * 40)
+            y_pos = enemy_section_y + 40 + i * 50
+            
+            # Highlight current enemy's turn
+            current_entity = self.turn_order[self.combat_turn_idx]
+            color = (255, 255, 0) if enemy == current_entity else WHITE  # Yellow for current turn
+            
+            if game_settings['use_emojis']:
+                status = f'{enemy.icon} {enemy.name}'
+            else:
+                status = f'• {enemy.name}'
+            
+            self.draw_text(status, enemy_section_x, y_pos, color)
+            
+            # Health display
+            hp_text = f"HP: {enemy.hp}/{enemy.max_hp}"
+            self.draw_text(hp_text, enemy_section_x, y_pos + 20, color)
 
-        # Draw combat menu
-        self.draw_text("1. Attack", 100, SCREEN_HEIGHT - 100)
-        self.draw_text("2. Skill", 100, SCREEN_HEIGHT - 60)
+        # Draw combat menu at bottom
+        menu_y = SCREEN_HEIGHT - 150
+        menu_surface = pygame.Surface((SCREEN_WIDTH, 100))
+        menu_surface.set_alpha(200)
+        menu_surface.fill((50, 50, 50))
+        screen.blit(menu_surface, (0, menu_y))
+        
+        current_entity = self.turn_order[self.combat_turn_idx]
+        if isinstance(current_entity, Player):
+            self.draw_text(f"{current_entity.name}'s Turn - Choose Action:", 50, menu_y + 10, WHITE)
+            self.draw_text("1. Attack - Basic attack on random enemy", 50, menu_y + 35, WHITE)
+            
+            # Dynamic skill description
+            if current_entity.char_class == "warrior":
+                skill_text = "2. Power Strike - 2x damage attack"
+                if current_entity.skill_cooldown > 0:
+                    skill_text += f" (Cooldown: {current_entity.skill_cooldown})"
+            elif current_entity.char_class == "mage":
+                skill_text = "2. Fireball - AoE damage to all enemies"
+                if current_entity.mana < 10:
+                    skill_text += " (Not enough mana!)"
+            elif current_entity.char_class == "archer":
+                skill_text = "2. Double Shot - Two attacks"
+                if current_entity.skill_cooldown > 0:
+                    skill_text += f" (Cooldown: {current_entity.skill_cooldown})"
+            else:
+                skill_text = "2. Special Skill"
+                
+            self.draw_text(skill_text, 50, menu_y + 60, WHITE)
+        else:
+            self.draw_text(f"{current_entity.name} is thinking...", 50, menu_y + 25, (255, 200, 200))
 
-        self.draw_ui()
+        # Draw messages in combat
+        if self.messages:
+            msg_y = menu_y - 120
+            for i, msg in enumerate(self.messages):
+                if i < 3:  # Show only last 3 messages in combat
+                    self.draw_text(msg, 50, msg_y - i * 25, (200, 200, 200))
+                    
         pygame.display.flip()
 
     def use_skill(self, player, enemies):
@@ -641,8 +1409,17 @@ class Game:
 
     def game_over_screen(self):
         screen.fill(BLACK)
-        self.draw_text("Game Over", SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 25)
-        self.draw_text("Press ENTER to return to the main menu", SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2)
+        title_y = SCREEN_HEIGHT // 2 - 50
+        
+        self.draw_text("Game Over", SCREEN_WIDTH // 2 - 60, title_y, RED)
+        self.draw_text("Press ENTER to return to the main menu", SCREEN_WIDTH // 2 - 200, title_y + 50)
+        
+        # Show some stats if available
+        if self.players:
+            highest_level = max(p.level for p in self.players)
+            self.draw_text(f"Highest level reached: {highest_level}", SCREEN_WIDTH // 2 - 120, title_y + 100, GRAY)
+            self.draw_text(f"Dungeon level reached: {self.dungeon_level}", SCREEN_WIDTH // 2 - 120, title_y + 125, GRAY)
+        
         pygame.display.flip()
         waiting = True
         while waiting:
