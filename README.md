@@ -1,10 +1,31 @@
-# Python RPG Adventure - Pygame Version (v1.14)
+# Python RPG Adventure - Pygame Version (v1.15)
 
 This file documents the development of a graphical RPG created with Pygame, with the help of a large language model. It tracks the game's evolution through different versions, detailing the features added at each stage and the prompts used to generate them.
 
 This version was started by user **LukesScammell**.
 
-## Version 1.14 Features
+## Version 1.15 Features
+
+**Victory Screen & Game Completion System:**
+- **Complete Victory Screen Implementation**: Proper game completion when defeating the dragon
+  - Comprehensive victory screen with final statistics display
+  - Player level, dungeon progress, HP, and weapon achievements
+  - Gold-colored victory messages with congratulations
+  - Fixed game loop to prevent unexpected closure after victory
+- **Enhanced Post-Victory Options**: Multiple paths after completing the game
+  - **New Game (N)**: Start fresh with automatic save deletion
+  - **Return to Main Menu (M)**: Keep progress and return to menu
+  - **Quit Game (Q)**: Exit the application
+- **Improved Dragon Defeat Detection**: Reliable final boss victory condition
+  - Fixed dragon enemy type detection using `enemy.enemy_type` instead of name
+  - Proper victory state management with `game_won` flag
+  - Smooth transition from combat to victory celebration
+- **Game State Management**: Complete reset functionality for new playthroughs
+  - Proper cleanup of victory state when starting new games
+  - Maintained save file integrity with selective deletion options
+  - Seamless transition between victory, menu, and new game states
+
+**Previous Version 1.14 Features:**
 
 **Enhanced Audio & Asset System:**
 - **Dynamic Music System**: Context-aware background music that changes based on game state
@@ -77,7 +98,11 @@ This version was started by user **LukesScammell**.
         *   **(3) Item:** Use a potion from your inventory to heal.
         *   **(4) Flee:** Attempt to escape from combat.
     *   **Descending:** Find the stairs (a door sprite or stairs emoji) to proceed to the next, more difficult dungeon level.
-    *   **Winning:** Defeat the final boss (a dragon) on the last level to win the game.
+    *   **Victory:** Defeat the final boss (dragon) on the last level to trigger the victory screen:
+        *   View your final statistics and achievements
+        *   Choose to start a new game (deletes current save)
+        *   Return to main menu (keeps save for future play)
+        *   Exit the game completely
 
 ## Features
 
@@ -141,6 +166,27 @@ The game includes a comprehensive settings system accessible from the main menu:
 *   **Real-time Updates:** Changes take effect immediately in the game
 
 ## Version History
+
+### v1.15: Victory Screen & Game Completion
+**Major Features:**
+- **Complete Victory Screen Implementation**: Fixed dragon defeat not triggering proper game ending
+  - Comprehensive victory display with final player statistics (level, HP, weapon, dungeon progress)
+  - Gold-colored "VICTORY!" title with congratulatory messages
+  - Fixed main game loop to continue running instead of closing after victory
+  - Proper victory state management with `game_won` flag and state transitions
+- **Enhanced Post-Victory Options**: Multiple user choices after defeating the final boss
+  - **New Game (N)**: Automatically deletes current save and starts completely fresh
+  - **Return to Main Menu (M)**: Preserves current save file and returns to main menu
+  - **Quit Game (Q)**: Clean exit from the application
+  - Clear on-screen instructions explaining each option's effect on save data
+- **Improved Dragon Defeat Detection**: Reliable final boss victory condition
+  - Fixed detection logic using `enemy.enemy_type == "dragon"` instead of capitalized name
+  - Proper combat end flow that triggers victory instead of returning to normal gameplay
+  - Victory message: "The dragon has been slain! You are victorious!"
+- **Game State Reset System**: Complete cleanup for new playthroughs
+  - Enhanced `reset_game_state()` method that properly resets `game_won` flag
+  - Maintained save file integrity with user-controlled deletion
+  - Seamless transitions between victory, menu, and new game initialization
 
 ### v1.14: Enhanced Audio & Asset System
 **Major Features:**

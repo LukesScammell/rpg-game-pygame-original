@@ -1134,6 +1134,7 @@ class Game:
         self.dungeon = None
         self.current_player_idx = 0
         self.game_over = False
+        self.game_won = False
         self.dungeon_level = 1
         self.messages = deque(maxlen=5)
         self.game_state = "main_menu"
@@ -1909,6 +1910,7 @@ class Game:
         self.players = []
         self.dungeon = None
         self.current_player_idx = 0
+        self.game_won = False
         self.dungeon_level = 1
         self.messages = deque(maxlen=5)
         self.num_players = 0
@@ -2318,6 +2320,8 @@ class Game:
                 self.run_combat()
             elif self.game_state == "game_over":
                 self.game_over_screen()
+            elif self.game_state == "victory":
+                self.victory_screen()
 
     def run_game(self):
         for event in pygame.event.get():
@@ -2967,6 +2971,9 @@ class Game:
             play_sound("success", 0.8)  # Victory sound
             self.add_message("You won the battle!")
             
+            # Check if dragon was defeated (victory condition)
+            dragon_defeated = any(enemy.enemy_type == "dragon" for enemy in self.combat_enemies)
+            
             # Handle enemy weapon drops before removing enemies
             for enemy in self.combat_enemies:
                 if hasattr(enemy, 'weapon_drops') and enemy.weapon_drops and random.random() < 0.3:  # 30% drop chance
@@ -2994,9 +3001,18 @@ class Game:
                         self.dungeon.items.append(dropped_item)
                         self.add_message(f"{enemy.name} dropped a {dropped_item.name}!")
             
-            # Return to gameplay music after combat
-            play_music("gameplay")
-            self.game_state = "playing"
+            # Check for victory condition
+            if dragon_defeated:
+                self.add_message("The dragon has been slain! You are victorious!")
+                stop_music()  # Stop current music
+                self.game_won = True
+                self.game_state = "victory"
+            else:
+                # Return to gameplay music after combat
+                play_music("gameplay")
+                self.game_state = "playing"
+                
+            # Award XP to players
             total_xp = sum(e.xp for e in self.combat_enemies)
             xp_per_player = total_xp // len(self.players) if self.players else 0
             for p in self.players:
@@ -3138,6 +3154,60 @@ class Game:
                     if event.key == pygame.K_RETURN:
                         # Reset game state for a new game
                         self.__init__()
+                        waiting = False
+
+    def victory_screen(self):
+        screen.fill(BLACK)
+        title_y = SCREEN_HEIGHT // 2 - 120
+        
+        # Victory title with gold color
+        GOLD = (255, 215, 0)
+        self.draw_text("VICTORY!", SCREEN_WIDTH // 2 - 70, title_y, GOLD)
+        self.draw_text("You have defeated the dragon and conquered the dungeon!", 
+                      SCREEN_WIDTH // 2 - 300, title_y + 50, WHITE)
+        
+        # Show final stats
+        if self.players:
+            highest_level = max(p.level for p in self.players)
+            self.draw_text(f"Final level reached: {highest_level}", SCREEN_WIDTH // 2 - 120, title_y + 100, GREEN)
+            self.draw_text(f"Dungeon fully conquered: {self.dungeon_level}/5", SCREEN_WIDTH // 2 - 140, title_y + 125, GREEN)
+            
+            # Show some additional victory stats
+            player = self.players[0]  # Main player
+            self.draw_text(f"Final HP: {player.hp}/{player.max_hp}", SCREEN_WIDTH // 2 - 80, title_y + 150, GRAY)
+            if hasattr(player, 'weapon') and player.weapon:
+                self.draw_text(f"Weapon: {player.weapon.name}", SCREEN_WIDTH // 2 - 100, title_y + 175, GRAY)
+        
+        self.draw_text("Congratulations, Hero!", SCREEN_WIDTH // 2 - 150, title_y + 200, GOLD)
+        
+        # Victory screen options
+        self.draw_text("Press N for new game (deletes current save)", SCREEN_WIDTH // 2 - 200, title_y + 240, WHITE)
+        self.draw_text("Press M to return to main menu", SCREEN_WIDTH // 2 - 150, title_y + 270, WHITE)
+        self.draw_text("Press Q to quit game", SCREEN_WIDTH // 2 - 100, title_y + 300, WHITE)
+        
+        pygame.display.flip()
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.game_over = True
+                    waiting = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_n:  # New game - delete save
+                        self.delete_save_file()
+                        play_music("menu")  # Return to menu music
+                        self.game_state = "main_menu"
+                        self.reset_game_state()
+                        self.game_won = False  # Reset victory state
+                        waiting = False
+                    elif event.key == pygame.K_m:  # Return to main menu
+                        play_music("menu")  # Return to menu music
+                        self.game_state = "main_menu"
+                        self.reset_game_state()
+                        self.game_won = False  # Reset victory state
+                        waiting = False
+                    elif event.key == pygame.K_q:  # Quit game
+                        self.game_over = True
                         waiting = False
 
 
