@@ -1,10 +1,29 @@
-# Python RPG Adventure - Pygame Version (v1.15.1)
+# Python RPG Adventure - Pygame Version (v1.16)
 
 This file documents the development of a graphical RPG created with Pygame, with the help of a large language model. It tracks the game's evolution through different versions, detailing the features added at each stage and the prompts used to generate them.
 
 This version was started by user **LukesScammell**.
 
-## Version 1.15.1 Features
+## Version 1.16 Features
+
+**Enhanced Map Generation & Item Balance:**
+- **Balanced Chest Room Rarity**: Made chest rooms much rarer for better game balance
+  - Reduced chest room chance from 15% to 6% per room
+  - Reduced treasure rooms from 8% to 4% chance and limited to 1 per level
+  - Only 50% chance for guaranteed fallback chest room if none spawned naturally
+  - Creates more exciting moments when players find these special rooms
+- **Single Player Duplicate Prevention**: Fixed item duplication for single player mode
+  - Single players now only get one of each unique weapon and armor
+  - Prevents getting multiple copies of the same "Ancient Sword" or "Crystal Plate"
+  - Items are marked as obtained when picked up from ground, chests, or automatic pickup
+  - Multi-player games still allow multiple copies for different party members
+- **Improved Item Distribution**: Better balanced loot spawns across all room types
+  - Regular rooms: 30% chest chance (up from 25%), 70% ground loot chance
+  - Treasure rooms: 60% chest chance, reduced enemy count (0-1 instead of 0-3)
+  - Chest rooms: 2-4 guaranteed chests with higher-tier loot bias (30% rare+ weapons, 25% rare+ armor)
+  - Ground loot balance: 55% potions, 20% weapons, 25% armor (improved from old 60/18/20 split)
+
+**Previous Version 1.15.1 Features:**
 
 **Critical Bug Fixes & Stability:**
 - **Combat Skill Crash Fix**: Resolved critical crash when using skills with no alive enemies
@@ -176,6 +195,33 @@ The game includes a comprehensive settings system accessible from the main menu:
 *   **Real-time Updates:** Changes take effect immediately in the game
 
 ## Version History
+
+### v1.16: Enhanced Map Generation & Item Balance
+**Balanced Loot System:**
+- **Rare Chest Rooms**: Significantly reduced chest room spawn rates for better game balance
+  - Chest room chance: 15% → 6% per room (much more rare and exciting to find)
+  - Treasure room chance: 8% → 4% per room, max reduced from 2 to 1 per level
+  - Fallback chest room: Now only 50% chance instead of guaranteed
+  - Creates more meaningful exploration and discovery moments
+- **Single Player Duplicate Prevention**: Fixed item duplication issue for solo players
+  - **No More Duplicates**: Single players can only obtain one of each unique weapon/armor
+  - **Smart Tracking**: Items marked as obtained from all sources (ground, chests, auto-pickup)
+  - **Multi-player Preservation**: Party mode still allows duplicate items for different members
+  - **Better Progression**: Forces players to explore more to find variety instead of duplicates
+- **Improved Loot Distribution**: Rebalanced item spawn rates across all room types
+  - **Regular Rooms**: 30% chest chance (↑5%), 70% ground loot chance (↑20%)
+  - **Ground Loot Mix**: 55% potions, 20% weapons (↑2%), 25% armor (↑5%) - better equipment balance
+  - **Chest Rooms**: Enhanced with 2-4 chests, 30% rare+ weapon bias, 25% rare+ armor bias
+  - **Treasure Rooms**: 60% chest chance, fewer enemies (0-1), better reward-to-risk ratio
+
+**User Request**: "could you make the chest rooms more rare and also fix the double up on items, could you make it so if your playing single player youll only get one"
+
+**Technical Implementation**:
+- Modified `determine_room_type()` with reduced spawn probabilities and limits
+- Enhanced all item generation methods to call `mark_item_obtained()` for single player tracking
+- Added single player duplicate prevention in `get_available_weapons/armor_for_players()`
+- Updated pickup systems in `open_treasure_chest()`, manual pickup, and auto-pickup during movement
+- Improved fallback chest room generation with 50% probability instead of guaranteed
 
 ### v1.15.1: Critical Combat Bug Fix
 **Bug Fixes:**

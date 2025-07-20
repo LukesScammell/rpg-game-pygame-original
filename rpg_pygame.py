@@ -902,7 +902,10 @@ class Dungeon:
             self.grid[y][x] = UI["floor"]
 
     def generate(self):
-        for _ in range(MAX_ROOMS):
+        chest_room_placed = False
+        chest_room_attempts = 0
+        
+        for room_num in range(MAX_ROOMS):
             w = random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
             h = random.randint(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
             x = random.randint(0, self.width - w - 1)
@@ -924,8 +927,27 @@ class Dungeon:
                     self.create_v_tunnel(prev_y, new_y, prev_x)
                     self.create_h_tunnel(prev_x, new_x, new_y)
             
-            self.place_content(new_room)
+            # Determine room type and place content accordingly
+            room_type = self.determine_room_type(room_num, chest_room_placed, chest_room_attempts)
+            if room_type == "chest_room":
+                self.place_chest_room_content(new_room)
+                chest_room_placed = True
+            elif room_type == "treasure_room":
+                self.place_treasure_room_content(new_room) 
+                chest_room_attempts += 1
+            else:
+                self.place_content(new_room)
+            
             self.rooms.append(new_room)
+        
+        # Ensure at least one chest room if none was placed (but only 50% chance)
+        if not chest_room_placed and self.rooms and random.random() < 0.5:
+            # Convert a random middle room to a chest room
+            room_idx = random.randint(1, len(self.rooms) - 2) if len(self.rooms) > 2 else 0
+            chest_room = self.rooms[room_idx]
+            # Clear existing content from this room
+            self.clear_room_content(chest_room)
+            self.place_chest_room_content(chest_room)
         
         if self.level < MAX_DUNGEON_LEVEL:
             last_room = self.rooms[-1]
@@ -936,7 +958,219 @@ class Dungeon:
             boss_x, boss_y = boss_room.center()
             self.enemies.append(Enemy(boss_x, boss_y, "dragon"))
 
+    def determine_room_type(self, room_num, chest_room_placed, chest_room_attempts):
+        """Determine what type of room to generate."""
+        # Never make first or last room special (first = entrance, last = stairs/boss)
+        if room_num == 0 or room_num >= MAX_ROOMS - 1:
+            return "normal"
+        
+        # One guaranteed chest room per level but much rarer (6% chance on each applicable room)
+        if not chest_room_placed and random.random() < 0.06:
+            return "chest_room"
+        
+        # Additional treasure rooms (reduced chance, 4% per room, max 1 per level)
+        if chest_room_attempts < 1 and random.random() < 0.04:
+            return "treasure_room"
+        
+        return "normal"
+
+    def place_chest_room_content(self, room):
+        """Place content for a special chest room - guaranteed multiple chests, no enemies."""
+        room_size = (room.x2 - room.x1) * (room.y2 - room.y1)
+        
+        # Number of chests based on room size (2-4 chests)
+        if room_size >= 60:  # Large room
+            num_chests = random.randint(3, 4)
+        elif room_size >= 35:  # Medium room  
+            num_chests = random.randint(2, 3)
+        else:  # Small room
+            num_chests = 2
+        
+        # Place chests with guaranteed spacing
+        chest_positions = []
+        max_attempts = 50
+        
+        for _ in range(num_chests):
+            attempts = 0
+            while attempts < max_attempts:
+                x = random.randint(room.x1 + 1, room.x2 - 1)
+                y = random.randint(room.y1 + 1, room.y2 - 1)
+                
+                # Ensure minimum distance between chests
+                too_close = False
+                for chest_x, chest_y in chest_positions:
+                    if abs(x - chest_x) <= 1 and abs(y - chest_y) <= 1:
+                        too_close = True
+                        break
+                
+                if not too_close:
+                    chest_positions.append((x, y))
+                    
+                    # Generate higher-quality chest contents for chest rooms
+                    chest_items = []
+                    num_items = random.randint(2, 4)  # More items per chest
+                    
+                    for _ in range(num_items):
+                        item_type = random.random()
+                        if item_type < 0.45:  # 45% chance for weapon (slightly increased)
+                            available_weapons = self.get_available_weapons_for_players()
+                            if available_weapons:
+                                # Bias toward higher-tier weapons in chest rooms
+                                rarity_bonus = random.random()
+                                if rarity_bonus < 0.3:  # 30% chance for rare+ weapons
+                                    rare_weapons = [w for w in available_weapons if w.rarity in ['rare', 'epic']]
+                                    chosen_weapon = random.choice(rare_weapons) if rare_weapons else random.choice(available_weapons)
+                                else:
+                                    chosen_weapon = random.choice(available_weapons)
+                                
+                                weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                                                   chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                                                   chosen_weapon.sprite_name)
+                                chest_items.append(weapon_copy)
+                                # Mark as obtained for single player
+                                self.mark_item_obtained(chosen_weapon.name)
+                        elif item_type < 0.75:  # 30% chance for armor
+                            available_armor = self.get_available_armor_for_players()
+                            if available_armor:
+                                # Bias toward higher-tier armor in chest rooms
+                                rarity_bonus = random.random()
+                                if rarity_bonus < 0.25:  # 25% chance for rare+ armor
+                                    rare_armor = [a for a in available_armor if a.rarity in ['rare', 'epic']]
+                                    chosen_armor = random.choice(rare_armor) if rare_armor else random.choice(available_armor)
+                                else:
+                                    chosen_armor = random.choice(available_armor)
+                                
+                                armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                                 chosen_armor.allowed_classes, chosen_armor.rarity,
+                                                 chosen_armor.sprite_name)
+                                chest_items.append(armor_copy)
+                                # Mark as obtained for single player
+                                self.mark_item_obtained(chosen_armor.name)
+                        else:  # 25% chance for potion (reduced since more items per chest)
+                            chosen_potion = random.choice(ALL_POTIONS)
+                            potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                            chest_items.append(potion_copy)
+                    
+                    treasure = Treasure(x, y, chest_items)
+                    self.treasures.append(treasure)
+                    break
+                
+                attempts += 1
+
+    def place_treasure_room_content(self, room):
+        """Place content for a treasure room - higher chest chance, fewer enemies."""
+        # Reduced enemy count for treasure rooms
+        num_enemies = random.randint(0, 1)  # 0-1 instead of 0-3
+        for _ in range(num_enemies):
+            x = random.randint(room.x1 + 1, room.x2 - 1)
+            y = random.randint(room.y1 + 1, room.y2 - 1)
+            if not any(e.x == x and e.y == y for e in self.enemies):
+                enemy_type = random.choice(list(ENEMIES.keys() - {'dragon'}))
+                enemy = Enemy(x, y, enemy_type)
+                
+                # Same weapon drops as normal rooms
+                if enemy_type == "goblin":
+                    enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]
+                elif enemy_type == "orc":
+                    enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]
+                elif enemy_type == "troll":
+                    enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]
+                elif enemy_type == "dragon":
+                    enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]
+                
+                self.enemies.append(enemy)
+        
+        # Higher chance for treasure chests (60% instead of 25%)
+        if random.random() < 0.60:
+            chest_x = random.randint(room.x1 + 1, room.x2 - 1)
+            chest_y = random.randint(room.y1 + 1, room.y2 - 1)
+            
+            # Generate better chest contents for treasure rooms
+            chest_items = []
+            num_items = random.randint(2, 3)  # Slightly more items
+            
+            for _ in range(num_items):
+                item_type = random.random()
+                if item_type < 0.42:  # 42% chance for weapon
+                    available_weapons = self.get_available_weapons_for_players()
+                    if available_weapons:
+                        chosen_weapon = random.choice(available_weapons)
+                        weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                                           chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                                           chosen_weapon.sprite_name)
+                        chest_items.append(weapon_copy)
+                        # Mark as obtained for single player
+                        self.mark_item_obtained(chosen_weapon.name)
+                elif item_type < 0.72:  # 30% chance for armor
+                    available_armor = self.get_available_armor_for_players()
+                    if available_armor:
+                        chosen_armor = random.choice(available_armor)
+                        armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                         chosen_armor.allowed_classes, chosen_armor.rarity,
+                                         chosen_armor.sprite_name)
+                        chest_items.append(armor_copy)
+                        # Mark as obtained for single player
+                        self.mark_item_obtained(chosen_armor.name)
+                else:  # 28% chance for potion
+                    chosen_potion = random.choice(ALL_POTIONS)
+                    potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                    chest_items.append(potion_copy)
+            
+            treasure = Treasure(chest_x, chest_y, chest_items)
+            self.treasures.append(treasure)
+        
+        # Slightly increased ground loot for treasure rooms
+        num_items = random.randint(0, 2)  # 0-2 instead of 0-1
+        for _ in range(num_items):
+            x = random.randint(room.x1 + 1, room.x2 - 1)
+            y = random.randint(room.y1 + 1, room.y2 - 1)
+            if not any(i.x == x and i.y == y for i in self.items):
+                item_choice = random.random()
+                if item_choice < 0.5:  # 50% potions (reduced from 60% to balance with chests)
+                    chosen_potion = random.choice(ALL_POTIONS)
+                    item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                elif item_choice < 0.75:  # 25% weapons
+                    available_weapons = self.get_available_weapons_for_players()
+                    if available_weapons:
+                        chosen_weapon = random.choice(available_weapons)
+                        item = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus,
+                                    chosen_weapon.allowed_classes, chosen_weapon.rarity,
+                                    chosen_weapon.sprite_name)
+                        # Mark as obtained for single player
+                        self.mark_item_obtained(chosen_weapon.name)
+                    else:
+                        chosen_potion = random.choice(ALL_POTIONS)
+                        item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                else:  # 25% armor
+                    available_armor = self.get_available_armor_for_players()
+                    if available_armor:
+                        chosen_armor = random.choice(available_armor)
+                        item = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                   chosen_armor.allowed_classes, chosen_armor.rarity,
+                                   chosen_armor.sprite_name)
+                        # Mark as obtained for single player
+                        self.mark_item_obtained(chosen_armor.name)
+                    else:
+                        chosen_potion = random.choice(ALL_POTIONS)
+                        item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                
+                item.x = x
+                item.y = y
+                self.items.append(item)
+
+    def clear_room_content(self, room):
+        """Clear all enemies, items, and treasures from a specific room."""
+        # Remove enemies in this room
+        self.enemies = [e for e in self.enemies if not (room.x1 < e.x < room.x2 and room.y1 < e.y < room.y2)]
+        
+        # Remove items in this room
+        self.items = [i for i in self.items if not (room.x1 < i.x < room.x2 and room.y1 < i.y < room.y2)]
+        
+        # Remove treasures in this room
+        self.treasures = [t for t in self.treasures if not (room.x1 < t.x < room.x2 and room.y1 < t.y < room.y2)]
+
     def place_content(self, room):
+        # Normal room: balanced enemy and loot distribution
         num_enemies = random.randint(0, 3)
         for _ in range(num_enemies):
             x = random.randint(room.x1 + 1, room.x2 - 1)
@@ -957,78 +1191,86 @@ class Dungeon:
                 
                 self.enemies.append(enemy)
         
-        # Place treasure chests (25% chance per room)
-        if random.random() < 0.25:
+        # Balanced treasure chest placement (30% chance - increased from 25%)
+        if random.random() < 0.30:
             chest_x = random.randint(room.x1 + 1, room.x2 - 1)
             chest_y = random.randint(room.y1 + 1, room.y2 - 1)
             
-            # Generate treasure chest contents
+            # Generate balanced treasure chest contents
             chest_items = []
             num_items = random.randint(1, 3)
             
             for _ in range(num_items):
                 item_type = random.random()
-                if item_type < 0.4:  # 40% chance for weapon
+                if item_type < 0.35:  # 35% chance for weapon (reduced from 40% for balance)
                     available_weapons = self.get_available_weapons_for_players()
                     if available_weapons:
                         chosen_weapon = random.choice(available_weapons)
-                        # Create a copy of the weapon to avoid reference issues
                         weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
                                            chosen_weapon.allowed_classes, chosen_weapon.rarity, 
                                            chosen_weapon.sprite_name)
                         chest_items.append(weapon_copy)
-                elif item_type < 0.7:  # 30% chance for armor
+                        # Mark as obtained for single player
+                        self.mark_item_obtained(chosen_weapon.name)
+                elif item_type < 0.65:  # 30% chance for armor (same)
                     available_armor = self.get_available_armor_for_players()
                     if available_armor:
                         chosen_armor = random.choice(available_armor)
-                        # Create a copy of the armor to avoid reference issues
                         armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
                                          chosen_armor.allowed_classes, chosen_armor.rarity,
                                          chosen_armor.sprite_name)
                         chest_items.append(armor_copy)
-                else:  # 30% chance for potion
+                        # Mark as obtained for single player
+                        self.mark_item_obtained(chosen_armor.name)
+                else:  # 35% chance for potion (increased from 30% to balance weapons)
                     chosen_potion = random.choice(ALL_POTIONS)
-                    # Create a copy of the potion to avoid reference issues
                     potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
                     chest_items.append(potion_copy)
             
             treasure = Treasure(chest_x, chest_y, chest_items)
             self.treasures.append(treasure)
         
-        # Place random items (reduced frequency due to chests)
-        num_items = random.randint(0, 1)  # Reduced from 0-2
-        for _ in range(num_items):
-            x = random.randint(room.x1 + 1, room.x2 - 1)
-            y = random.randint(room.y1 + 1, room.y2 - 1)
-            if not any(i.x == x and i.y == y for i in self.items):
-                item_choice = random.random()
-                if item_choice < 0.6:  # Favor potions for ground loot
-                    chosen_potion = random.choice(ALL_POTIONS)
-                    item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
-                elif item_choice < 0.8:
-                    available_weapons = self.get_available_weapons_for_players()
-                    if available_weapons:
-                        chosen_weapon = random.choice(available_weapons)
-                        item = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus,
-                                    chosen_weapon.allowed_classes, chosen_weapon.rarity,
-                                    chosen_weapon.sprite_name)
-                    else:
+        # Adjusted ground item distribution (better balance)
+        item_chance = random.random()
+        if item_chance < 0.70:  # 70% chance for ground loot (increased from ~50%)
+            num_items = 1 if item_chance < 0.45 else 2 if item_chance < 0.60 else 1  # Weighted toward 1 item
+            
+            for _ in range(num_items):
+                x = random.randint(room.x1 + 1, room.x2 - 1)
+                y = random.randint(room.y1 + 1, room.y2 - 1)
+                if not any(i.x == x and i.y == y for i in self.items) and not any(t.x == x and t.y == y for t in self.treasures):
+                    item_choice = random.random()
+                    if item_choice < 0.55:  # 55% potions (reduced from 60% for better balance)
                         chosen_potion = random.choice(ALL_POTIONS)
                         item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
-                else:
-                    available_armor = self.get_available_armor_for_players()
-                    if available_armor:
-                        chosen_armor = random.choice(available_armor)
-                        item = Armor(chosen_armor.name, chosen_armor.defense_bonus,
-                                   chosen_armor.allowed_classes, chosen_armor.rarity,
-                                   chosen_armor.sprite_name)
-                    else:
-                        chosen_potion = random.choice(ALL_POTIONS)
-                        item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
-                
-                item.x = x
-                item.y = y
-                self.items.append(item)
+                    elif item_choice < 0.75:  # 20% weapons (increased from ~18% in old system)
+                        available_weapons = self.get_available_weapons_for_players()
+                        if available_weapons:
+                            chosen_weapon = random.choice(available_weapons)
+                            item = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus,
+                                        chosen_weapon.allowed_classes, chosen_weapon.rarity,
+                                        chosen_weapon.sprite_name)
+                            # Mark as obtained for single player
+                            self.mark_item_obtained(chosen_weapon.name)
+                        else:
+                            chosen_potion = random.choice(ALL_POTIONS)
+                            item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                    else:  # 25% armor (increased from ~20% in old system)
+                        available_armor = self.get_available_armor_for_players()
+                        if available_armor:
+                            chosen_armor = random.choice(available_armor)
+                            item = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                       chosen_armor.allowed_classes, chosen_armor.rarity,
+                                       chosen_armor.sprite_name)
+                            # Mark as obtained for single player
+                            self.mark_item_obtained(chosen_armor.name)
+                        else:
+                            chosen_potion = random.choice(ALL_POTIONS)
+                            item = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                    
+                    item.x = x
+                    item.y = y
+                    self.items.append(item)
     
     def get_available_weapons_for_players(self):
         """Get weapons that can be used by the current players' classes."""
@@ -1067,17 +1309,6 @@ class Dungeon:
         """Mark an item as obtained (for single player duplicate prevention)."""
         if hasattr(self, 'is_single_player') and self.is_single_player:
             self.obtained_items.add(item_name)
-    
-    def get_available_armor_for_players(self):
-        """Get armor that can be used by the current players' classes."""
-        if not hasattr(self, 'player_classes'):
-            return ALL_ARMOR  # Default to all armor
-        
-        available = []
-        for armor in ALL_ARMOR:
-            if any(cls in armor.allowed_classes for cls in self.player_classes):
-                available.append(armor)
-        return available
 
     def get_room_at(self, x, y):
         """Get the room that contains the given coordinates."""

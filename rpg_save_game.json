@@ -1,0 +1,140 @@
+{
+  "players": [
+    {
+      "x": 23,
+      "y": 4,
+      "name": "1",
+      "char_class": "warrior",
+      "hp": 140,
+      "max_hp": 140,
+      "base_attack": 20,
+      "base_defense": 12,
+      "level": 2,
+      "xp": 100,
+      "mana": 5,
+      "max_mana": 5,
+      "skill_cooldown": 2,
+      "inventory": [
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Weapon",
+          "name": "Ancient Sword",
+          "rarity": "epic",
+          "attack_bonus": 20,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "ancient_sword"
+        },
+        {
+          "type": "Weapon",
+          "name": "Golden Sword",
+          "rarity": "epic",
+          "attack_bonus": 22,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "golden_sword"
+        },
+        {
+          "type": "Armor",
+          "name": "Crystal Plate",
+          "rarity": "epic",
+          "defense_bonus": 15,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "crystal_plate_mail"
+        },
+        {
+          "type": "Weapon",
+          "name": "Demon Blade",
+          "rarity": "epic",
+          "attack_bonus": 18,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "demon_blade"
+        },
+        {
+          "type": "Potion",
+          "name": "Greater Healing",
+          "rarity": "uncommon",
+          "hp_gain": 40
+        },
+        {
+          "type": "Armor",
+          "name": "Plate Mail",
+          "rarity": "rare",
+          "defense_bonus": 10,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "plate_mail1"
+        },
+        {
+          "type": "Potion",
+          "name": "Minor Healing",
+          "rarity": "common",
+          "hp_gain": 15
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        }
+      ],
+      "weapon": {
+        "name": "Golden Sword",
+        "attack_bonus": 22,
+        "allowed_classes": [
+          "warrior"
+        ],
+        "rarity": "epic",
+        "sprite_name": "golden_sword"
+      },
+      "armor": {
+        "name": "Crystal Plate",
+        "defense_bonus": 15,
+        "allowed_classes": [
+          "warrior"
+        ],
+        "rarity": "epic",
+        "sprite_name": "crystal_plate_mail"
+      }
+    }
+  ],
+  "dungeon_level": 2,
+  "current_player_idx": 0,
+  "game_state": "playing",
+  "camera_x": 13,
+  "camera_y": 0,
+  "obtained_items": [
+    "Long Sword",
+    "Plate Mail",
+    "Minor Healing",
+    "Superior Healing",
+    "Demon Blade",
+    "Greater Healing",
+    "Ring Mail",
+    "Banded Mail",
+    "Splint Mail",
+    "War Hammer",
+    "Ancient Sword",
+    "Crystal Plate",
+    "Greatsword",
+    "Golden Sword"
+  ]
+}
