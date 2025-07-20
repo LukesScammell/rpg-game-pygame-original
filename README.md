@@ -1,8 +1,40 @@
-# Python RPG Adventure - Pygame Version (v1.16)
+# Python RPG Adventure - Pygame Version (v1.17)
 
 This file documents the development of a graphical RPG created with Pygame, with the help of a large language model. It tracks the game's evolution through different versions, detailing the features added at each stage and the prompts used to generate them.
 
 This version was started by user **LukesScammell**.
+
+## Version 1.17 Features
+
+**Game Balance & Progression Overhaul:**
+- **Level-Based Skill Requirements**: Skills now unlock as players progress
+  - **Power Strike**: Requires level 2 (Warrior class)
+  - **Double Shot**: Requires level 2 (Archer class)  
+  - **Fireball**: Requires level 3 (Mage class)
+  - Adds progression goals and prevents overpowered early game abilities
+  - Class descriptions updated to show level requirements
+- **Reduced XP Values for Balanced Leveling**: Significantly reduced experience points to slow progression
+  - Goblin: 50 → 15 XP (70% reduction)
+  - Orc: 100 → 25 XP (75% reduction)
+  - Troll: 150 → 40 XP (73% reduction)
+  - Dragon: 1000 → 200 XP (80% reduction)
+  - Prevents players from reaching level 2 after fighting just one monster
+- **Level-Based Enemy Scaling & Power Creep**: Dynamic enemy distribution based on dungeon depth
+  - **Level 1**: 80% goblins, 20% orcs (gentle introduction with weak enemies)
+  - **Level 2**: 60% goblins, 35% orcs, 5% trolls (balanced progression)
+  - **Level 3**: 30% goblins, 50% orcs, 20% trolls (fewer weak enemies)
+  - **Level 4**: 15% goblins, 45% orcs, 40% trolls (mostly strong enemies)
+  - **Level 5+**: 30% orcs, 70% trolls (end game difficulty)
+  - Enemy count scaling: Level 1 has more enemies (1-4), later levels fewer but stronger (0-3)
+- **Enemy Stat Scaling by Level**: Enemies get stronger on deeper floors
+  - 15% stat increase per dungeon level (HP, attack, defense, XP)
+  - Maintains challenge progression as players get better equipment
+  - Example: Level 3 goblin has ~52 HP instead of base 45 HP
+- **Further Reduced Chest Room Rarity**: Made special rooms even more rare and valuable
+  - Chest room chance: 6% → 3% per applicable room
+  - Treasure room chance: 4% → 2% per applicable room  
+  - Fallback chest room chance: 50% → 25% if none spawned naturally
+  - Creates genuine excitement when finding these ultra-rare special rooms
 
 ## Version 1.16 Features
 

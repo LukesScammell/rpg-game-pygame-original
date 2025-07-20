@@ -537,17 +537,17 @@ UI = {
 
 # --- Character Classes ---
 CLASSES = {
-    "warrior": {"hp": 120, "attack": 15, "defense": 10, "icon": UI["warrior"], "weapon": "Sword", "mana": 0},
-    "mage": {"hp": 80, "attack": 20, "defense": 5, "icon": UI["mage"], "weapon": "Staff", "mana": 20},
-    "archer": {"hp": 100, "attack": 12, "defense": 8, "icon": UI["archer"], "weapon": "Bow", "mana": 0}
+    "warrior": {"hp": 100, "attack": 12, "defense": 8, "icon": UI["warrior"], "weapon": "Sword", "mana": 0},
+    "mage": {"hp": 70, "attack": 15, "defense": 4, "icon": UI["mage"], "weapon": "Staff", "mana": 20},
+    "archer": {"hp": 85, "attack": 10, "defense": 6, "icon": UI["archer"], "weapon": "Bow", "mana": 0}
 }
 
 # --- Enemy Types ---
 ENEMIES = {
-    "goblin": {"hp": 30, "attack": 8, "defense": 2, "xp": 50, "icon": UI["goblin"]},
-    "orc": {"hp": 50, "attack": 12, "defense": 4, "xp": 100, "icon": UI["orc"]},
-    "troll": {"hp": 80, "attack": 15, "defense": 6, "xp": 150, "icon": UI["troll"]},
-    "dragon": {"hp": 250, "attack": 25, "defense": 15, "xp": 1000, "icon": UI["dragon"]}
+    "goblin": {"hp": 45, "attack": 10, "defense": 3, "xp": 15, "icon": UI["goblin"]},
+    "orc": {"hp": 75, "attack": 16, "defense": 6, "xp": 25, "icon": UI["orc"]},
+    "troll": {"hp": 120, "attack": 22, "defense": 10, "xp": 40, "icon": UI["troll"]},
+    "dragon": {"hp": 300, "attack": 35, "defense": 18, "xp": 200, "icon": UI["dragon"]}
 }
 
 # --- Items ---
@@ -848,10 +848,24 @@ class Player(Entity):
         return f'\n{self.name} leveled up to level {self.level}! Stats increased.'
 
 class Enemy(Entity):
-    def __init__(self, x, y, enemy_type):
-        super().__init__(x, y, enemy_type.capitalize(), ENEMIES[enemy_type]["hp"], ENEMIES[enemy_type]["attack"], ENEMIES[enemy_type]["defense"], ENEMIES[enemy_type]["icon"])
+    def __init__(self, x, y, enemy_type, dungeon_level=1):
+        base_hp = ENEMIES[enemy_type]["hp"]
+        base_attack = ENEMIES[enemy_type]["attack"]
+        base_defense = ENEMIES[enemy_type]["defense"]
+        
+        # Scale stats based on dungeon level (minor scaling to maintain balance)
+        level_multiplier = 1.0 + (dungeon_level - 1) * 0.15  # 15% increase per level
+        
+        scaled_hp = int(base_hp * level_multiplier)
+        scaled_attack = int(base_attack * level_multiplier)
+        scaled_defense = int(base_defense * level_multiplier)
+        
+        super().__init__(x, y, enemy_type.capitalize(), scaled_hp, scaled_attack, scaled_defense, ENEMIES[enemy_type]["icon"])
         self.enemy_type = enemy_type  # Store the enemy type for music selection
-        self.xp = ENEMIES[enemy_type]["xp"]
+        
+        # Scale XP based on level as well
+        base_xp = ENEMIES[enemy_type]["xp"]
+        self.xp = int(base_xp * level_multiplier)
         self.weapon_drops = []  # List of possible weapon drops
 
 # --- Map Generation ---
@@ -940,8 +954,8 @@ class Dungeon:
             
             self.rooms.append(new_room)
         
-        # Ensure at least one chest room if none was placed (but only 50% chance)
-        if not chest_room_placed and self.rooms and random.random() < 0.5:
+        # Ensure at least one chest room if none was placed (but only 25% chance - much rarer)
+        if not chest_room_placed and self.rooms and random.random() < 0.25:
             # Convert a random middle room to a chest room
             room_idx = random.randint(1, len(self.rooms) - 2) if len(self.rooms) > 2 else 0
             chest_room = self.rooms[room_idx]
@@ -956,7 +970,7 @@ class Dungeon:
         else: # Boss level
             boss_room = self.rooms[-1]
             boss_x, boss_y = boss_room.center()
-            self.enemies.append(Enemy(boss_x, boss_y, "dragon"))
+            self.enemies.append(Enemy(boss_x, boss_y, "dragon", self.level))
 
     def determine_room_type(self, room_num, chest_room_placed, chest_room_attempts):
         """Determine what type of room to generate."""
@@ -964,12 +978,12 @@ class Dungeon:
         if room_num == 0 or room_num >= MAX_ROOMS - 1:
             return "normal"
         
-        # One guaranteed chest room per level but much rarer (6% chance on each applicable room)
-        if not chest_room_placed and random.random() < 0.06:
+        # One guaranteed chest room per level but much rarer (3% chance on each applicable room)
+        if not chest_room_placed and random.random() < 0.03:
             return "chest_room"
         
-        # Additional treasure rooms (reduced chance, 4% per room, max 1 per level)
-        if chest_room_attempts < 1 and random.random() < 0.04:
+        # Additional treasure rooms (reduced chance, 2% per room, max 1 per level)
+        if chest_room_attempts < 1 and random.random() < 0.02:
             return "treasure_room"
         
         return "normal"
@@ -1015,9 +1029,9 @@ class Dungeon:
                         if item_type < 0.45:  # 45% chance for weapon (slightly increased)
                             available_weapons = self.get_available_weapons_for_players()
                             if available_weapons:
-                                # Bias toward higher-tier weapons in chest rooms
+                                # Reduced bias toward higher-tier weapons in chest rooms for balance
                                 rarity_bonus = random.random()
-                                if rarity_bonus < 0.3:  # 30% chance for rare+ weapons
+                                if rarity_bonus < 0.15:  # Reduced from 30% to 15% chance for rare+ weapons
                                     rare_weapons = [w for w in available_weapons if w.rarity in ['rare', 'epic']]
                                     chosen_weapon = random.choice(rare_weapons) if rare_weapons else random.choice(available_weapons)
                                 else:
@@ -1032,9 +1046,9 @@ class Dungeon:
                         elif item_type < 0.75:  # 30% chance for armor
                             available_armor = self.get_available_armor_for_players()
                             if available_armor:
-                                # Bias toward higher-tier armor in chest rooms
+                                # Reduced bias toward higher-tier armor in chest rooms for balance
                                 rarity_bonus = random.random()
-                                if rarity_bonus < 0.25:  # 25% chance for rare+ armor
+                                if rarity_bonus < 0.12:  # Reduced from 25% to 12% chance for rare+ armor
                                     rare_armor = [a for a in available_armor if a.rarity in ['rare', 'epic']]
                                     chosen_armor = random.choice(rare_armor) if rare_armor else random.choice(available_armor)
                                 else:
@@ -1057,6 +1071,39 @@ class Dungeon:
                 
                 attempts += 1
 
+    def get_enemy_type_for_level(self):
+        """Get an appropriate enemy type based on current dungeon level."""
+        if self.level == 1:
+            # Level 1: Mostly goblins (80%), some orcs (20%)
+            return random.choices(
+                ['goblin', 'orc'],
+                weights=[80, 20]
+            )[0]
+        elif self.level == 2:
+            # Level 2: More balanced, goblins (60%), orcs (35%), few trolls (5%)
+            return random.choices(
+                ['goblin', 'orc', 'troll'],
+                weights=[60, 35, 5]
+            )[0]
+        elif self.level == 3:
+            # Level 3: Fewer goblins (30%), more orcs (50%), more trolls (20%)
+            return random.choices(
+                ['goblin', 'orc', 'troll'],
+                weights=[30, 50, 20]
+            )[0]
+        elif self.level == 4:
+            # Level 4: Rare goblins (15%), orcs (45%), trolls (40%)
+            return random.choices(
+                ['goblin', 'orc', 'troll'],
+                weights=[15, 45, 40]
+            )[0]
+        else:
+            # Level 5+: Boss level - orcs (30%), trolls (70%), dragons handled separately
+            return random.choices(
+                ['orc', 'troll'],
+                weights=[30, 70]
+            )[0]
+
     def place_treasure_room_content(self, room):
         """Place content for a treasure room - higher chest chance, fewer enemies."""
         # Reduced enemy count for treasure rooms
@@ -1065,8 +1112,8 @@ class Dungeon:
             x = random.randint(room.x1 + 1, room.x2 - 1)
             y = random.randint(room.y1 + 1, room.y2 - 1)
             if not any(e.x == x and e.y == y for e in self.enemies):
-                enemy_type = random.choice(list(ENEMIES.keys() - {'dragon'}))
-                enemy = Enemy(x, y, enemy_type)
+                enemy_type = self.get_enemy_type_for_level()
+                enemy = Enemy(x, y, enemy_type, self.level)
                 
                 # Same weapon drops as normal rooms
                 if enemy_type == "goblin":
@@ -1170,14 +1217,22 @@ class Dungeon:
         self.treasures = [t for t in self.treasures if not (room.x1 < t.x < room.x2 and room.y1 < t.y < room.y2)]
 
     def place_content(self, room):
-        # Normal room: balanced enemy and loot distribution
-        num_enemies = random.randint(0, 3)
+        # Normal room: balanced enemy and loot distribution with level-based enemy scaling
+        
+        # Scale enemy count based on level - early levels have more enemies but weaker
+        if self.level == 1:
+            num_enemies = random.randint(1, 4)  # More enemies on level 1 (mostly weak goblins)
+        elif self.level == 2:
+            num_enemies = random.randint(1, 3)  # Moderate enemy count
+        else:
+            num_enemies = random.randint(0, 3)  # Standard enemy count for higher levels
+            
         for _ in range(num_enemies):
             x = random.randint(room.x1 + 1, room.x2 - 1)
             y = random.randint(room.y1 + 1, room.y2 - 1)
             if not any(e.x == x and e.y == y for e in self.enemies):
-                enemy_type = random.choice(list(ENEMIES.keys() - {'dragon'}))
-                enemy = Enemy(x, y, enemy_type)
+                enemy_type = self.get_enemy_type_for_level()
+                enemy = Enemy(x, y, enemy_type, self.level)
                 
                 # Add weapon drops based on enemy type
                 if enemy_type == "goblin":
@@ -1281,6 +1336,10 @@ class Dungeon:
         available = []
         for weapon in ALL_WEAPONS:
             if any(cls in weapon.allowed_classes for cls in self.player_classes):
+                # Level-based rarity restrictions
+                if not self.is_weapon_available_for_level(weapon):
+                    continue
+                    
                 # Check if this is single player and item hasn't been obtained
                 if hasattr(self, 'is_single_player') and self.is_single_player:
                     if weapon.name not in self.obtained_items:
@@ -1297,6 +1356,10 @@ class Dungeon:
         available = []
         for armor in ALL_ARMOR:
             if any(cls in armor.allowed_classes for cls in self.player_classes):
+                # Level-based rarity restrictions
+                if not self.is_armor_available_for_level(armor):
+                    continue
+                    
                 # Check if this is single player and item hasn't been obtained
                 if hasattr(self, 'is_single_player') and self.is_single_player:
                     if armor.name not in self.obtained_items:
@@ -1304,6 +1367,30 @@ class Dungeon:
                 else:
                     available.append(armor)
         return available
+    
+    def is_weapon_available_for_level(self, weapon):
+        """Check if weapon rarity is appropriate for current dungeon level."""
+        if weapon.rarity == "common":
+            return True  # Always available
+        elif weapon.rarity == "uncommon":
+            return self.level >= 2  # Level 2+
+        elif weapon.rarity == "rare":
+            return self.level >= 3  # Level 3+
+        elif weapon.rarity == "epic":
+            return self.level >= 4  # Level 4+ only
+        return True
+    
+    def is_armor_available_for_level(self, armor):
+        """Check if armor rarity is appropriate for current dungeon level."""
+        if armor.rarity == "common":
+            return True  # Always available
+        elif armor.rarity == "uncommon":
+            return self.level >= 2  # Level 2+
+        elif armor.rarity == "rare":
+            return self.level >= 3  # Level 3+
+        elif armor.rarity == "epic":
+            return self.level >= 4  # Level 4+ only
+        return True
     
     def mark_item_obtained(self, item_name):
         """Mark an item as obtained (for single player duplicate prevention)."""
@@ -1549,6 +1636,15 @@ class Game:
     
     def is_skill_available(self, player):
         """Check if player's skill is available."""
+        # Check level requirements first
+        if player.char_class == "warrior" and player.level < 2:
+            return False  # Power Strike requires level 2
+        elif player.char_class == "mage" and player.level < 3:
+            return False  # Fireball requires level 3
+        elif player.char_class == "archer" and player.level < 2:
+            return False  # Double Shot requires level 2
+        
+        # Check resource requirements
         if player.char_class == "warrior" and player.skill_cooldown > 0:
             return False
         elif player.char_class == "mage" and player.mana < 10:
@@ -2443,9 +2539,9 @@ class Game:
         
         # Show class options with descriptions
         class_info = {
-            "warrior": ("High HP, strong attacks, Power Strike skill", "⚔️" if game_settings['use_emojis'] else "WAR"),
-            "mage": ("Magic damage, area spells, Fireball skill", "🧙" if game_settings['use_emojis'] else "MAG"),
-            "archer": ("Balanced stats, ranged attacks, Double Shot skill", "🏹" if game_settings['use_emojis'] else "ARC")
+            "warrior": ("High HP, strong attacks, Power Strike skill (Level 2)", "⚔️" if game_settings['use_emojis'] else "WAR"),
+            "mage": ("Magic damage, area spells, Fireball skill (Level 3)", "🧙" if game_settings['use_emojis'] else "MAG"),
+            "archer": ("Balanced stats, ranged attacks, Double Shot skill (Level 2)", "🏹" if game_settings['use_emojis'] else "ARC")
         }
         
         classes = ["warrior", "mage", "archer"]
@@ -3266,7 +3362,10 @@ class Game:
             # Play attack sound based on player class
             play_random_sound(["sword_attack", "sword_attack2", "sword_attack3"], 0.6)
             target = random.choice(alive_enemies)
-            damage = max(0, player.attack - target.defense)
+            # Improved damage calculation: base damage reduced by percentage based on defense
+            base_damage = player.attack + random.randint(0, 3)  # Add small random variance
+            defense_reduction = min(0.75, target.defense * 0.05)  # Max 75% damage reduction
+            damage = max(1, int(base_damage * (1 - defense_reduction)))  # Minimum 1 damage
             target.take_damage(damage)
             self.add_message(f"{player.name} hits {target.name} for {damage} damage.")
         self.next_turn()
@@ -3282,7 +3381,10 @@ class Game:
             # Play random enemy attack sound
             play_sound("orc_attack", 0.5)  # Generic enemy attack sound
             target = random.choice(alive_players)
-            damage = max(0, enemy.attack - target.defense)
+            # Improved damage calculation: base damage reduced by percentage based on defense
+            base_damage = enemy.attack + random.randint(0, 2)  # Add small random variance
+            defense_reduction = min(0.75, target.defense * 0.05)  # Max 75% damage reduction
+            damage = max(1, int(base_damage * (1 - defense_reduction)))  # Minimum 1 damage
             target.take_damage(damage)
             self.add_message(f"{enemy.name} hits {target.name} for {damage} damage.")
         self.next_turn()
@@ -3310,27 +3412,42 @@ class Game:
             return
             
         if player.char_class == "warrior":
+            if player.level < 2:
+                self.add_message(f"Power Strike requires level 2. Current level: {player.level}")
+                return
             if player.skill_cooldown > 0:
                 self.add_message(f"Power Strike is on cooldown for {player.skill_cooldown} more turns.")
                 return
             play_sound("sword_draw", 0.7)
             target = random.choice(alive_enemies)
-            damage = player.attack * 2
+            # Power Strike: 2x base attack with improved damage calculation
+            base_damage = (player.attack * 2) + random.randint(2, 6)
+            defense_reduction = min(0.75, target.defense * 0.05)
+            damage = max(2, int(base_damage * (1 - defense_reduction)))
             target.take_damage(damage)
             self.add_message(f"{player.name} uses Power Strike on {target.name} for {damage} damage!")
             player.skill_cooldown = 3
         elif player.char_class == "mage":
+            if player.level < 3:
+                self.add_message(f"Fireball requires level 3. Current level: {player.level}")
+                return
             if player.mana < 10:
                 self.add_message("Not enough mana for Fireball.")
                 return
             play_sound("magic_spell", 0.7)
             self.add_message(f"{player.name} casts Fireball!")
             for enemy in alive_enemies:
-                damage = player.attack // 2
+                # Fireball: Area damage with balanced calculation
+                base_damage = int(player.attack * 0.8) + random.randint(3, 7)
+                defense_reduction = min(0.75, enemy.defense * 0.05)
+                damage = max(2, int(base_damage * (1 - defense_reduction)))
                 enemy.take_damage(damage)
                 self.add_message(f"Fireball hits {enemy.name} for {damage} damage.")
             player.mana -= 10
         elif player.char_class == "archer":
+            if player.level < 2:
+                self.add_message(f"Double Shot requires level 2. Current level: {player.level}")
+                return
             if player.skill_cooldown > 0:
                 self.add_message(f"Double Shot is on cooldown for {player.skill_cooldown} more turns.")
                 return
@@ -3339,7 +3456,10 @@ class Game:
             for _ in range(2):
                 if alive_enemies:  # Check if there are still alive enemies for each shot
                     target = random.choice(alive_enemies)
-                    damage = player.attack
+                    # Double Shot: Normal damage per shot with balanced calculation
+                    base_damage = player.attack + random.randint(1, 4)
+                    defense_reduction = min(0.75, target.defense * 0.05)
+                    damage = max(1, int(base_damage * (1 - defense_reduction)))
                     target.take_damage(damage)
                     self.add_message(f"{player.name} shoots {target.name} for {damage} damage.")
                     # Update alive enemies list in case the target died
