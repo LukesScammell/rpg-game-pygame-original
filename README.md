@@ -1,175 +1,28 @@
 # Python RPG Adventure - Pygame Version (v1.18)
 
-This file documents the development of a graphical RPG created with Pygame, with the help of a large language model. It tracks the game's evolution through different versions, detailing the features added at each stage and the prompts used to generate them.
+A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, and immersive dungeon exploration. Created with the help of large language models by **LukesScammell**.
 
-This version was started by user **LukesScammell**.
+## Features
 
-## Version 1.18 Features
+## Features
 
-**Enhanced Visual Experience & UI Overhaul:**
-- **Complete Visual Enhancement System**: Comprehensive UI modernization with advanced visual effects
-  - **Enhanced Color Palette**: Professional color scheme with themed colors for different UI elements
-    - Primary/Secondary color variations for consistent theming
-    - Success green, danger red, warning yellow, accent gold/blue/silver
-    - Enhanced text colors with primary/secondary/disabled states for better hierarchy
-  - **Gradient Drawing System**: Advanced gradient effects throughout the interface
-    - Background gradients for immersive atmosphere
-    - Panel gradients for depth and visual interest
-    - Button gradients for interactive feedback
-    - Health/mana bar gradients for better visual clarity
-  - **Animation & Particle System**: Dynamic visual effects for enhanced engagement
-    - Particle effects for magical abilities and special events
-    - Animation manager for coordinated visual timing
-    - Smooth transitions and visual feedback throughout the game
-  - **Enhanced Text Rendering**: Professional text display with shadow effects
-    - Text with shadow function for better readability on any background
-    - Consistent font usage with proper scaling
-    - Color-coded text for different information types
-
-- **Modernized Combat Interface**: Complete overhaul of the battle screen
-  - **Professional Combat Layout**: Enhanced visual organization with proper spacing
-    - Fixed overlapping UI elements (resolved yellow glow box overlapping party text)
-    - Improved player panel background with adequate spacing between title and content
-    - Better positioning of glow effects and highlight boxes
-  - **Enhanced Health & Status Display**: Advanced status visualization
-    - Fancy health bars with gradient fills and visual effects
-    - Mana bars for mage characters with proper centering and styling
-    - Turn indicators with dramatic glow effects for current character/enemy
-    - Skill status with cooldown displays and availability indicators
-  - **Professional Button System**: Modern button design with visual feedback
-    - Enhanced combat action buttons with proper styling
-    - Disabled state visualization for unavailable actions
-    - Clear key binding indicators and action descriptions
-
-- **Enhanced Inventory System**: Complete inventory interface modernization
-  - **Advanced Inventory Layout**: Professional organization with visual panels
-    - Gradient backgrounds for inventory sections
-    - Enhanced player tabs with selection highlighting
-    - Categorized item display (Weapons/Armor/Consumables) with counters
-    - Item highlighting system for selected items
-  - **Visual Item Management**: Enhanced item interaction and display
-    - Rarity color coding for items (common/uncommon/rare/epic)
-    - Equipment status indicators (equipped/unusable items)
-    - Professional item descriptions with stat bonuses
-    - Enhanced item usage feedback with visual and audio cues
-
-- **Modern Main Menu**: Professional menu system with visual appeal
-  - **Enhanced Menu Design**: Advanced button system with hover effects
-    - Gradient backgrounds for immersive atmosphere
-    - Professional title presentation with background panels
-    - Information panels showing game version and settings
-    - Particle effects and animations for visual interest
-
-## Previous Version 1.17 Features
-
-**Game Balance & Progression Overhaul:**
-- **Level-Based Skill Requirements**: Skills now unlock as players progress
-  - **Power Strike**: Requires level 2 (Warrior class)
-  - **Double Shot**: Requires level 2 (Archer class)  
-  - **Fireball**: Requires level 3 (Mage class)
-  - Adds progression goals and prevents overpowered early game abilities
-  - Class descriptions updated to show level requirements
-- **Reduced XP Values for Balanced Leveling**: Significantly reduced experience points to slow progression
-  - Goblin: 50 → 15 XP (70% reduction)
-  - Orc: 100 → 25 XP (75% reduction)
-  - Troll: 150 → 40 XP (73% reduction)
-  - Dragon: 1000 → 200 XP (80% reduction)
-  - Prevents players from reaching level 2 after fighting just one monster
-- **Level-Based Enemy Scaling & Power Creep**: Dynamic enemy distribution based on dungeon depth
-  - **Level 1**: 80% goblins, 20% orcs (gentle introduction with weak enemies)
-  - **Level 2**: 60% goblins, 35% orcs, 5% trolls (balanced progression)
-  - **Level 3**: 30% goblins, 50% orcs, 20% trolls (fewer weak enemies)
-  - **Level 4**: 15% goblins, 45% orcs, 40% trolls (mostly strong enemies)
-  - **Level 5+**: 30% orcs, 70% trolls (end game difficulty)
-  - Enemy count scaling: Level 1 has more enemies (1-4), later levels fewer but stronger (0-3)
-- **Enemy Stat Scaling by Level**: Enemies get stronger on deeper floors
-  - 15% stat increase per dungeon level (HP, attack, defense, XP)
-  - Maintains challenge progression as players get better equipment
-  - Example: Level 3 goblin has ~52 HP instead of base 45 HP
-- **Further Reduced Chest Room Rarity**: Made special rooms even more rare and valuable
-  - Chest room chance: 6% → 3% per applicable room
-  - Treasure room chance: 4% → 2% per applicable room  
-  - Fallback chest room chance: 50% → 25% if none spawned naturally
-  - Creates genuine excitement when finding these ultra-rare special rooms
-
-## Version 1.16 Features
-
-**Enhanced Map Generation & Item Balance:**
-- **Balanced Chest Room Rarity**: Made chest rooms much rarer for better game balance
-  - Reduced chest room chance from 15% to 6% per room
-  - Reduced treasure rooms from 8% to 4% chance and limited to 1 per level
-  - Only 50% chance for guaranteed fallback chest room if none spawned naturally
-  - Creates more exciting moments when players find these special rooms
-- **Single Player Duplicate Prevention**: Fixed item duplication for single player mode
-  - Single players now only get one of each unique weapon and armor
-  - Prevents getting multiple copies of the same "Ancient Sword" or "Crystal Plate"
-  - Items are marked as obtained when picked up from ground, chests, or automatic pickup
-  - Multi-player games still allow multiple copies for different party members
-- **Improved Item Distribution**: Better balanced loot spawns across all room types
-  - Regular rooms: 30% chest chance (up from 25%), 70% ground loot chance
-  - Treasure rooms: 60% chest chance, reduced enemy count (0-1 instead of 0-3)
-  - Chest rooms: 2-4 guaranteed chests with higher-tier loot bias (30% rare+ weapons, 25% rare+ armor)
-  - Ground loot balance: 55% potions, 20% weapons, 25% armor (improved from old 60/18/20 split)
-
-**Previous Version 1.15.1 Features:**
-
-**Critical Bug Fixes & Stability:**
-- **Combat Skill Crash Fix**: Resolved critical crash when using skills with no alive enemies
-  - Fixed `IndexError: Cannot choose from an empty sequence` in warrior Power Strike and archer Double Shot
-  - Added safety checks to prevent skill targeting when all enemies are defeated
-  - Enhanced archer Double Shot to handle enemies dying between shots
-  - User feedback message: "No enemies to target!" when skills can't be used
-  - Prevents race condition where skills activate after last enemy dies
-
-**Previous Version 1.15 Features:**
-
-**Victory Screen & Game Completion System:**
-- **Complete Victory Screen Implementation**: Proper game completion when defeating the dragon
-  - Comprehensive victory screen with final statistics display
-  - Player level, dungeon progress, HP, and weapon achievements
-  - Gold-colored victory messages with congratulations
-  - Fixed game loop to prevent unexpected closure after victory
-- **Enhanced Post-Victory Options**: Multiple paths after completing the game
-  - **New Game (N)**: Start fresh with automatic save deletion
-  - **Return to Main Menu (M)**: Keep progress and return to menu
-  - **Quit Game (Q)**: Exit the application
-- **Improved Dragon Defeat Detection**: Reliable final boss victory condition
-  - Fixed dragon enemy type detection using `enemy.enemy_type` instead of name
-  - Proper victory state management with `game_won` flag
-  - Smooth transition from combat to victory celebration
-- **Game State Management**: Complete reset functionality for new playthroughs
-  - Proper cleanup of victory state when starting new games
-  - Maintained save file integrity with selective deletion options
-  - Seamless transition between victory, menu, and new game states
-
-**Previous Version 1.14 Features:**
-
-**Enhanced Audio & Asset System:**
-- **Dynamic Music System**: Context-aware background music that changes based on game state
-  - Menu music, exploration music, and enemy-specific combat music
-  - Smooth transitions between different musical themes
-  - Support for 6+ background music tracks including boss battle music
-- **Comprehensive Sound Effects**: Professional audio feedback with 26+ sound effects
-  - Combat sounds (sword attacks, magic spells, weapon drawing)
-  - Interface sounds (menu navigation, confirmations, errors)
-  - Inventory sounds (item pickup, equipment changes, coin collection)
-  - Environmental sounds (door opening, enemy-specific audio)
-- **Expanded Asset Integration**: Professional sprite collection with 64+ sprites
-  - Enhanced weapon collection from Dungeon Crawl Stone Soup Full
-  - Additional epic weapons: Ancient Sword, Golden Sword, Katana, War Hammer
-  - Complete armor progression from leather to crystal plate mail
-  - Treasure chest sprites with open/closed states
-- **Advanced Asset Loading**: Multi-source sprite loading with comprehensive error handling
-  - Primary assets from crawl-tiles Oct-5-2010 collection
-  - Secondary assets from Dungeon Crawl Stone Soup Full
-  - Automatic scaling and optimization for TILE_SIZE (48px)
-  - Detailed loading feedback with success/failure reporting
-
-**System Requirements & Compatibility:**
-- **Python 3.13.5** compatibility with modern Python features
-- **Pygame 2.6.1** with SDL 2.28.4 for optimal performance
-- **Windows Font Support**: Segoe UI Emoji integration for proper emoji rendering
-- **Cross-Platform Audio**: Compatible sound system for Windows/Linux/Mac
+*   **Enhanced Visual Experience:** Modern UI with advanced visual effects and professional design
+    *   **Comprehensive Visual Overhaul:** Professional color palette, gradient backgrounds, and shadow text rendering
+    *   **Advanced Animation System:** Particle effects, smooth transitions, and coordinated visual timing
+    *   **Enhanced Combat Interface:** Fixed UI overlapping issues, professional health/mana bars with gradients
+    *   **Modern Inventory System:** Categorized display, rarity color coding, and visual item interaction feedback
+*   **Dynamic Audio System:** Context-aware background music with 6+ tracks and 26+ professional sound effects
+*   **Full-Screen Gaming Experience:** 1920x1080 optimized display with 64+ professional sprites and 48px tile system
+*   **Dual Display Modes:** Toggle between emoji-based graphics and detailed pixel art sprites with visual previews
+*   **Customizable Environments:** Choose from multiple wall and floor styles with real-time visual selection
+*   **Strategic Combat System:** Enhanced turn-based battles with visual effects, turn indicators, and skill management
+*   **Complete Inventory Management:** Full item system with use/equip/drop functionality across multiple characters
+*   **Progressive Equipment System:** Extensive weapon/armor progression from basic to epic tier with visual rarity indicators
+*   **Exploration & Discovery:** Treasure chests, fog of war system, dynamic camera following, and rare room generation
+*   **Multi-Character Parties:** Create up to 3 heroes with unique classes and individual inventories
+*   **Professional Asset Integration:** Multiple sprite sources including Crawl tiles and Dungeon Crawl Stone Soup Full
+*   **Persistent Game State:** Comprehensive save/load system with settings preservation and auto-save functionality
+*   **Cross-Platform Compatibility:** Windows/Linux/Mac support with optimized font and audio handling
 
 ## How to Play
 
@@ -287,7 +140,9 @@ The game includes a comprehensive settings system accessible from the main menu:
 *   **Visual Previews:** See actual sprite images when selecting wall and floor styles
 *   **Real-time Updates:** Changes take effect immediately in the game
 
-## Version History
+---
+
+## Version History & Development Notes
 
 ### v1.18: Enhanced Visual Experience & UI Overhaul
 **Enhanced Visual & UI System:**
