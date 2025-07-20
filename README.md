@@ -73,6 +73,20 @@ This version was started by user **LukesScammell**.
 *   **Progressive Difficulty:** Multiple dungeon levels with increasing challenge
 *   **Asset Integration:** Uses professional dungeon crawler sprite assets from Crawl tiles
 
+## Documentation
+
+For detailed information about specific game systems, see these documentation files:
+
+- **[💾 Save System](./SAVE_SYSTEM.md)** - Complete guide to saving/loading games, controls, and file management
+- **[🎒 Item System Improvements](./ITEM_IMPROVEMENTS.md)** - Enhanced item display and duplicate prevention features
+- **[⚙️ Settings & Configuration](./README.md#settings-guide)** - Visual customization and game options
+
+### Quick Links
+- [How to Play](#how-to-play) - Game basics and controls
+- [Save System Features](./SAVE_SYSTEM.md#save-system-features) - Auto-save, manual save, and file management
+- [Combat Controls](./SAVE_SYSTEM.md#in-combat) - Battle system commands
+- [Item Display Improvements](./ITEM_IMPROVEMENTS.md#enhanced-item-sprite-display) - Visual enhancements and sprite system
+
 ## Settings Guide
 
 The game includes a comprehensive settings system accessible from the main menu:
