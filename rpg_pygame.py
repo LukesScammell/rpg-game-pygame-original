@@ -330,13 +330,25 @@ except FileNotFoundError:
 
 small_font = pygame.font.Font(None, 24)
 
-# --- Sound Assets ---
+# --- Sound and Music Assets ---
 sounds = {}
-music_loaded = False
+music_tracks = {}
+current_music = None
+current_music_state = None
+
+# Music mapping for different game states and enemies
+MUSIC_CONFIG = {
+    "menu": "Start_Menu_music.ogg",
+    "gameplay": "Ruins_(Soundtrack)_music.ogg",
+    "combat_goblin": "Spider_Dance_music.ogg",
+    "combat_orc": "Heartache_music.ogg",
+    "combat_troll": "Heartache_music.ogg", 
+    "combat_dragon": "Dummy!_music.ogg"
+}
 
 def load_sounds():
     """Load all sound effects from the RPG Sound Pack."""
-    global sounds, music_loaded
+    global sounds
     sound_pack_path = "RPG Sound Pack"
     
     print("Loading sound effects...")
@@ -405,16 +417,73 @@ def load_sounds():
             print(f"  Error loading {sound_name}: {e}")
     
     print(f"Sound loading complete. Loaded {loaded_count} sound effects.")
+
+def load_music_tracks():
+    """Load all background music tracks."""
+    global music_tracks
+    music_path = "music"
     
-    # Try to load background music (if available)
-    try:
-        music_path = os.path.join("assets", "music.ogg")
-        if os.path.exists(music_path):
-            pygame.mixer.music.load(music_path)
-            music_loaded = True
-            print("Background music loaded successfully.")
-    except pygame.error:
-        print("No background music found.")
+    print("Loading background music...")
+    
+    loaded_count = 0
+    for music_state, filename in MUSIC_CONFIG.items():
+        try:
+            full_path = os.path.join(music_path, filename)
+            if os.path.exists(full_path):
+                music_tracks[music_state] = full_path
+                print(f"  Loaded: {music_state} -> {filename}")
+                loaded_count += 1
+            else:
+                print(f"  Warning: Music not found: {full_path}")
+        except Exception as e:
+            print(f"  Error loading {music_state}: {e}")
+    
+    print(f"Music loading complete. Loaded {loaded_count} music tracks.")
+
+def play_music(music_state, loop=True, volume=0.7):
+    """Play background music for the given state."""
+    global current_music, current_music_state
+    
+    # Don't restart the same music
+    if current_music_state == music_state and pygame.mixer.music.get_busy():
+        return
+    
+    if music_state in music_tracks:
+        try:
+            pygame.mixer.music.stop()
+            pygame.mixer.music.load(music_tracks[music_state])
+            pygame.mixer.music.set_volume(volume)
+            pygame.mixer.music.play(-1 if loop else 0)
+            current_music = music_tracks[music_state]
+            current_music_state = music_state
+            print(f"Playing music: {music_state}")
+        except pygame.error as e:
+            print(f"Error playing music {music_state}: {e}")
+    else:
+        print(f"Music state '{music_state}' not found")
+
+def stop_music():
+    """Stop all background music."""
+    global current_music, current_music_state
+    pygame.mixer.music.stop()
+    current_music = None
+    current_music_state = None
+
+def get_combat_music_for_enemies(enemies):
+    """Determine which combat music to play based on enemy types."""
+    # Priority order: dragon > troll > orc > goblin
+    enemy_types = [enemy.enemy_type for enemy in enemies]
+    
+    if "dragon" in enemy_types:
+        return "combat_dragon"
+    elif "troll" in enemy_types:
+        return "combat_troll"
+    elif "orc" in enemy_types:
+        return "combat_orc"
+    elif "goblin" in enemy_types:
+        return "combat_goblin"
+    else:
+        return "combat_goblin"  # Default fallback
 
 def play_sound(sound_name, volume=1.0):
     """Play a sound effect if it exists."""
@@ -432,6 +501,9 @@ def play_random_sound(sound_list, volume=1.0):
 
 # Load all sounds
 load_sounds()
+
+# Load all music tracks
+load_music_tracks()
 
 # Legacy sound variables for compatibility
 sword_sound = sounds.get("sword_attack")
@@ -656,6 +728,107 @@ class Player(Entity):
         self.max_mana = CLASSES[char_class]["mana"]
         self.mana = self.max_mana
         self.skill_cooldown = 0
+        
+        # Inventory limits by item type
+        self.max_weapons = 3
+        self.max_armor = 2
+        self.max_potions = 5
+
+    def get_inventory_by_type(self, item_type):
+        """Get items of a specific type from inventory."""
+        if item_type == Weapon:
+            return [item for item in self.inventory if isinstance(item, Weapon)]
+        elif item_type == Armor:
+            return [item for item in self.inventory if isinstance(item, Armor)]
+        elif item_type == Potion:
+            return [item for item in self.inventory if isinstance(item, Potion)]
+        return []
+    
+    def get_max_for_type(self, item_type):
+        """Get maximum slots for an item type."""
+        if item_type == Weapon:
+            return self.max_weapons
+        elif item_type == Armor:
+            return self.max_armor
+        elif item_type == Potion:
+            return self.max_potions
+        return 0
+    
+    def can_carry_item(self, item):
+        """Check if player can carry this item type."""
+        item_type = type(item)
+        current_items = self.get_inventory_by_type(item_type)
+        max_items = self.get_max_for_type(item_type)
+        return len(current_items) < max_items
+    
+    def get_worst_item(self, item_type):
+        """Get the worst item of a specific type for replacement."""
+        items = self.get_inventory_by_type(item_type)
+        if not items:
+            return None
+        
+        if item_type == Weapon:
+            # Return weapon with lowest attack bonus
+            return min(items, key=lambda x: x.attack_bonus)
+        elif item_type == Armor:
+            # Return armor with lowest defense bonus
+            return min(items, key=lambda x: x.defense_bonus)
+        elif item_type == Potion:
+            # Return potion with lowest healing value
+            return min(items, key=lambda x: x.hp_gain)
+        return None
+    
+    def should_replace_item(self, new_item):
+        """Check if new item is better than worst item of same type."""
+        item_type = type(new_item)
+        worst_item = self.get_worst_item(item_type)
+        
+        if not worst_item:
+            return False
+        
+        if isinstance(new_item, Weapon):
+            return new_item.attack_bonus > worst_item.attack_bonus
+        elif isinstance(new_item, Armor):
+            return new_item.defense_bonus > worst_item.defense_bonus
+        elif isinstance(new_item, Potion):
+            return new_item.hp_gain > worst_item.hp_gain
+        
+        return False
+    
+    def try_add_item(self, item, auto_replace=False):
+        """Try to add item to inventory with smart replacement logic."""
+        item_type = type(item)
+        
+        # First check if we can just add it
+        if self.can_carry_item(item):
+            self.inventory.append(item)
+            return True, f"Added {item.name} to inventory."
+        
+        # If auto_replace is enabled and new item is better
+        if auto_replace and self.should_replace_item(item):
+            worst_item = self.get_worst_item(item_type)
+            if worst_item:
+                # Don't replace equipped items unless the new item is significantly better
+                if ((isinstance(worst_item, Weapon) and worst_item == self.weapon) or
+                    (isinstance(worst_item, Armor) and worst_item == self.armor)):
+                    # Only replace equipped items if new item is at least 50% better
+                    if isinstance(item, Weapon) and item.attack_bonus >= worst_item.attack_bonus * 1.5:
+                        self.inventory.remove(worst_item)
+                        self.inventory.append(item)
+                        return True, f"Replaced {worst_item.name} with {item.name} (much better)."
+                    elif isinstance(item, Armor) and item.defense_bonus >= worst_item.defense_bonus * 1.5:
+                        self.inventory.remove(worst_item)
+                        self.inventory.append(item)
+                        return True, f"Replaced {worst_item.name} with {item.name} (much better)."
+                    else:
+                        return False, f"Inventory full. {item.name} not good enough to replace equipped {worst_item.name}."
+                else:
+                    # Replace non-equipped item
+                    self.inventory.remove(worst_item)
+                    self.inventory.append(item)
+                    return True, f"Replaced {worst_item.name} with {item.name}."
+        
+        return False, f"Inventory full. Cannot carry more {item_type.__name__.lower()}s."
 
     def gain_xp(self, xp):
         self.xp += xp
@@ -677,6 +850,7 @@ class Player(Entity):
 class Enemy(Entity):
     def __init__(self, x, y, enemy_type):
         super().__init__(x, y, enemy_type.capitalize(), ENEMIES[enemy_type]["hp"], ENEMIES[enemy_type]["attack"], ENEMIES[enemy_type]["defense"], ENEMIES[enemy_type]["icon"])
+        self.enemy_type = enemy_type  # Store the enemy type for music selection
         self.xp = ENEMIES[enemy_type]["xp"]
         self.weapon_drops = []  # List of possible weapon drops
 
@@ -979,6 +1153,8 @@ class Game:
         self.inventory_state = "closed"  # closed, open, selecting
         self.selected_player_idx = 0
         self.selected_item_idx = 0
+        # Item replacement system
+        self.pending_replacement = None
     def draw_combat_screen(self):
         """Draw the enhanced combat screen with simple UI."""
         screen.fill(BLACK)  # Simple black background
@@ -1160,6 +1336,7 @@ class Game:
             play_sound("menu_confirm", 0.5)
             self.inventory_state = "closed"
             self.save_game()
+            play_music("menu")  # Return to menu music
             self.game_state = "main_menu"
             self.reset_game_state()
         elif key == pygame.K_LEFT and self.selected_player_idx > 0:
@@ -1175,7 +1352,8 @@ class Game:
             self.selected_item_idx -= 1
         elif key == pygame.K_DOWN:
             current_player = self.players[self.selected_player_idx]
-            if self.selected_item_idx < len(current_player.inventory) - 1:
+            displayed_items = self.get_displayed_inventory(current_player)
+            if self.selected_item_idx < len(displayed_items) - 1:
                 play_sound("menu_select", 0.3)
                 self.selected_item_idx += 1
         elif key == pygame.K_RETURN:
@@ -1184,11 +1362,20 @@ class Game:
         elif key == pygame.K_DELETE or key == pygame.K_x:
             self.drop_inventory_item()
     
+    def get_displayed_inventory(self, player):
+        """Get items in the order they are displayed on screen."""
+        weapons = [item for item in player.inventory if isinstance(item, Weapon)]
+        armor_items = [item for item in player.inventory if isinstance(item, Armor)]
+        potions = [item for item in player.inventory if isinstance(item, Potion)]
+        return weapons + armor_items + potions
+    
     def use_inventory_item(self):
         """Use the currently selected inventory item."""
         current_player = self.players[self.selected_player_idx]
-        if self.selected_item_idx < len(current_player.inventory):
-            item = current_player.inventory[self.selected_item_idx]
+        displayed_items = self.get_displayed_inventory(current_player)
+        
+        if self.selected_item_idx < len(displayed_items):
+            item = displayed_items[self.selected_item_idx]
             
             if isinstance(item, Potion):
                 if current_player.hp < current_player.max_hp:
@@ -1197,36 +1384,61 @@ class Game:
                     play_sound("pickup_bottle", 0.6)  # Potion use sound
                     self.add_message(result)
                     # Adjust selected index if needed
-                    if self.selected_item_idx >= len(current_player.inventory) and self.selected_item_idx > 0:
+                    if self.selected_item_idx >= len(self.get_displayed_inventory(current_player)) and self.selected_item_idx > 0:
                         self.selected_item_idx -= 1
                 else:
                     play_sound("error", 0.5)
                     self.add_message(f"{current_player.name} is already at full health!")
             elif isinstance(item, Weapon):
+                # Check if player can use this weapon
+                if not item.can_use(current_player.char_class):
+                    play_sound("error", 0.5)
+                    self.add_message(f"{current_player.name} cannot use {item.name}!")
+                    return
+                
                 # Equip weapon
                 if current_player.weapon != item:
                     old_weapon = current_player.weapon
                     current_player.weapon = item
                     play_sound("pickup_metal", 0.7)  # Weapon equip sound
                     self.add_message(f"{current_player.name} equipped {item.name}!")
-                    # Put old weapon back in inventory if it's not the starting weapon
-                    if old_weapon and old_weapon != item:
-                        if old_weapon not in current_player.inventory:
+                    # Put old weapon back in inventory if it's not already there and we have space
+                    if old_weapon and old_weapon != item and old_weapon not in current_player.inventory:
+                        # Check if we can add the old weapon back (this should usually be fine since we just freed a slot)
+                        if current_player.can_carry_item(old_weapon):
                             current_player.inventory.append(old_weapon)
+                        else:
+                            # This shouldn't normally happen since we just equipped an item, but just in case
+                            old_weapon.x = current_player.x
+                            old_weapon.y = current_player.y
+                            self.dungeon.items.append(old_weapon)
+                            self.add_message(f"Old weapon {old_weapon.name} dropped on ground (inventory full).")
                 else:
                     play_sound("error", 0.5)
                     self.add_message(f"{item.name} is already equipped!")
             elif isinstance(item, Armor):
+                # Check if player can use this armor
+                if not item.can_use(current_player.char_class):
+                    play_sound("error", 0.5)
+                    self.add_message(f"{current_player.name} cannot use {item.name}!")
+                    return
+                
                 # Equip armor
                 if current_player.armor != item:
                     old_armor = current_player.armor
                     current_player.armor = item
                     play_sound("equip_armor", 0.7)  # Armor equip sound
                     self.add_message(f"{current_player.name} equipped {item.name}!")
-                    # Put old armor back in inventory
-                    if old_armor and old_armor != item:
-                        if old_armor not in current_player.inventory:
+                    # Put old armor back in inventory if it's not already there and we have space
+                    if old_armor and old_armor != item and old_armor not in current_player.inventory:
+                        if current_player.can_carry_item(old_armor):
                             current_player.inventory.append(old_armor)
+                        else:
+                            # This shouldn't normally happen since we just equipped an item, but just in case
+                            old_armor.x = current_player.x
+                            old_armor.y = current_player.y
+                            self.dungeon.items.append(old_armor)
+                            self.add_message(f"Old armor {old_armor.name} dropped on ground (inventory full).")
                 else:
                     play_sound("error", 0.5)
                     self.add_message(f"{item.name} is already equipped!")
@@ -1234,8 +1446,10 @@ class Game:
     def drop_inventory_item(self):
         """Drop the currently selected inventory item."""
         current_player = self.players[self.selected_player_idx]
-        if self.selected_item_idx < len(current_player.inventory):
-            item = current_player.inventory[self.selected_item_idx]
+        displayed_items = self.get_displayed_inventory(current_player)
+        
+        if self.selected_item_idx < len(displayed_items):
+            item = displayed_items[self.selected_item_idx]
             
             # Don't allow dropping equipped items
             if ((isinstance(item, Weapon) and item == current_player.weapon) or
@@ -1253,7 +1467,8 @@ class Game:
             self.add_message(f"{current_player.name} dropped {item.name}")
             
             # Adjust selected index if needed
-            if self.selected_item_idx >= len(current_player.inventory) and self.selected_item_idx > 0:
+            displayed_items_after = self.get_displayed_inventory(current_player)
+            if self.selected_item_idx >= len(displayed_items_after) and self.selected_item_idx > 0:
                 self.selected_item_idx -= 1
     
     def draw_inventory_screen(self):
@@ -1345,36 +1560,52 @@ class Game:
         
         # Draw Weapons category
         if weapons:
-            self.draw_text("⚔️ WEAPONS:", 50, current_y, YELLOW)
+            weapon_count_text = f"⚔️ WEAPONS ({len(weapons)}/{current_player.max_weapons}):"
+            self.draw_text(weapon_count_text, 50, current_y, YELLOW)
             current_y += 35
             for item in weapons:
                 self.draw_inventory_item(item, item_index, current_y, current_player)
                 current_y += 30
                 item_index += 1
             current_y += 10
+        else:
+            weapon_count_text = f"⚔️ WEAPONS (0/{current_player.max_weapons}): Empty"
+            self.draw_text(weapon_count_text, 50, current_y, GRAY)
+            current_y += 45
         
         # Draw Armor category
         if armor_items:
-            self.draw_text("🛡️ ARMOR:", 50, current_y, YELLOW)
+            armor_count_text = f"🛡️ ARMOR ({len(armor_items)}/{current_player.max_armor}):"
+            self.draw_text(armor_count_text, 50, current_y, YELLOW)
             current_y += 35
             for item in armor_items:
                 self.draw_inventory_item(item, item_index, current_y, current_player)
                 current_y += 30
                 item_index += 1
             current_y += 10
+        else:
+            armor_count_text = f"🛡️ ARMOR (0/{current_player.max_armor}): Empty"
+            self.draw_text(armor_count_text, 50, current_y, GRAY)
+            current_y += 45
         
         # Draw Consumables category
         if potions:
-            self.draw_text("🧪 CONSUMABLES:", 50, current_y, YELLOW)
+            potion_count_text = f"🧪 CONSUMABLES ({len(potions)}/{current_player.max_potions}):"
+            self.draw_text(potion_count_text, 50, current_y, YELLOW)
             current_y += 35
             for item in potions:
                 self.draw_inventory_item(item, item_index, current_y, current_player)
                 current_y += 30
                 item_index += 1
+        else:
+            potion_count_text = f"🧪 CONSUMABLES (0/{current_player.max_potions}): Empty"
+            self.draw_text(potion_count_text, 50, current_y, GRAY)
+            current_y += 45
         
-        # Show empty inventory message
-        if not current_player.inventory:
-            self.draw_text("Empty inventory", 50, items_y + 40, GRAY)
+        # Show inventory management instructions
+        if current_y < SCREEN_HEIGHT - 100:
+            self.draw_text("Inventory Limits: Weapons/Armor have limited slots", 50, current_y + 20, GRAY)
+            self.draw_text("Better items will auto-replace when looting chests", 50, current_y + 40, GRAY)
         
         pygame.display.flip()
     
@@ -1693,6 +1924,7 @@ class Game:
         self.inventory_state = "closed"
         self.selected_player_idx = 0
         self.selected_item_idx = 0
+        self.pending_replacement = None
         # Reset obtained items for single player
         if hasattr(self, 'obtained_items'):
             self.obtained_items = set()
@@ -2051,19 +2283,22 @@ class Game:
         self.add_message(f"You have entered dungeon level {self.dungeon_level}.")
 
     def main_loop(self):
-        if music_loaded:
-            try:
-                pygame.mixer.music.play(-1)
-            except pygame.error:
-                self.add_message("Could not play music.")
+        # Start with menu music
+        play_music("menu")
 
         while not self.game_over:
             # Limit frame rate to 60 FPS
             self.clock.tick(60)
             
             if self.game_state == "main_menu":
+                # Ensure menu music is playing
+                if current_music_state != "menu":
+                    play_music("menu")
                 self.main_menu()
             elif self.game_state == "settings_menu":
+                # Keep menu music playing
+                if current_music_state != "menu":
+                    play_music("menu")
                 self.settings_menu()
             elif self.game_state == "wall_selection":
                 self.wall_selection()
@@ -2076,8 +2311,12 @@ class Game:
             elif self.game_state == "setup_player_class":
                 self.setup_player_class()
             elif self.game_state == "playing":
+                # Switch to gameplay music when playing
+                if current_music_state != "gameplay":
+                    play_music("gameplay")
                 self.run_game()
             elif self.game_state == "combat":
+                # Combat music is handled in start_combat method
                 self.run_combat()
             elif self.game_state == "game_over":
                 self.game_over_screen()
@@ -2116,10 +2355,13 @@ class Game:
                 self.selected_item_idx = 0
             elif key == pygame.K_q:  # Quit to main menu
                 self.save_game()
+                play_music("menu")  # Return to menu music
                 self.game_state = "main_menu"
                 self.reset_game_state()
             elif key == pygame.K_F5:  # Quick save
                 self.save_game()
+            elif key == pygame.K_r:  # Replace item
+                self.handle_item_replacement()
             # Only cycle through players if there are any
             if len(self.players) > 0:
                 self.current_player_idx = (self.current_player_idx + 1) % len(self.players)
@@ -2136,8 +2378,9 @@ class Game:
         items_at_position = [item for item in self.dungeon.items if item.x == player.x and item.y == player.y]
         if items_at_position:
             item = items_at_position[0]
-            if len(player.inventory) < 20:  # Max inventory size
-                player.inventory.append(item)
+            success, message = player.try_add_item(item, auto_replace=False)  # Manual pickup - ask before replacing
+            
+            if success:
                 self.dungeon.items.remove(item)
                 self.add_message(f"{player.name} picked up {item.name}!")
                 
@@ -2155,11 +2398,71 @@ class Game:
                 if hasattr(self, 'obtained_items') and len(self.players) == 1:
                     self.obtained_items.add(item.name)
                     self.dungeon.mark_item_obtained(item.name)
+                    
+                # Show replacement message if applicable
+                if "Replaced" in message:
+                    self.add_message(message)
             else:
-                self.add_message("Inventory is full!")
+                # Show why pickup failed and offer replacement option
+                self.add_message(message)
+                if player.should_replace_item(item):
+                    worst_item = player.get_worst_item(type(item))
+                    self.add_message(f"Press R to replace {worst_item.name} with {item.name}")
+                    # Store the item for potential replacement (we'll handle 'R' key in input handling)
+                    self.pending_replacement = {'item': item, 'player': player}
+                    
             return
         
         self.add_message("Nothing to interact with here.")
+
+    def handle_item_replacement(self):
+        """Handle player pressing R to replace an item."""
+        if not self.pending_replacement:
+            self.add_message("No item replacement available.")
+            return
+            
+        item = self.pending_replacement['item']
+        player = self.pending_replacement['player']
+        
+        # Check if player is still at the same position as the item
+        if not (player.x == item.x and player.y == item.y):
+            self.add_message("You've moved away from the item.")
+            self.pending_replacement = None
+            return
+        
+        # Perform the replacement
+        worst_item = player.get_worst_item(type(item))
+        if worst_item:
+            # Drop the worse item
+            worst_item.x = player.x
+            worst_item.y = player.y
+            self.dungeon.items.append(worst_item)
+            player.inventory.remove(worst_item)
+            
+            # Pick up the new item
+            self.dungeon.items.remove(item)
+            player.inventory.append(item)
+            
+            # Play sounds and show message
+            play_sound("pickup_metal" if isinstance(item, Weapon) else 
+                      "pickup_armor" if isinstance(item, Armor) else "pickup_bottle", 0.7)
+            play_sound("drop_item", 0.5)
+            
+            self.add_message(f"Replaced {worst_item.name} with {item.name}!")
+            
+            # Mark item as obtained for single player
+            if hasattr(self, 'obtained_items') and len(self.players) == 1:
+                self.obtained_items.add(item.name)
+                self.dungeon.mark_item_obtained(item.name)
+                
+            # Show inventory status
+            item_type = type(item)
+            current_count = len(player.get_inventory_by_type(item_type))
+            max_count = player.get_max_for_type(item_type)
+            item_type_name = item_type.__name__.lower() + "s"
+            self.add_message(f"Inventory: {current_count}/{max_count} {item_type_name}")
+        
+        self.pending_replacement = None
 
     def open_treasure_chest(self, treasure, player):
         """Open a treasure chest and give items to player."""
@@ -2169,9 +2472,9 @@ class Game:
         
         # Give all items from the treasure chest
         for item in treasure.items:
-            if len(player.inventory) < 20:  # Check inventory space
-                player.inventory.append(item)
-                
+            success, message = player.try_add_item(item, auto_replace=True)
+            
+            if success:
                 # Mark item as obtained for single player
                 if hasattr(self, 'obtained_items') and len(self.players) == 1:
                     self.obtained_items.add(item.name)
@@ -2187,13 +2490,23 @@ class Game:
                 else:
                     play_sound("pickup_bottle", 0.6)
                     self.add_message(f"Found {item.name}!")
+                
+                # Show replacement message if applicable
+                if "Replaced" in message:
+                    self.add_message(message)
             else:
-                # Drop item on ground if inventory full
+                # Drop item on ground if inventory full or not good enough
                 item.x = treasure.x
                 item.y = treasure.y
                 self.dungeon.items.append(item)
                 play_sound("drop_item", 0.5)
-                self.add_message(f"Inventory full! {item.name} dropped on ground.")
+                self.add_message(f"{item.name} dropped on ground. {message}")
+                
+        # Show inventory status after looting
+        weapons = len(player.get_inventory_by_type(Weapon))
+        armor = len(player.get_inventory_by_type(Armor))
+        potions = len(player.get_inventory_by_type(Potion))
+        self.add_message(f"Inventory: {weapons}/{player.max_weapons} weapons, {armor}/{player.max_armor} armor, {potions}/{player.max_potions} potions")
 
     def move_player(self, player, direction):
         dx, dy = 0, 0
@@ -2223,9 +2536,35 @@ class Game:
                 self.update_camera()  # Update camera after movement
                 for item in list(self.dungeon.items):
                     if item.x == new_x and item.y == new_y:
-                        player.inventory.append(item)
-                        self.dungeon.items.remove(item)
-                        self.add_message(f"{player.name} picked up a {item.name}.")
+                        success, message = player.try_add_item(item, auto_replace=True)
+                        if success:
+                            self.dungeon.items.remove(item)
+                            self.add_message(f"{player.name} picked up {item.name}.")
+                            
+                            # Play appropriate pickup sound based on item type
+                            if isinstance(item, Weapon):
+                                play_sound("pickup_metal", 0.7)
+                            elif isinstance(item, Armor):
+                                play_sound("pickup_armor", 0.7)
+                            elif isinstance(item, Potion):
+                                play_sound("pickup_bottle", 0.7)
+                            else:
+                                play_sound("pickup_coin", 0.7)
+                                
+                            # Mark item as obtained for single player
+                            if hasattr(self, 'obtained_items') and len(self.players) == 1:
+                                self.obtained_items.add(item.name)
+                                self.dungeon.mark_item_obtained(item.name)
+                                
+                            # Show replacement message if applicable
+                            if "Replaced" in message:
+                                self.add_message(message)
+                        else:
+                            # Item couldn't be picked up automatically
+                            self.add_message(f"Can't pick up {item.name}: {message}")
+                            # Show hint about manual interaction
+                            if player.should_replace_item(item):
+                                self.add_message("Press E to interact and choose replacement.")
         else:
             self.add_message("You can't move there.")
 
@@ -2559,13 +2898,22 @@ class Game:
                 if i < 4:  # Limit to 4 messages to prevent overlap
                     self.draw_text(msg, 15, y - i * 25, WHITE)
         
-        # Draw current dungeon level
+        # Draw current dungeon level and inventory status
         level_text = f"Dungeon Level: {self.dungeon_level}"
         self.draw_text(level_text, 15, 155, LIGHT_GRAY)
         
+        # Show inventory status for current player
+        if self.players:
+            current_player = self.players[self.current_player_idx]
+            weapons = len(current_player.get_inventory_by_type(Weapon))
+            armor = len(current_player.get_inventory_by_type(Armor))
+            potions = len(current_player.get_inventory_by_type(Potion))
+            inventory_text = f"Inventory: {weapons}/{current_player.max_weapons}⚔️ {armor}/{current_player.max_armor}🛡️ {potions}/{current_player.max_potions}🧪"
+            self.draw_text(inventory_text, 15, 175, LIGHT_GRAY)
+        
         # Draw controls hint
-        controls_text = "Controls: WASD=Move, E=Interact, I=Inventory, Q=Menu, F5=Save"
-        self.draw_text(controls_text, 15, 180, GRAY)
+        controls_text = "Controls: WASD=Move, E=Interact, R=Replace, I=Inventory, Q=Menu"
+        self.draw_text(controls_text, 15, 200, GRAY)
 
 
     def start_combat(self, enemies):
@@ -2576,6 +2924,10 @@ class Game:
         random.shuffle(self.turn_order)
         self.combat_turn_idx = 0
         self.add_message("You've entered combat!")
+        
+        # Play appropriate combat music based on enemy types
+        combat_music = get_combat_music_for_enemies(enemies)
+        play_music(combat_music)
 
     def run_combat(self):
         """Run the enhanced turn-based combat system."""
@@ -2617,6 +2969,7 @@ class Game:
         if not any(p.is_alive() for p in self.players):
             play_sound("error", 0.7)  # Defeat sound
             self.add_message("Your party has been defeated. Game Over.")
+            stop_music()  # Stop music on game over
             self.game_state = "game_over"
         elif not any(e.is_alive() for e in self.combat_enemies):
             play_sound("success", 0.8)  # Victory sound
@@ -2649,6 +3002,8 @@ class Game:
                         self.dungeon.items.append(dropped_item)
                         self.add_message(f"{enemy.name} dropped a {dropped_item.name}!")
             
+            # Return to gameplay music after combat
+            play_music("gameplay")
             self.game_state = "playing"
             total_xp = sum(e.xp for e in self.combat_enemies)
             xp_per_player = total_xp // len(self.players) if self.players else 0
