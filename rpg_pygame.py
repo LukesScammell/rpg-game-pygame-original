@@ -4,6 +4,7 @@ import random
 import os
 import json
 import pygame
+import math
 from collections import deque
 
 # --- Constants ---
@@ -289,6 +290,40 @@ def load_sprites():
     
     print(f"Sprite loading complete. Loaded {len(sprites)} sprites.")
 
+    # Load skill spell icons
+    print("Loading skill spell icons...")
+    spell_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "spells")
+    effect_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "effect")
+    
+    # Load warrior skill icon (Power Strike)
+    power_strike_path = os.path.join(spell_base_path, "enchantment", "berserker_rage.png")
+    if os.path.exists(power_strike_path):
+        sprites["skill_power_strike"] = pygame.image.load(power_strike_path)
+        sprites["skill_power_strike"] = pygame.transform.scale(sprites["skill_power_strike"], (TILE_SIZE, TILE_SIZE))
+        print("  Loaded: Power Strike skill icon")
+    else:
+        print("  Warning: Power Strike skill icon not found")
+    
+    # Load mage skill icon (Fireball)
+    fireball_path = os.path.join(spell_base_path, "fire", "fireball.png")
+    if os.path.exists(fireball_path):
+        sprites["skill_fireball"] = pygame.image.load(fireball_path)
+        sprites["skill_fireball"] = pygame.transform.scale(sprites["skill_fireball"], (TILE_SIZE, TILE_SIZE))
+        print("  Loaded: Fireball skill icon")
+    else:
+        print("  Warning: Fireball skill icon not found")
+    
+    # Load archer skill icon (Double Shot)
+    double_shot_path = os.path.join(effect_base_path, "arrow0.png")
+    if os.path.exists(double_shot_path):
+        sprites["skill_double_shot"] = pygame.image.load(double_shot_path)
+        sprites["skill_double_shot"] = pygame.transform.scale(sprites["skill_double_shot"], (TILE_SIZE, TILE_SIZE))
+        print("  Loaded: Double Shot skill icon")
+    else:
+        print("  Warning: Double Shot skill icon not found")
+    
+    print(f"Skill icon loading complete.")
+
     # Load UI elements
     print("Loading UI elements...")
     gui_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "gui")
@@ -329,6 +364,279 @@ except FileNotFoundError:
     font = pygame.font.Font(None, 32)
 
 small_font = pygame.font.Font(None, 24)
+
+# --- Enhanced UI Functions and Visual Effects ---
+def lerp(a, b, t):
+    """Linear interpolation between two values."""
+    return a + (b - a) * t
+
+def smooth_color_transition(color1, color2, progress):
+    """Smooth transition between two colors."""
+    r = int(lerp(color1[0], color2[0], progress))
+    g = int(lerp(color1[1], color2[1], progress))
+    b = int(lerp(color1[2], color2[2], progress))
+    return (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+
+def draw_text_with_shadow(surface, text, x, y, color, font_obj=None, shadow_offset=2):
+    """Draw text with a subtle shadow for better readability."""
+    if font_obj is None:
+        font_obj = font
+    
+    # Draw shadow
+    shadow_surface = font_obj.render(text, True, (0, 0, 0))
+    surface.blit(shadow_surface, (x + shadow_offset, y + shadow_offset))
+    
+    # Draw main text
+    text_surface = font_obj.render(text, True, color)
+    surface.blit(text_surface, (x, y))
+    return text_surface.get_rect(x=x, y=y)
+
+def draw_gradient_rect(surface, rect, color1, color2, vertical=True):
+    """Draw a rectangle with a gradient fill."""
+    if vertical:
+        for y in range(rect.height):
+            progress = y / rect.height
+            color = smooth_color_transition(color1, color2, progress)
+            pygame.draw.line(surface, color, 
+                           (rect.x, rect.y + y), 
+                           (rect.x + rect.width - 1, rect.y + y))
+    else:
+        for x in range(rect.width):
+            progress = x / rect.width
+            color = smooth_color_transition(color1, color2, progress)
+            pygame.draw.line(surface, color,
+                           (rect.x + x, rect.y),
+                           (rect.x + x, rect.y + rect.height - 1))
+
+def draw_fancy_button(surface, rect, text, font_obj, base_color, hover_color, pressed_color, 
+                     is_hovered=False, is_pressed=False, border_radius=8):
+    """Draw an enhanced button with gradient, shadow, and hover effects."""
+    # Determine current color
+    if is_pressed:
+        current_color = pressed_color
+        shadow_offset = 1
+    elif is_hovered:
+        current_color = hover_color
+        shadow_offset = 3
+    else:
+        current_color = base_color
+        shadow_offset = 2
+    
+    # Draw button shadow
+    shadow_rect = rect.copy()
+    shadow_rect.x += shadow_offset
+    shadow_rect.y += shadow_offset
+    pygame.draw.rect(surface, (0, 0, 0, 100), shadow_rect, border_radius=border_radius)
+    
+    # Draw gradient background
+    gradient_color2 = (
+        max(0, min(255, current_color[0] - 30)),
+        max(0, min(255, current_color[1] - 30)),
+        max(0, min(255, current_color[2] - 30))
+    )
+    draw_gradient_rect(surface, rect, current_color, gradient_color2, vertical=True)
+    
+    # Draw border
+    border_color = (
+        max(0, min(255, current_color[0] + 50)),
+        max(0, min(255, current_color[1] + 50)),
+        max(0, min(255, current_color[2] + 50))
+    )
+    pygame.draw.rect(surface, border_color, rect, width=2, border_radius=border_radius)
+    
+    # Draw text
+    text_color = WHITE if sum(current_color) < 400 else BLACK
+    text_surface = font_obj.render(text, True, text_color)
+    text_rect = text_surface.get_rect(center=rect.center)
+    surface.blit(text_surface, text_rect)
+    
+    return rect
+
+def draw_health_bar_fancy(surface, x, y, width, height, current_hp, max_hp, 
+                         bar_color=GREEN, bg_color=DARK_GRAY, border_color=WHITE):
+    """Draw an enhanced health bar with gradients and animations."""
+    percentage = current_hp / max_hp if max_hp > 0 else 0
+    
+    # Background
+    bg_rect = pygame.Rect(x, y, width, height)
+    pygame.draw.rect(surface, bg_color, bg_rect)
+    
+    # Health bar with gradient
+    if percentage > 0:
+        health_width = int(width * percentage)
+        health_rect = pygame.Rect(x, y, health_width, height)
+        
+        # Color changes based on health percentage
+        if percentage > 0.6:
+            color1 = GREEN
+            color2 = (0, 200, 0)
+        elif percentage > 0.3:
+            color1 = YELLOW
+            color2 = (255, 200, 0)
+        else:
+            color1 = RED
+            color2 = (200, 0, 0)
+            
+        draw_gradient_rect(surface, health_rect, color1, color2, vertical=False)
+    
+    # Border
+    pygame.draw.rect(surface, border_color, bg_rect, width=2)
+    
+    # Health text
+    health_text = f"{current_hp}/{max_hp}"
+    text_surface = small_font.render(health_text, True, WHITE)
+    text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
+    
+    # Text shadow
+    shadow_surface = small_font.render(health_text, True, BLACK)
+    surface.blit(shadow_surface, (text_rect.x + 1, text_rect.y + 1))
+    surface.blit(text_surface, text_rect)
+
+def create_particle_effect(x, y, color, count=10, speed_range=(1, 3)):
+    """Create particle effect data for animations."""
+    particles = []
+    for _ in range(count):
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(*speed_range)
+        particles.append({
+            'x': x,
+            'y': y,
+            'vx': math.cos(angle) * speed,
+            'vy': math.sin(angle) * speed,
+            'life': 60,  # frames
+            'max_life': 60,
+            'color': color,
+            'size': random.randint(2, 4)
+        })
+    return particles
+
+def update_and_draw_particles(surface, particles):
+    """Update and draw particle effects."""
+    for particle in particles[:]:  # Use slice to avoid modification during iteration
+        # Update position
+        particle['x'] += particle['vx']
+        particle['y'] += particle['vy']
+        
+        # Update life
+        particle['life'] -= 1
+        
+        # Fade out
+        life_ratio = particle['life'] / particle['max_life']
+        alpha = int(255 * life_ratio)
+        
+        # Draw particle
+        if particle['life'] > 0:
+            color_with_alpha = (*particle['color'][:3], alpha)
+            size = max(1, int(particle['size'] * life_ratio))
+            pygame.draw.circle(surface, particle['color'], 
+                             (int(particle['x']), int(particle['y'])), size)
+        else:
+            particles.remove(particle)
+
+# Enhanced color scheme
+ENHANCED_COLORS = {
+    'primary_dark': (25, 30, 35),
+    'primary_light': (45, 55, 65),
+    'secondary_dark': (35, 25, 45),
+    'secondary_light': (65, 45, 75),
+    'accent_blue': (70, 130, 180),
+    'accent_gold': (255, 215, 0),
+    'accent_silver': (192, 192, 192),
+    'success_green': (46, 125, 50),
+    'warning_orange': (255, 152, 0),
+    'danger_red': (211, 47, 47),
+    'text_primary': (245, 245, 245),
+    'text_secondary': (189, 189, 189),
+    'text_disabled': (117, 117, 117),
+    'background_dark': (15, 20, 25),
+    'background_light': (35, 40, 45),
+    'panel_dark': (40, 45, 50),
+    'panel_light': (55, 60, 65)
+}
+
+# Animation system
+class AnimationManager:
+    def __init__(self):
+        self.animations = []
+        self.particles = []
+    
+    def add_fade_in(self, duration, callback=None):
+        """Add a fade-in animation."""
+        self.animations.append({
+            'type': 'fade_in',
+            'duration': duration,
+            'current': 0,
+            'callback': callback
+        })
+    
+    def add_slide_in(self, start_pos, end_pos, duration, callback=None):
+        """Add a slide-in animation."""
+        self.animations.append({
+            'type': 'slide_in',
+            'start_pos': start_pos,
+            'end_pos': end_pos,
+            'duration': duration,
+            'current': 0,
+            'callback': callback
+        })
+    
+    def add_particles(self, x, y, color, count=10):
+        """Add particle effect."""
+        new_particles = create_particle_effect(x, y, color, count)
+        self.particles.extend(new_particles)
+    
+    def update(self):
+        """Update all animations."""
+        for anim in self.animations[:]:
+            anim['current'] += 1
+            if anim['current'] >= anim['duration']:
+                if anim.get('callback'):
+                    anim['callback']()
+                self.animations.remove(anim)
+    
+    def get_fade_alpha(self, anim_type='fade_in'):
+        """Get current fade alpha value."""
+        for anim in self.animations:
+            if anim['type'] == anim_type:
+                progress = anim['current'] / anim['duration']
+                return int(255 * progress)
+        return 255
+    
+    def get_slide_position(self, anim_type='slide_in'):
+        """Get current slide position."""
+        for anim in self.animations:
+            if anim['type'] == anim_type:
+                progress = anim['current'] / anim['duration']
+                # Smooth easing
+                progress = progress * progress * (3.0 - 2.0 * progress)  # Smoothstep
+                start_x, start_y = anim['start_pos']
+                end_x, end_y = anim['end_pos']
+                current_x = lerp(start_x, end_x, progress)
+                current_y = lerp(start_y, end_y, progress)
+                return (current_x, current_y)
+        return None
+    
+    def draw_particles(self, surface):
+        """Draw all particles."""
+        update_and_draw_particles(surface, self.particles)
+
+# Initialize animation manager
+animation_manager = AnimationManager()
+
+# Mouse hover tracking for buttons
+button_hover_states = {}
+
+def update_button_hover(button_id, rect, mouse_pos):
+    """Update button hover state."""
+    was_hovered = button_hover_states.get(button_id, False)
+    is_hovered = rect.collidepoint(mouse_pos)
+    
+    if is_hovered and not was_hovered:
+        # Just started hovering
+        play_sound("button_hover", 0.3)
+    
+    button_hover_states[button_id] = is_hovered
+    return is_hovered
 
 # --- Sound and Music Assets ---
 sounds = {}
@@ -1462,9 +1770,12 @@ class Game:
         self.combat_enemies = []
         self.turn_order = []
         self.combat_turn_idx = 0
-        # Camera system
+        # Camera system with smooth movement
         self.camera_x = 0
         self.camera_y = 0
+        self.target_camera_x = 0
+        self.target_camera_y = 0
+        self.camera_speed = 0.1  # Smooth camera following speed
         self.clock = pygame.time.Clock()  # For frame rate limiting
         # Inventory system
         self.inventory_state = "closed"  # closed, open, selecting
@@ -1473,100 +1784,182 @@ class Game:
         # Item replacement system
         self.pending_replacement = None
     def draw_combat_screen(self):
-        """Draw the enhanced combat screen with simple UI."""
-        screen.fill(BLACK)  # Simple black background
+        """Draw the enhanced combat screen with improved visuals."""
+        # Enhanced background with battle atmosphere
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], (40, 20, 20))  # Dark red tint for combat
         
-        # Draw combat title
-        title_surface = font.render("COMBAT", True, WHITE)
-        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 50))
-        screen.blit(title_surface, title_rect)
+        # Update animations
+        animation_manager.update()
         
-        # Draw players section on the left
+        # Combat title with dramatic effect
+        title_y = 30
+        title_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 120, title_y - 10, 240, 60)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['danger_red'], (150, 30, 30))
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=8)
+        
+        draw_text_with_shadow(screen, "⚔️ BATTLE ⚔️", SCREEN_WIDTH // 2 - 100, title_y, 
+                            ENHANCED_COLORS['accent_gold'], shadow_offset=3)
+        
+        # Combat turn indicator
+        current_entity = self.turn_order[self.combat_turn_idx]
+        turn_text = f"Turn: {current_entity.name}"
+        turn_surface = small_font.render(turn_text, True, ENHANCED_COLORS['text_primary'])
+        turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, title_y + 70))
+        screen.blit(turn_surface, turn_rect)
+        
+        # Enhanced players section
         player_section_x = 50
-        player_section_y = 120
-        self.draw_text("Your Party:", player_section_x, player_section_y, GREEN)
+        player_section_y = 150
+        
+        # Player panel background
+        player_panel_rect = pygame.Rect(player_section_x - 20, player_section_y - 30, 600, 
+                                       len(self.players) * 120 + 80)  # Extra space for title
+        draw_gradient_rect(screen, player_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], player_panel_rect, width=2, border_radius=10)
+        
+        # Section title
+        draw_text_with_shadow(screen, "🛡️ Your Party", player_section_x, player_section_y - 10, 
+                            ENHANCED_COLORS['success_green'])
         
         for i, player in enumerate(self.players):
-            y_pos = player_section_y + 40 + i * 80
+            y_pos = player_section_y + 40 + i * 120  # More space between title and first player
             
-            # Highlight current player's turn
-            current_entity = self.turn_order[self.combat_turn_idx]
+            # Highlight current player's turn with glow effect
             is_current = player == current_entity
-            color = YELLOW if is_current else WHITE
             
-            # Player name and class
+            if is_current:
+                glow_rect = pygame.Rect(player_section_x - 10, y_pos - 10, 580, 110)
+                draw_gradient_rect(screen, glow_rect, (255, 255, 0, 50), (255, 215, 0, 30))
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], glow_rect, width=3, border_radius=8)
+            
+            # Player name and class with icons
             if game_settings['use_emojis']:
-                status = f'{player.icon} {player.name}'
+                status = f'{player.icon} {player.name} (Lv.{player.level})'
             else:
-                status = f'{player.name} ({player.char_class})'
+                class_sprite_key = f"player_{player.char_class}"
+                if class_sprite_key in sprites:
+                    screen.blit(sprites[class_sprite_key], (player_section_x, y_pos))
+                status = f'{player.name} (Lv.{player.level}, {player.char_class.title()})'
             
-            self.draw_text(status, player_section_x, y_pos, color)
+            text_color = ENHANCED_COLORS['accent_gold'] if is_current else ENHANCED_COLORS['text_primary']
+            draw_text_with_shadow(screen, status, player_section_x + 60, y_pos, text_color)
             
-            # Health bar
-            hp_bar_width = 200
-            hp_bar_height = 20
-            hp_percentage = player.hp / player.max_hp
+            # Enhanced health bar
+            hp_bar_y = y_pos + 30
+            draw_health_bar_fancy(screen, player_section_x + 60, hp_bar_y, 200, 25, 
+                                player.hp, player.max_hp)
             
-            # HP bar background
-            hp_rect = pygame.Rect(player_section_x, y_pos + 25, hp_bar_width, hp_bar_height)
-            pygame.draw.rect(screen, RED, hp_rect)
-            pygame.draw.rect(screen, GREEN, (hp_rect.x, hp_rect.y, int(hp_bar_width * hp_percentage), hp_bar_height))
-            pygame.draw.rect(screen, WHITE, hp_rect, 2)
-            
-            # HP text
-            hp_text = f"HP: {player.hp}/{player.max_hp}"
-            self.draw_text(hp_text, player_section_x + hp_bar_width + 10, y_pos + 25, color)
-            
-            # Mana for mages
+            # Mana bar for mages
             if player.char_class == "mage":
-                mana_percentage = player.mana / player.max_mana
-                mana_rect = pygame.Rect(player_section_x, y_pos + 50, hp_bar_width, hp_bar_height)
-                pygame.draw.rect(screen, DARK_GRAY, mana_rect)
-                pygame.draw.rect(screen, BLUE, (mana_rect.x, mana_rect.y, int(hp_bar_width * mana_percentage), hp_bar_height))
-                pygame.draw.rect(screen, WHITE, mana_rect, 2)
+                mana_bar_y = y_pos + 60
+                mana_percentage = player.mana / player.max_mana if player.max_mana > 0 else 0
                 
+                # Mana bar background
+                mana_bg_rect = pygame.Rect(player_section_x + 60, mana_bar_y, 200, 20)
+                pygame.draw.rect(screen, DARK_GRAY, mana_bg_rect)
+                
+                # Mana bar fill with gradient
+                if mana_percentage > 0:
+                    mana_width = int(200 * mana_percentage)
+                    mana_rect = pygame.Rect(player_section_x + 60, mana_bar_y, mana_width, 20)
+                    draw_gradient_rect(screen, mana_rect, BLUE, (0, 150, 255), vertical=False)
+                
+                pygame.draw.rect(screen, WHITE, mana_bg_rect, width=2)
+                
+                # Mana text
                 mana_text = f"Mana: {player.mana}/{player.max_mana}"
-                self.draw_text(mana_text, player_section_x + hp_bar_width + 10, y_pos + 50, color)
+                mana_surface = small_font.render(mana_text, True, ENHANCED_COLORS['text_primary'])
+                mana_text_rect = mana_surface.get_rect(center=(player_section_x + 160, mana_bar_y + 10))
+                screen.blit(mana_surface, mana_text_rect)
             
-            # Skill cooldown indicators
+            # Enhanced skill icon and status
+            skill_icon_x = player_section_x + 280
+            skill_icon_y = y_pos + 25
+            
+            # Skill background panel
+            skill_bg_rect = pygame.Rect(skill_icon_x - 5, skill_icon_y - 5, 280, 58)
+            draw_gradient_rect(screen, skill_bg_rect, (30, 30, 40), (50, 50, 60))
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], skill_bg_rect, width=1, border_radius=5)
+            
+            # Draw class skill icon
+            if player.char_class == "warrior" and "skill_power_strike" in sprites:
+                screen.blit(sprites["skill_power_strike"], (skill_icon_x, skill_icon_y))
+            elif player.char_class == "mage" and "skill_fireball" in sprites:
+                screen.blit(sprites["skill_fireball"], (skill_icon_x, skill_icon_y))
+            elif player.char_class == "archer" and "skill_double_shot" in sprites:
+                screen.blit(sprites["skill_double_shot"], (skill_icon_x, skill_icon_y))
+            
+            # Skill status text
+            skill_text_x = skill_icon_x + 55
             if hasattr(player, 'skill_cooldown') and player.skill_cooldown > 0:
                 cooldown_text = f"Cooldown: {player.skill_cooldown}"
-                self.draw_text(cooldown_text, player_section_x + hp_bar_width + 150, y_pos + 25, RED)
+                draw_text_with_shadow(screen, cooldown_text, skill_text_x, skill_icon_y + 5, 
+                                    ENHANCED_COLORS['danger_red'], small_font, 1)
+            else:
+                skill_name = ""
+                if player.char_class == "warrior":
+                    skill_name = "Power Strike"
+                elif player.char_class == "mage":
+                    skill_name = "Fireball"
+                elif player.char_class == "archer":
+                    skill_name = "Double Shot"
+                
+                if skill_name and self.is_skill_available(player):
+                    draw_text_with_shadow(screen, skill_name + " ✓", skill_text_x, skill_icon_y + 5, 
+                                        ENHANCED_COLORS['success_green'], small_font, 1)
+                elif skill_name:
+                    level_req = 2 if player.char_class in ["warrior", "archer"] else 3
+                    req_text = f"{skill_name} (Lv{level_req})"
+                    draw_text_with_shadow(screen, req_text, skill_text_x, skill_icon_y + 5, 
+                                        ENHANCED_COLORS['text_disabled'], small_font, 1)
 
-        # Draw enemies section on the right
-        enemy_section_x = SCREEN_WIDTH - 400
-        enemy_section_y = 120
-        self.draw_text("Enemies:", enemy_section_x, enemy_section_y, RED)
+        # Enhanced enemies section
+        enemy_section_x = SCREEN_WIDTH - 550
+        enemy_section_y = 150
+        
+        # Enemy panel background
+        enemy_panel_rect = pygame.Rect(enemy_section_x - 20, enemy_section_y - 30, 520, 
+                                      len(self.combat_enemies) * 100 + 60)
+        draw_gradient_rect(screen, enemy_panel_rect, ENHANCED_COLORS['panel_dark'], (60, 40, 40))
+        pygame.draw.rect(screen, ENHANCED_COLORS['danger_red'], enemy_panel_rect, width=2, border_radius=10)
+        
+        # Section title
+        draw_text_with_shadow(screen, "⚔️ Enemies", enemy_section_x, enemy_section_y - 10, 
+                            ENHANCED_COLORS['danger_red'])
         
         for i, enemy in enumerate(self.combat_enemies):
-            y_pos = enemy_section_y + 40 + i * 80
+            y_pos = enemy_section_y + 20 + i * 100
             
             # Highlight current enemy's turn
-            current_entity = self.turn_order[self.combat_turn_idx]
             is_current = enemy == current_entity
-            color = YELLOW if is_current else WHITE
             
-            # Enemy name
+            if is_current:
+                glow_rect = pygame.Rect(enemy_section_x - 10, y_pos - 10, 500, 90)
+                draw_gradient_rect(screen, glow_rect, (255, 0, 0, 50), (255, 100, 100, 30))
+                pygame.draw.rect(screen, ENHANCED_COLORS['danger_red'], glow_rect, width=3, border_radius=8)
+            
+            # Enemy sprite and name
             if game_settings['use_emojis']:
-                status = f'{enemy.icon} {enemy.name}'
+                status = f'{enemy.icon} {enemy.name} (Lv.{self.dungeon_level})'
             else:
-                status = f'{enemy.name}'
+                enemy_sprite_key = f"monster_{enemy.enemy_type}"
+                if enemy_sprite_key in sprites:
+                    screen.blit(sprites[enemy_sprite_key], (enemy_section_x, y_pos))
+                status = f'{enemy.name} (Level {self.dungeon_level})'
             
-            self.draw_text(status, enemy_section_x, y_pos, color)
+            text_color = ENHANCED_COLORS['danger_red'] if is_current else ENHANCED_COLORS['text_primary']
+            draw_text_with_shadow(screen, status, enemy_section_x + 60, y_pos, text_color)
             
-            # Enemy health bar
-            hp_bar_width = 200
-            hp_bar_height = 20
-            hp_percentage = enemy.hp / enemy.max_hp
+            # Enhanced enemy health bar
+            hp_bar_y = y_pos + 30
+            draw_health_bar_fancy(screen, enemy_section_x + 60, hp_bar_y, 200, 25, 
+                                enemy.hp, enemy.max_hp, bar_color=RED)
             
-            hp_rect = pygame.Rect(enemy_section_x, y_pos + 25, hp_bar_width, hp_bar_height)
-            pygame.draw.rect(screen, RED, hp_rect)
-            pygame.draw.rect(screen, GREEN, (hp_rect.x, hp_rect.y, int(hp_bar_width * hp_percentage), hp_bar_height))
-            pygame.draw.rect(screen, WHITE, hp_rect, 2)
-            
-            # HP text
-            hp_text = f"HP: {enemy.hp}/{enemy.max_hp}"
-            self.draw_text(hp_text, enemy_section_x + hp_bar_width + 10, y_pos + 25, color)
+            # Enemy stats display
+            stats_text = f"ATK: {enemy.attack} | DEF: {enemy.defense}"
+            stats_surface = small_font.render(stats_text, True, ENHANCED_COLORS['text_secondary'])
+            screen.blit(stats_surface, (enemy_section_x + 60, y_pos + 60))
 
         # Draw action buttons at the bottom with simple UI
         current_entity = self.turn_order[self.combat_turn_idx]
@@ -1798,15 +2191,30 @@ class Game:
                 self.selected_item_idx -= 1
     
     def draw_inventory_screen(self):
-        """Draw the enhanced inventory management screen with item categories."""
-        screen.fill((20, 20, 40))  # Dark background
+        """Draw the enhanced inventory management screen with better visuals."""
+        # Enhanced background
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['primary_dark'])
         
-        # Title
-        title_surface = font.render("INVENTORY", True, WHITE)
-        title_rect = title_surface.get_rect(center=(SCREEN_WIDTH // 2, 50))
-        screen.blit(title_surface, title_rect)
+        # Update animations
+        animation_manager.update()
         
-        # Instructions
+        # Title with enhanced styling
+        title_y = 30
+        title_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, title_y - 10, 300, 60)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        
+        draw_text_with_shadow(screen, "⚔️ INVENTORY ⚔️", SCREEN_WIDTH // 2 - 120, title_y, 
+                            ENHANCED_COLORS['accent_gold'])
+        
+        # Enhanced instruction panel
+        instruction_panel_rect = pygame.Rect(50, 110, 400, 180)
+        draw_gradient_rect(screen, instruction_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], instruction_panel_rect, width=2, border_radius=8)
+        
+        draw_text_with_shadow(screen, "Controls:", 70, 125, ENHANCED_COLORS['accent_silver'], small_font, 1)
+        
         instructions = [
             "← → : Switch Player",
             "↑ ↓ : Navigate Items", 
@@ -1817,64 +2225,98 @@ class Game:
         ]
         
         for i, instruction in enumerate(instructions):
-            text_surface = small_font.render(instruction, True, GRAY)
-            screen.blit(text_surface, (50, 100 + i * 25))
+            # Parse instruction for key highlighting
+            if ":" in instruction:
+                key_part, desc_part = instruction.split(":", 1)
+                draw_text_with_shadow(screen, key_part, 80, 150 + i * 20, ENHANCED_COLORS['accent_gold'], 
+                                    small_font, 1)
+                draw_text_with_shadow(screen, ":" + desc_part, 80 + len(key_part) * 8, 150 + i * 20, 
+                                    ENHANCED_COLORS['text_secondary'], small_font, 1)
+            else:
+                draw_text_with_shadow(screen, instruction, 80, 150 + i * 20, ENHANCED_COLORS['text_secondary'], 
+                                    small_font, 1)
         
-        # Player tabs
-        tab_width = 200
-        tab_height = 40
-        tab_y = 200
-        tab_spacing = (SCREEN_WIDTH - len(self.players) * tab_width) // (len(self.players) + 1)
+        # Enhanced player tabs
+        tab_width = 250
+        tab_height = 50
+        tab_y = 320
+        total_tabs_width = len(self.players) * tab_width + (len(self.players) - 1) * 20
+        tab_start_x = (SCREEN_WIDTH - total_tabs_width) // 2
         
         for i, player in enumerate(self.players):
-            tab_x = tab_spacing + i * (tab_width + tab_spacing)
-            
-            # Tab background
-            is_selected = i == self.selected_player_idx
-            tab_color = (60, 60, 100) if is_selected else (40, 40, 60)
-            border_color = YELLOW if is_selected else WHITE
-            
+            tab_x = tab_start_x + i * (tab_width + 20)
             tab_rect = pygame.Rect(tab_x, tab_y, tab_width, tab_height)
-            pygame.draw.rect(screen, tab_color, tab_rect)
-            pygame.draw.rect(screen, border_color, tab_rect, 3)
             
-            # Player name
-            name_surface = font.render(player.name, True, WHITE)
-            name_rect = name_surface.get_rect(center=tab_rect.center)
-            screen.blit(name_surface, name_rect)
+            # Tab styling
+            is_selected = i == self.selected_player_idx
+            
+            if is_selected:
+                # Selected tab with glow
+                glow_rect = pygame.Rect(tab_x - 5, tab_y - 5, tab_width + 10, tab_height + 10)
+                draw_gradient_rect(screen, glow_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
+                draw_gradient_rect(screen, tab_rect, ENHANCED_COLORS['accent_blue'], (50, 100, 150))
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], tab_rect, width=3, border_radius=8)
+                text_color = WHITE
+            else:
+                # Unselected tab
+                draw_gradient_rect(screen, tab_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+                pygame.draw.rect(screen, ENHANCED_COLORS['text_disabled'], tab_rect, width=2, border_radius=8)
+                text_color = ENHANCED_COLORS['text_secondary']
+            
+            # Player character sprite
+            if not game_settings['use_emojis']:
+                class_sprite_key = f"player_{player.char_class}"
+                if class_sprite_key in sprites:
+                    sprite_rect = sprites[class_sprite_key].get_rect(center=(tab_x + 30, tab_y + 25))
+                    screen.blit(sprites[class_sprite_key], sprite_rect)
+            
+            # Player info
+            player_text = f"{player.icon if game_settings['use_emojis'] else ''} {player.name}"
+            class_text = f"Lv.{player.level} {player.char_class.title()}"
+            
+            draw_text_with_shadow(screen, player_text, tab_x + (50 if not game_settings['use_emojis'] else 20), 
+                                tab_y + 8, text_color, font, 1)
+            draw_text_with_shadow(screen, class_text, tab_x + (50 if not game_settings['use_emojis'] else 20), 
+                                tab_y + 28, text_color, small_font, 1)
         
-        # Current player's inventory
+        # Current player's inventory panel
         current_player = self.players[self.selected_player_idx]
-        inventory_y = 280
+        inventory_panel_rect = pygame.Rect(100, 400, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 450)
+        draw_gradient_rect(screen, inventory_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], inventory_panel_rect, width=3, border_radius=10)
         
-        # Player stats
-        stats_text = f"Level {current_player.level} {current_player.char_class.title()}"
-        stats_surface = font.render(stats_text, True, WHITE)
-        screen.blit(stats_surface, (50, inventory_y))
+        # Player detailed stats panel
+        stats_panel_rect = pygame.Rect(120, 420, 300, 120)
+        draw_gradient_rect(screen, stats_panel_rect, ENHANCED_COLORS['primary_dark'], ENHANCED_COLORS['primary_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], stats_panel_rect, width=2, border_radius=6)
         
-        hp_text = f"HP: {current_player.hp}/{current_player.max_hp}"
-        hp_surface = font.render(hp_text, True, GREEN if current_player.hp == current_player.max_hp else RED)
-        screen.blit(hp_surface, (300, inventory_y))
+        draw_text_with_shadow(screen, f"{current_player.name}", 140, 435, ENHANCED_COLORS['accent_gold'], font, 1)
+        draw_text_with_shadow(screen, f"Level {current_player.level} {current_player.char_class.title()}", 
+                            140, 460, ENHANCED_COLORS['text_primary'], small_font, 1)
+        draw_text_with_shadow(screen, f"HP: {current_player.hp}/{current_player.max_hp}", 
+                            140, 480, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
+        draw_text_with_shadow(screen, f"ATK: {current_player.attack} | DEF: {current_player.defense}", 
+                            140, 500, ENHANCED_COLORS['text_secondary'], small_font, 1)
         
         if current_player.char_class == "mage":
-            mana_text = f"Mana: {current_player.mana}/{current_player.max_mana}"
-            mana_surface = font.render(mana_text, True, BLUE)
-            screen.blit(mana_surface, (500, inventory_y))
+            draw_text_with_shadow(screen, f"Mana: {current_player.mana}/{current_player.max_mana}", 
+                                140, 520, BLUE, small_font, 1)
         
-        # Equipped items
-        equipped_y = inventory_y + 40
-        self.draw_text("Equipped:", 50, equipped_y, YELLOW)
+        # Equipped items (positioned below the stats panel)
+        equipped_y = 560
+        draw_text_with_shadow(screen, "Equipped:", 140, equipped_y, ENHANCED_COLORS['accent_silver'], font, 1)
         
         weapon_text = f"Weapon: {current_player.weapon.name if current_player.weapon else 'None'}"
-        weapon_color = GREEN if current_player.weapon else GRAY
-        self.draw_text(weapon_text, 50, equipped_y + 30, weapon_color)
+        weapon_color = ENHANCED_COLORS['success_green'] if current_player.weapon else ENHANCED_COLORS['text_disabled']
+        draw_text_with_shadow(screen, weapon_text, 140, equipped_y + 30, weapon_color, small_font, 1)
         
         armor_text = f"Armor: {current_player.armor.name if current_player.armor else 'None'}"
-        armor_color = GREEN if current_player.armor else GRAY
-        self.draw_text(armor_text, 50, equipped_y + 60, armor_color)
+        armor_color = ENHANCED_COLORS['success_green'] if current_player.armor else ENHANCED_COLORS['text_disabled']
+        draw_text_with_shadow(screen, armor_text, 140, equipped_y + 50, armor_color, small_font, 1)
         
-        # Categorized inventory items
-        items_y = equipped_y + 120
+        # Categorized inventory items (positioned in the right side of the panel)
+        items_start_x = 460
+        items_y = 460
         
         # Separate items by category
         weapons = [item for item in current_player.inventory if isinstance(item, Weapon)]
@@ -1887,7 +2329,7 @@ class Game:
         # Draw Weapons category
         if weapons:
             weapon_count_text = f"⚔️ WEAPONS ({len(weapons)}/{current_player.max_weapons}):"
-            self.draw_text(weapon_count_text, 50, current_y, YELLOW)
+            draw_text_with_shadow(screen, weapon_count_text, items_start_x, current_y, ENHANCED_COLORS['accent_gold'], small_font, 1)
             current_y += 35
             for item in weapons:
                 self.draw_inventory_item(item, item_index, current_y, current_player)
@@ -1896,13 +2338,13 @@ class Game:
             current_y += 10
         else:
             weapon_count_text = f"⚔️ WEAPONS (0/{current_player.max_weapons}): Empty"
-            self.draw_text(weapon_count_text, 50, current_y, GRAY)
+            draw_text_with_shadow(screen, weapon_count_text, items_start_x, current_y, ENHANCED_COLORS['text_disabled'], small_font, 1)
             current_y += 45
         
         # Draw Armor category
         if armor_items:
             armor_count_text = f"🛡️ ARMOR ({len(armor_items)}/{current_player.max_armor}):"
-            self.draw_text(armor_count_text, 50, current_y, YELLOW)
+            draw_text_with_shadow(screen, armor_count_text, items_start_x, current_y, ENHANCED_COLORS['accent_gold'], small_font, 1)
             current_y += 35
             for item in armor_items:
                 self.draw_inventory_item(item, item_index, current_y, current_player)
@@ -1911,13 +2353,13 @@ class Game:
             current_y += 10
         else:
             armor_count_text = f"🛡️ ARMOR (0/{current_player.max_armor}): Empty"
-            self.draw_text(armor_count_text, 50, current_y, GRAY)
+            draw_text_with_shadow(screen, armor_count_text, items_start_x, current_y, ENHANCED_COLORS['text_disabled'], small_font, 1)
             current_y += 45
         
         # Draw Consumables category
         if potions:
             potion_count_text = f"🧪 CONSUMABLES ({len(potions)}/{current_player.max_potions}):"
-            self.draw_text(potion_count_text, 50, current_y, YELLOW)
+            draw_text_with_shadow(screen, potion_count_text, items_start_x, current_y, ENHANCED_COLORS['accent_gold'], small_font, 1)
             current_y += 35
             for item in potions:
                 self.draw_inventory_item(item, item_index, current_y, current_player)
@@ -1925,50 +2367,59 @@ class Game:
                 item_index += 1
         else:
             potion_count_text = f"🧪 CONSUMABLES (0/{current_player.max_potions}): Empty"
-            self.draw_text(potion_count_text, 50, current_y, GRAY)
+            draw_text_with_shadow(screen, potion_count_text, items_start_x, current_y, ENHANCED_COLORS['text_disabled'], small_font, 1)
             current_y += 45
         
         # Show inventory management instructions
         if current_y < SCREEN_HEIGHT - 100:
-            self.draw_text("Inventory Limits: Weapons/Armor have limited slots", 50, current_y + 20, GRAY)
-            self.draw_text("Better items will auto-replace when looting chests", 50, current_y + 40, GRAY)
+            draw_text_with_shadow(screen, "Inventory Limits: Weapons/Armor have limited slots", 
+                                140, current_y + 20, ENHANCED_COLORS['text_secondary'], small_font, 1)
+            draw_text_with_shadow(screen, "Better items will auto-replace when looting chests", 
+                                140, current_y + 40, ENHANCED_COLORS['text_secondary'], small_font, 1)
         
         pygame.display.flip()
     
     def draw_inventory_item(self, item, item_index, y_pos, player):
         """Draw a single inventory item with proper highlighting and stats."""
+        items_start_x = 460  # Match the x position used for categories
+        
         # Highlight selected item
         is_selected_item = item_index == self.selected_item_idx
         if is_selected_item:
-            highlight_rect = pygame.Rect(45, y_pos - 5, SCREEN_WIDTH - 90, 28)
-            pygame.draw.rect(screen, (60, 60, 100), highlight_rect)
-            pygame.draw.rect(screen, YELLOW, highlight_rect, 2)
+            highlight_rect = pygame.Rect(items_start_x - 10, y_pos - 5, 350, 28)
+            draw_gradient_rect(screen, highlight_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], highlight_rect, width=2, border_radius=5)
         
         # Item color based on equipment status and class compatibility
-        item_color = WHITE
         if isinstance(item, Weapon):
             if item == player.weapon:
-                item_color = GREEN  # Equipped weapon
+                item_color = ENHANCED_COLORS['success_green']  # Equipped weapon
             elif not item.can_use(player.char_class):
-                item_color = DARK_GRAY  # Cannot use
+                item_color = ENHANCED_COLORS['text_disabled']  # Cannot use
+            else:
+                item_color = ENHANCED_COLORS['text_primary']
         elif isinstance(item, Armor):
             if item == player.armor:
-                item_color = GREEN  # Equipped armor
+                item_color = ENHANCED_COLORS['success_green']  # Equipped armor
             elif not item.can_use(player.char_class):
-                item_color = DARK_GRAY  # Cannot use
+                item_color = ENHANCED_COLORS['text_disabled']  # Cannot use
+            else:
+                item_color = ENHANCED_COLORS['text_primary']
+        else:
+            item_color = ENHANCED_COLORS['text_primary']
         
         # Draw item with rarity color border
         rarity_colors = {
-            "common": WHITE,
-            "uncommon": GREEN,
-            "rare": BLUE,
+            "common": ENHANCED_COLORS['text_primary'],
+            "uncommon": ENHANCED_COLORS['success_green'],
+            "rare": ENHANCED_COLORS['accent_blue'],
             "epic": (128, 0, 128)  # Purple
         }
         
         if hasattr(item, 'rarity'):
             # Small colored square to indicate rarity
-            rarity_color = rarity_colors.get(item.rarity, WHITE)
-            pygame.draw.rect(screen, rarity_color, (50, y_pos + 5, 8, 8))
+            rarity_color = rarity_colors.get(item.rarity, ENHANCED_COLORS['text_primary'])
+            pygame.draw.rect(screen, rarity_color, (items_start_x - 5, y_pos + 5, 8, 8))
         
         # Item icon and name
         if game_settings['use_emojis']:
@@ -1988,7 +2439,7 @@ class Game:
         elif isinstance(item, Potion):
             item_text += f" (Heals {item.hp_gain} HP)"
         
-        self.draw_text(item_text, 70, y_pos, item_color)
+        draw_text_with_shadow(screen, item_text, items_start_x + 15, y_pos, item_color, small_font, 1)
 
     def add_message(self, text):
         self.messages.appendleft(text)
@@ -2257,16 +2708,32 @@ class Game:
             self.obtained_items = set()
 
     def update_camera(self):
-        """Update camera position to follow the current player."""
+        """Update camera position with smooth following."""
         if self.players:
             player = self.players[0]  # Follow the first player
-            # Center camera on player
-            self.camera_x = player.x - VIEWPORT_WIDTH // 2
-            self.camera_y = player.y - VIEWPORT_HEIGHT // 2
             
-            # Keep camera within dungeon bounds
-            self.camera_x = max(0, min(self.camera_x, self.dungeon.width - VIEWPORT_WIDTH))
-            self.camera_y = max(0, min(self.camera_y, self.dungeon.height - VIEWPORT_HEIGHT))
+            # Calculate target camera position
+            self.target_camera_x = player.x - VIEWPORT_WIDTH // 2
+            self.target_camera_y = player.y - VIEWPORT_HEIGHT // 2
+            
+            # Keep target within dungeon bounds
+            self.target_camera_x = max(0, min(self.target_camera_x, self.dungeon.width - VIEWPORT_WIDTH))
+            self.target_camera_y = max(0, min(self.target_camera_y, self.dungeon.height - VIEWPORT_HEIGHT))
+            
+            # Smooth camera interpolation
+            camera_diff_x = self.target_camera_x - self.camera_x
+            camera_diff_y = self.target_camera_y - self.camera_y
+            
+            # If the difference is small enough, snap to target (prevents endless tiny movements)
+            if abs(camera_diff_x) < 0.1:
+                self.camera_x = self.target_camera_x
+            else:
+                self.camera_x += camera_diff_x * self.camera_speed
+            
+            if abs(camera_diff_y) < 0.1:
+                self.camera_y = self.target_camera_y
+            else:
+                self.camera_y += camera_diff_y * self.camera_speed
             
             # Update fog of war for all players
             for p in self.players:
@@ -2277,53 +2744,146 @@ class Game:
         screen.blit(text_surface, (x, y))
 
     def main_menu(self):
-        screen.fill(BLACK)
+        # Enhanced background with gradient
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['primary_dark'])
         
-        # Title with better positioning
-        title_y = SCREEN_HEIGHT // 2 - 150
-        self.draw_text("Python RPG Adventure", SCREEN_WIDTH // 2 - 150, title_y)
+        # Update animations
+        animation_manager.update()
         
-        # Menu options with proper spacing
-        menu_start_y = title_y + 80
+        # Get mouse position for hover effects
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # Animated title with shadow
+        title_y = SCREEN_HEIGHT // 2 - 200
+        title_x = SCREEN_WIDTH // 2 - 180
+        
+        # Title background panel
+        title_bg_rect = pygame.Rect(title_x - 40, title_y - 20, 400, 80)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        
+        # Main title with enhanced text
+        draw_text_with_shadow(screen, "Python RPG Adventure", title_x, title_y, ENHANCED_COLORS['accent_gold'])
+        
+        # Subtitle
+        subtitle_text = "A Tale of Heroes and Dragons"
+        subtitle_surface = small_font.render(subtitle_text, True, ENHANCED_COLORS['text_secondary'])
+        subtitle_rect = subtitle_surface.get_rect(center=(SCREEN_WIDTH // 2, title_y + 50))
+        screen.blit(subtitle_surface, subtitle_rect)
+        
+        # Menu options with fancy buttons
+        menu_start_y = title_y + 120
+        button_width = 300
+        button_height = 50
+        button_spacing = 60
         has_save = self.has_save_file()
         
+        buttons = []
         if has_save:
-            self.draw_text("Press C to continue", SCREEN_WIDTH // 2 - 100, menu_start_y)
-            self.draw_text("Press N for new game", SCREEN_WIDTH // 2 - 100, menu_start_y + 40)
-            self.draw_text("Press D to delete save", SCREEN_WIDTH // 2 - 100, menu_start_y + 80)
-            self.draw_text("Press S for settings", SCREEN_WIDTH // 2 - 100, menu_start_y + 120)
-            self.draw_text("Press Q to quit", SCREEN_WIDTH // 2 - 80, menu_start_y + 160)
+            buttons = [
+                ("continue", "Continue Game", "C"),
+                ("new", "New Game", "N"),
+                ("delete", "Delete Save", "D"),
+                ("settings", "Settings", "S"),
+                ("quit", "Quit", "Q")
+            ]
         else:
-            self.draw_text("Press ENTER to start", SCREEN_WIDTH // 2 - 120, menu_start_y)
-            self.draw_text("Press S for settings", SCREEN_WIDTH // 2 - 100, menu_start_y + 40)
-            self.draw_text("Press Q to quit", SCREEN_WIDTH // 2 - 80, menu_start_y + 80)
+            buttons = [
+                ("start", "Start Adventure", "ENTER"),
+                ("settings", "Settings", "S"),
+                ("quit", "Quit", "Q")
+            ]
         
-        # Show current display mode
-        mode_text = "Current mode: " + ("Emoji" if game_settings['use_emojis'] else "Sprite")
-        self.draw_text(mode_text, SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT - 100, GRAY)
+        # Draw fancy buttons
+        for i, (button_id, text, key) in enumerate(buttons):
+            button_x = SCREEN_WIDTH // 2 - button_width // 2
+            button_y = menu_start_y + i * button_spacing
+            button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+            
+            # Determine colors based on button type
+            if button_id == "continue":
+                base_color = ENHANCED_COLORS['success_green']
+                hover_color = (66, 165, 70)
+                pressed_color = (26, 105, 30)
+            elif button_id == "new" or button_id == "start":
+                base_color = ENHANCED_COLORS['accent_blue']
+                hover_color = (90, 150, 200)
+                pressed_color = (50, 110, 160)
+            elif button_id == "delete":
+                base_color = ENHANCED_COLORS['danger_red']
+                hover_color = (231, 67, 67)
+                pressed_color = (191, 27, 27)
+            elif button_id == "quit":
+                base_color = ENHANCED_COLORS['text_disabled']
+                hover_color = (137, 137, 137)
+                pressed_color = (97, 97, 97)
+            else:  # settings
+                base_color = ENHANCED_COLORS['accent_gold']
+                hover_color = (255, 235, 20)
+                pressed_color = (235, 195, 0)
+            
+            # Check hover state
+            is_hovered = update_button_hover(button_id, button_rect, mouse_pos)
+            
+            # Draw fancy button
+            button_text = f"{text} ({key})"
+            draw_fancy_button(screen, button_rect, button_text, font, 
+                            base_color, hover_color, pressed_color, 
+                            is_hovered=is_hovered, border_radius=12)
+        
+        # Game info panel at bottom
+        info_panel_rect = pygame.Rect(50, SCREEN_HEIGHT - 120, SCREEN_WIDTH - 100, 70)
+        draw_gradient_rect(screen, info_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], info_panel_rect, width=2, border_radius=8)
+        
+        # Show current display mode and version info
+        mode_text = "Display: " + ("Emoji Mode" if game_settings['use_emojis'] else "Sprite Mode")
+        version_text = "Version 1.17 - Enhanced Balance Edition"
+        
+        mode_surface = small_font.render(mode_text, True, ENHANCED_COLORS['text_secondary'])
+        version_surface = small_font.render(version_text, True, ENHANCED_COLORS['text_secondary'])
+        
+        screen.blit(mode_surface, (info_panel_rect.x + 20, info_panel_rect.y + 15))
+        screen.blit(version_surface, (info_panel_rect.x + 20, info_panel_rect.y + 35))
+        
+        # Draw particles if any
+        animation_manager.draw_particles(screen)
         
         pygame.display.flip()
+        
+        # Handle events with enhanced feedback
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game_over = True
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
+                play_sound("menu_select", 0.5)  # Sound feedback
+                
                 if event.key == pygame.K_RETURN and not has_save:
+                    animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y, ENHANCED_COLORS['accent_blue'], 15)
                     self.reset_game_state()
                     self.game_state = "setup_num_players"
                 elif event.key == pygame.K_n:
+                    animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing, ENHANCED_COLORS['accent_blue'], 15)
                     self.reset_game_state()
                     self.game_state = "setup_num_players"
                 elif event.key == pygame.K_c and has_save:
+                    animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y, ENHANCED_COLORS['success_green'], 15)
                     if self.load_game():
                         self.game_state = "playing"
                     else:
                         self.add_message("Failed to load save file!")
+                        play_sound("error", 0.7)
                 elif event.key == pygame.K_d and has_save:
                     if self.delete_save_file():
+                        animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing * 2, ENHANCED_COLORS['danger_red'], 10)
                         self.add_message("Save file deleted!")
+                        play_sound("success", 0.5)
                 elif event.key == pygame.K_s:
+                    animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing * (3 if has_save else 1), ENHANCED_COLORS['accent_gold'], 12)
                     self.game_state = "settings_menu"
                 elif event.key == pygame.K_q:
+                    play_sound("menu_back", 0.5)
                     self.game_over = True
 
     def settings_menu(self):
@@ -2651,6 +3211,10 @@ class Game:
                 self.victory_screen()
 
     def run_game(self):
+        # Update animations and camera
+        animation_manager.update()
+        self.update_camera()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game_over = True
@@ -2843,38 +3407,59 @@ class Game:
 
         if not (0 <= new_x < self.dungeon.width and 0 <= new_y < self.dungeon.height):
             self.add_message("You can't move off the map.")
+            play_sound("error", 0.3)
             return
 
         if self.dungeon.grid[new_y][new_x] == UI["stairs"]:
+            # Add particle effect for stairs
+            screen_x = (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+            screen_y = (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+            animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_gold'], 20)
+            
             self.dungeon_level += 1
             self.new_level()
+            play_sound("door_open", 0.8)
             return
 
         if self.dungeon.grid[new_y][new_x] == UI["floor"]:
             enemies_in_pos = [e for e in self.dungeon.enemies if e.x == new_x and e.y == new_y]
             if enemies_in_pos:
+                # Add combat particles
+                screen_x = (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                screen_y = (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['danger_red'], 15)
                 self.start_combat(enemies_in_pos)
             else:
-                # Move player
+                # Move player successfully
                 player.x, player.y = new_x, new_y
                 self.update_camera()  # Update camera after movement
+                
+                # Check for item pickup with visual feedback
                 for item in list(self.dungeon.items):
                     if item.x == new_x and item.y == new_y:
                         success, message = player.try_add_item(item, auto_replace=True)
                         if success:
+                            # Add pickup particle effect
+                            screen_x = (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                            screen_y = (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                            
+                            # Different particles for different item types
+                            if isinstance(item, Weapon):
+                                animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_silver'], 8)
+                                play_sound("pickup_metal", 0.7)
+                            elif isinstance(item, Armor):
+                                animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_blue'], 8)
+                                play_sound("pickup_armor", 0.7)
+                            elif isinstance(item, Potion):
+                                animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['success_green'], 8)
+                                play_sound("pickup_bottle", 0.7)
+                            else:
+                                animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_gold'], 8)
+                                play_sound("pickup_coin", 0.7)
+                            
                             self.dungeon.items.remove(item)
                             self.add_message(f"{player.name} picked up {item.name}.")
                             
-                            # Play appropriate pickup sound based on item type
-                            if isinstance(item, Weapon):
-                                play_sound("pickup_metal", 0.7)
-                            elif isinstance(item, Armor):
-                                play_sound("pickup_armor", 0.7)
-                            elif isinstance(item, Potion):
-                                play_sound("pickup_bottle", 0.7)
-                            else:
-                                play_sound("pickup_coin", 0.7)
-                                
                             # Mark item as obtained for single player
                             if hasattr(self, 'obtained_items') and len(self.players) == 1:
                                 self.obtained_items.add(item.name)
@@ -2884,12 +3469,14 @@ class Game:
                             if "Replaced" in message:
                                 self.add_message(message)
                         else:
-                            # Item couldn't be picked up automatically
-                            self.add_message(f"Can't pick up {item.name}: {message}")
-                            # Show hint about manual interaction
+                            # Show why pickup failed and offer replacement option
+                            self.add_message(message)
                             if player.should_replace_item(item):
-                                self.add_message("Press E to interact and choose replacement.")
+                                worst_item = player.get_worst_item(type(item))
+                                self.add_message(f"Press R to replace {worst_item.name} with {item.name}")
         else:
+            # Can't move to wall - add small particle effect
+            play_sound("error", 0.2)
             self.add_message("You can't move there.")
 
     def draw_game(self):
@@ -2911,10 +3498,10 @@ class Game:
             return
         
         # Draw main viewport with camera offset
-        viewport_start_x = max(0, self.camera_x)
-        viewport_start_y = max(0, self.camera_y)
-        viewport_end_x = min(self.dungeon.width, self.camera_x + VIEWPORT_WIDTH)
-        viewport_end_y = min(self.dungeon.height, self.camera_y + VIEWPORT_HEIGHT)
+        viewport_start_x = max(0, int(self.camera_x))
+        viewport_start_y = max(0, int(self.camera_y))
+        viewport_end_x = min(self.dungeon.width, int(self.camera_x) + VIEWPORT_WIDTH)
+        viewport_end_y = min(self.dungeon.height, int(self.camera_y) + VIEWPORT_HEIGHT)
         
         # Draw map tiles in viewport
         for world_y in range(viewport_start_y, viewport_end_y):
@@ -3119,6 +3706,10 @@ class Game:
         
         # Draw UI
         self.draw_ui()
+        
+        # Draw particle effects on top of everything
+        animation_manager.draw_particles(screen)
+        
         pygame.display.flip()
 
     def draw_minimap(self):
