@@ -54,8 +54,8 @@ def load_settings():
         "wall_sprite": "stone_brick1.png",
         "floor_sprite": "sandstone_floor0.png",
         "resolution": [1920, 1080],  # [width, height]
-        "music_volume": 0.5,  # 0.0 to 1.0
-        "sound_volume": 0.7,  # 0.0 to 1.0
+        "music_volume": 0.1,  # 0.0 to 1.0 - Lower default for Bluetooth compatibility
+        "sound_volume": 0.2,  # 0.0 to 1.0 - Lower default for Bluetooth compatibility
         "fullscreen": True
     }
     try:
@@ -123,6 +123,7 @@ apply_resolution_settings()
 
 # Apply audio volume settings
 def apply_audio_settings():
+    """Apply current audio settings to the game."""
     pygame.mixer.music.set_volume(game_settings["music_volume"])
     # Note: Sound volume will be applied per-sound when playing
 
@@ -1163,12 +1164,18 @@ def load_music_tracks():
     
     print(f"Music loading complete. Loaded {loaded_count} music tracks.")
 
-def play_music(music_state, loop=True, volume=0.7):
+def play_music(music_state, loop=True, volume=None):
     """Play background music for the given state."""
     global current_music, current_music_state
     
+    # Use game settings volume if no specific volume is provided
+    if volume is None:
+        volume = game_settings["music_volume"]
+    
     # Don't restart the same music
     if current_music_state == music_state and pygame.mixer.music.get_busy():
+        # Still apply volume change in case settings changed
+        pygame.mixer.music.set_volume(volume)
         return
     
     if music_state in music_tracks:
