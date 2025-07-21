@@ -1,4 +1,4 @@
-# Python RPG Adventure - Pygame Version (v1.20)
+# Python RPG Adventure - Pygame Version (v1.21)
 
 A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and shop system. Created with the help of large language models by **LukesScammell**.
 
@@ -135,6 +135,67 @@ The game includes a comprehensive settings system accessible from the main menu:
 ---
 
 ## Version History & Development Notes
+
+### v1.21: Complete Undertale Integration & Advanced Settings
+**Complete Undertale Character System:**
+- **Full Directional Sprite System**: All three player classes now have authentic Undertale directional sprites
+  - **Warrior (Frisk)**: 4/2/2/4 animation frames per direction (down/left/right/up) with smooth movement
+  - **Mage (Asriel)**: 1/2/2/4 animation frames per direction with magical character progression  
+  - **Archer (Monster Kid)**: 3/3/3/3 animation frames per direction with consistent movement animation
+  - **Dynamic Direction Tracking**: Characters face the correct direction when moving with proper sprite transitions
+- **25+ Undertale Enemy Integration**: Complete enemy replacement from original crawl sprites to authentic Undertale characters
+  - **Progressive Difficulty**: Undertale enemies mapped to appropriate dungeon levels (Dummy/Froggit early, Asgore/Undyne late)
+  - **Animated Combat Portraits**: All enemies feature multi-frame animated portraits during battle (1-36 frames each)
+  - **Boss Progression**: Final boss changed from "dragon" to "Asgore" with appropriate victory conditions
+  - **Balanced Stats**: All Undertale enemies have carefully balanced HP/Attack/Defense/XP for proper game progression
+- **Enhanced Combat Music System**: Dynamic music selection based on Undertale enemy difficulty tiers
+  - **Boss Music**: Asgore, Undyne, Mettaton, Papyrus, Toriel trigger epic boss battle music
+  - **Strong Enemy Music**: Mad Dummy, Lesser/Greater Dog, Muffet trigger intense combat music  
+  - **Medium Enemy Music**: Aaron, Woshua, Shyren, Temmie, Napstablook, Sans trigger standard combat music
+  - **Weak Enemy Music**: Dummy, Froggit, Whimsun, Vegetoid, Moldsmal, Loox trigger lighter combat music
+
+**Advanced Settings & Configuration System:**
+- **Resolution & Display Management**: Comprehensive display customization with 6 resolution options
+  - **Resolution Options**: 1024x768, 1280x720, 1366x768, 1920x1080, 2560x1440, 3840x2160
+  - **Aspect Ratio Support**: 4:3, 16:9 HD, 16:9 HD+, 16:9 Full HD, 16:9 QHD, 16:9 4K options
+  - **Fullscreen Toggle**: F11 hotkey and settings menu option for instant fullscreen switching
+  - **Real-time Application**: Resolution changes apply immediately without game restart
+- **Audio Control System**: Professional volume management with visual feedback
+  - **Music Volume Control**: 0-100% volume adjustment with green progress bar visualization
+  - **Sound Effects Volume**: 0-100% volume control with blue progress bar visualization  
+  - **Real-time Audio**: Volume changes apply immediately with proper audio mixing
+  - **Persistent Settings**: All volume levels saved and restored between sessions
+- **Enhanced Settings Interface**: Professional settings menu with intuitive controls
+  - **Visual Volume Bars**: Color-coded progress bars showing exact volume percentages
+  - **Numbered Options**: Clear 1-6 numbering system for easy navigation
+  - **Live Controls**: Arrow keys for volume adjustment, F11 for fullscreen, ESC to exit
+  - **Dynamic Layout**: Settings adapt based on emoji/sprite mode selection
+  - **Setting Previews**: Wall and floor style previews with sprite thumbnails
+
+**Critical Bug Fixes:**
+- **Enemy Definition Completion**: Fixed KeyError crashes by adding missing enemy definitions
+  - **Added Missing Enemies**: migosp, aaron, woshua, shyren, mad_dummy, lesser_dog, greater_dog
+  - **Balanced Statistics**: All new enemies have appropriate HP/Attack/Defense/XP values for their difficulty tier
+  - **Weapon Drop Integration**: Proper weapon drop assignments for all enemy types
+- **Enemy Sprite Integration Fix**: Resolved enemies still showing original crawl sprites instead of Undertale sprites
+  - **Sprite Key Mapping**: Fixed enemy rendering to use `enemy.enemy_type` instead of `enemy.name.lower()`
+  - **Visual Confirmation**: Enemies in dungeons now properly display as Undertale characters
+  - **Combat Consistency**: Enemy sprites in dungeons match their animated portraits in combat
+
+**User Requests Fulfilled:**
+- *"its not replacing the dungeon crawl stone soup full sprites for the enemy and the 2 other classes arnt using the directional sprites that the characters do have"*
+- *"could you also implement a feature to change the resolution and the music and sound settings in the settings menu"*
+- *KeyError: 'migosp'* crash resolution
+
+**Technical Implementation:**
+- Enhanced `load_sprites()` with Monster Kid and Asriel directional sprite systems
+- Added comprehensive enemy definitions for all referenced Undertale characters  
+- Updated `get_enemy_type_for_level()` to use authentic Undertale enemy progression
+- Implemented `apply_resolution_settings()` and `apply_audio_settings()` functions
+- Created `resolution_selection()` interface with 6 resolution options and fullscreen support
+- Enhanced `play_sound()` to apply global volume settings with proper audio mixing
+- Fixed enemy rendering code to properly use Undertale sprite mapping
+- Updated victory conditions from "dragon" to "asgore" with proper boss music integration
 
 ### v1.20.1: Enhanced Shop UX & Error Handling
 **Improved Shop Interface & User Experience:**

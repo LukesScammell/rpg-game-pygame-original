@@ -39,8 +39,6 @@ FOG_COLOR = (40, 40, 60)  # Dark blue-ish for unexplored areas
 # --- Pygame Setup ---
 pygame.init()
 pygame.mixer.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Python RPG Adventure")
 
 # --- Settings System ---
 def load_settings():
@@ -48,7 +46,11 @@ def load_settings():
     default_settings = {
         "use_emojis": True,
         "wall_sprite": "stone_brick1.png",
-        "floor_sprite": "sandstone_floor0.png"
+        "floor_sprite": "sandstone_floor0.png",
+        "resolution": [1024, 768],  # [width, height]
+        "music_volume": 0.5,  # 0.0 to 1.0
+        "sound_volume": 0.7,  # 0.0 to 1.0
+        "fullscreen": False
     }
     try:
         with open(SETTINGS_FILE, 'r') as f:
@@ -72,13 +74,69 @@ def save_settings(settings):
 # Load game settings
 game_settings = load_settings()
 
+# Apply resolution settings
+SCREEN_WIDTH = game_settings["resolution"][0]
+SCREEN_HEIGHT = game_settings["resolution"][1]
+
+# Initialize screen with settings-based resolution
+def apply_resolution_settings():
+    global screen, SCREEN_WIDTH, SCREEN_HEIGHT
+    SCREEN_WIDTH = game_settings["resolution"][0]
+    SCREEN_HEIGHT = game_settings["resolution"][1]
+    
+    if game_settings["fullscreen"]:
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+    else:
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("RPG Game - Undertale Edition")
+
+# Initial screen setup
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("RPG Game - Undertale Edition")
+
+# Apply audio volume settings
+def apply_audio_settings():
+    pygame.mixer.music.set_volume(game_settings["music_volume"])
+    # Note: Sound volume will be applied per-sound when playing
+
+apply_audio_settings()
+
 # --- Sprite Loading ---
 sprites = {}
 ui_elements = {}
 
+# --- Animation System ---
+class PortraitAnimation:
+    def __init__(self, frames, frame_duration=500):
+        self.frames = frames  # List of pygame surfaces
+        self.frame_duration = frame_duration  # Duration per frame in milliseconds
+        self.current_frame = 0
+        self.last_frame_time = pygame.time.get_ticks()
+    
+    def update(self):
+        """Update animation frame based on time"""
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_frame_time > self.frame_duration and len(self.frames) > 1:
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+            self.last_frame_time = current_time
+    
+    def get_current_frame(self):
+        """Get the current frame surface"""
+        if not self.frames:
+            return None
+        return self.frames[self.current_frame]
+
+# Global animation storage
+portrait_animations = {}
+
 def load_sprites():
-    """Load all sprite images."""
-    global sprites
+    """Load all sprite images with Undertale character system."""
+    global sprites, portrait_animations
+    
+    print("=== Loading Undertale-based sprites ===")
+    
+    # Load wall sprites
+    print("Loading wall sprites...")
     sprite_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-dngn")
     
     # Load wall sprites
@@ -128,49 +186,376 @@ def load_sprites():
     except pygame.error as e:
         print(f"  Error loading stairs sprite: {e}")
     
-    # Load player sprites
-    print("Loading player sprites...")
-    player_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "player", "base")
-    player_sprites = {
-        "warrior": "human_m.png",       # Male human warrior
-        "mage": "human_f.png",         # Female human mage  
-        "archer": "elf_m.png",         # Male elf archer
-        "rogue": "elf_f.png"           # Female elf rogue
+    # Load Undertale player sprites with directional movement
+    print("Loading Undertale player sprites...")
+    
+    # Warrior = Frisk (main character with full directional sprites)
+    frisk_path = os.path.join("assets", "undertale", "Characters", "Frisk")
+    frisk_directions = {
+        "down": ["spr_maincharad_0.png", "spr_maincharad_1.png", "spr_maincharad_2.png", "spr_maincharad_3.png"],
+        "left": ["spr_maincharal_0.png", "spr_maincharal_1.png"],
+        "right": ["spr_maincharar_0.png", "spr_maincharar_1.png"],
+        "up": ["spr_maincharau_0.png", "spr_maincharau_1.png", "spr_maincharau_2.png", "spr_maincharau_3.png"]
     }
     
-    for class_name, sprite_file in player_sprites.items():
-        try:
-            sprite_file_path = os.path.join(player_base_path, sprite_file)
-            if os.path.exists(sprite_file_path):
-                sprites[f"player_{class_name}"] = pygame.image.load(sprite_file_path)
-                sprites[f"player_{class_name}"] = pygame.transform.scale(sprites[f"player_{class_name}"], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {class_name} ({sprite_file})")
-            else:
-                print(f"  Warning: Player sprite not found: {sprite_file_path}")
-        except pygame.error as e:
-            print(f"  Error loading player sprite {sprite_file}: {e}")
+    for direction, sprite_files in frisk_directions.items():
+        frames = []
+        for sprite_file in sprite_files:
+            sprite_path = os.path.join(frisk_path, sprite_file)
+            if os.path.exists(sprite_path):
+                try:
+                    frame = pygame.image.load(sprite_path)
+                    frames.append(pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE)))
+                except pygame.error:
+                    continue
+        
+        if frames:
+            sprites[f"player_warrior_{direction}"] = frames[0]  # First frame for static display
+            portrait_animations[f"warrior_{direction}"] = PortraitAnimation(frames, 300)
+            print(f"  Loaded: warrior (Frisk) {direction} - {len(frames)} frames")
     
-    # Load monster sprites
-    print("Loading monster sprites...")
-    monster_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-mon")
-    monster_sprites = {
+    # Set default warrior sprite
+    if "player_warrior_down" in sprites:
+        sprites["player_warrior"] = sprites["player_warrior_down"]
+    
+    # Mage = Asriel (has directional sprites)
+    asriel_path = os.path.join("assets", "undertale", "Characters", "Asriel")
+    asriel_directions = {
+        "down": ["spr_asriel_d_0.png"],
+        "left": ["spr_asriel_l_0.png", "spr_asriel_l_1.png"],
+        "right": ["spr_asriel_r_0.png", "spr_asriel_r_1.png"],
+        "up": ["spr_asriel_u_0.png", "spr_asriel_u_1.png", "spr_asriel_u_2.png", "spr_asriel_u_3.png"]
+    }
+    
+    asriel_loaded = False
+    for direction, sprite_files in asriel_directions.items():
+        frames = []
+        for sprite_file in sprite_files:
+            sprite_path = os.path.join(asriel_path, sprite_file)
+            if os.path.exists(sprite_path):
+                try:
+                    frame = pygame.image.load(sprite_path)
+                    frames.append(pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE)))
+                    asriel_loaded = True
+                except pygame.error:
+                    continue
+        
+        if frames:
+            sprites[f"player_mage_{direction}"] = frames[0]  # First frame for static display
+            portrait_animations[f"mage_{direction}"] = PortraitAnimation(frames, 300)
+            print(f"  Loaded: mage (Asriel) {direction} - {len(frames)} frames")
+    
+    # Set default mage sprite
+    if "player_mage_down" in sprites:
+        sprites["player_mage"] = sprites["player_mage_down"]
+        print("  Loaded: mage (Asriel)")
+    
+    if not asriel_loaded:
+        # Fallback: Use Frisk for mage too
+        if "player_warrior" in sprites:
+            sprites["player_mage"] = sprites["player_warrior"]
+            for direction in ["down", "left", "right", "up"]:
+                if f"player_warrior_{direction}" in sprites:
+                    sprites[f"player_mage_{direction}"] = sprites[f"player_warrior_{direction}"]
+                    if f"warrior_{direction}" in portrait_animations:
+                        portrait_animations[f"mage_{direction}"] = portrait_animations[f"warrior_{direction}"]
+            print("  Loaded: mage (Frisk fallback)")
+    
+    # Archer = Monster Kid (has full directional sprites)
+    monster_kid_path = os.path.join("assets", "undertale", "Characters", "Monster Kid")
+    mk_directions = {
+        "down": ["spr_mkid_d_0.png", "spr_mkid_d_1.png", "spr_mkid_d_2.png"],
+        "left": ["spr_mkid_l_0.png", "spr_mkid_l_1.png", "spr_mkid_l_2.png"],
+        "right": ["spr_mkid_r_0.png", "spr_mkid_r_1.png", "spr_mkid_r_2.png"],
+        "up": ["spr_mkid_u_0.png", "spr_mkid_u_1.png", "spr_mkid_u_2.png"]
+    }
+    
+    mk_loaded = False
+    for direction, sprite_files in mk_directions.items():
+        frames = []
+        for sprite_file in sprite_files:
+            sprite_path = os.path.join(monster_kid_path, sprite_file)
+            if os.path.exists(sprite_path):
+                try:
+                    frame = pygame.image.load(sprite_path)
+                    frames.append(pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE)))
+                    mk_loaded = True
+                except pygame.error:
+                    continue
+        
+        if frames:
+            sprites[f"player_archer_{direction}"] = frames[0]  # First frame for static display
+            portrait_animations[f"archer_{direction}"] = PortraitAnimation(frames, 300)
+            print(f"  Loaded: archer (Monster Kid) {direction} - {len(frames)} frames")
+    
+    # Set default archer sprite
+    if "player_archer_down" in sprites:
+        sprites["player_archer"] = sprites["player_archer_down"]
+        print("  Loaded: archer (Monster Kid)")
+    
+    if not mk_loaded:
+        print("  Warning: Monster Kid directional sprites not found for archer")
+    
+    # Load Undertale enemy sprites with animated portraits
+    print("Loading Undertale enemy sprites...")
+    
+    enemy_sprite_mapping = {
+        # Training dummy
+        "dummy": {
+            "path": os.path.join("assets", "undertale", "Characters", "Dummies"),
+            "files": ["spr_dummy_0.png"],
+            "portrait_files": ["spr_dummy_0.png"]
+        },
+        
+        # Ruins enemies (Froggit & Vegetoid from actual enemy sprites)
+        "froggit": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "01 - Ruins"),
+            "files": ["spr_smallfrog_0.png"],
+            "portrait_files": ["spr_smallfrog_0.png", "spr_smallfrog_1.png", "spr_smallfrog_2.png", "spr_smallfrog_3.png"]
+        },
+        
+        "vegetoid": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "01 - Ruins"),
+            "files": ["spr_vegetableoutside_0.png"],
+            "portrait_files": ["spr_vegetableoutside_0.png", "spr_vegetableoutside_1.png"]
+        },
+        
+        # Snowdin enemies (using actual area sprites)
+        "snowdrake": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "02 - Snowdin", "Snowdin Forest"),
+            "files": ["spr_snowdrakenpc_0.png"],
+            "portrait_files": ["spr_snowdrakenpc_0.png", "spr_snowdrakenpc_1.png"]
+        },
+        
+        "icecap": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "02 - Snowdin", "Snowdin Forest"),
+            "files": ["spr_icecapb_npc_0.png"],
+            "portrait_files": ["spr_icecapb_npc_0.png", "spr_icecapb_npc_1.png", "spr_icecapg_npc_0.png", "spr_icecapr_npc_0.png"]
+        },
+        
+        "gyftrot": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "02 - Snowdin", "Snowdin Forest"),
+            "files": ["spr_gyftrotnpc_0.png"],
+            "portrait_files": ["spr_gyftrotnpc_0.png", "spr_gyftrotnpc_1.png"]
+        },
+        
+        # Special enemies using creature sprites
+        "whimsun": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "02 - Snowdin", "Snowdin Forest"),
+            "files": ["spr_faun_0.png"],
+            "portrait_files": ["spr_faun_0.png", "spr_faun_1.png"]
+        },
+        
+        "loox": {
+            "path": os.path.join("assets", "undertale", "Characters", "Mysteryman & Gaster Followers"),
+            "files": ["spr_g_follower_1.png"] if os.path.exists(os.path.join("assets", "undertale", "Characters", "Mysteryman & Gaster Followers", "spr_g_follower_1.png")) else ["spr_dummy_0.png"],
+            "portrait_files": ["spr_g_follower_1.png"] if os.path.exists(os.path.join("assets", "undertale", "Characters", "Mysteryman & Gaster Followers", "spr_g_follower_1.png")) else ["spr_dummy_0.png"],
+            "fallback_path": os.path.join("assets", "undertale", "Characters", "Dummies")
+        },
+        
+        "moldsmal": {
+            "path": os.path.join("assets", "undertale", "Characters", "Amalgamates"),
+            "files": ["spr_amalgam_save_0.png"],
+            "portrait_files": ["spr_amalgam_save_0.png", "spr_amalgam_save_1.png", "spr_amalgam_save_2.png"]
+        },
+        
+        # Underground creatures
+        "pyrope": {
+            "path": os.path.join("assets", "undertale", "Characters", "Amalgamates"),
+            "files": ["spr_amalgam_exc_0.png"],
+            "portrait_files": ["spr_amalgam_exc_0.png", "spr_amalgam_exc_1.png", "spr_amalgam_exc_2.png", "spr_amalgam_exc_3.png"]
+        },
+        
+        "vulkin": {
+            "path": os.path.join("assets", "undertale", "Characters", "Amalgamates"),
+            "files": ["spr_amalgam_fridge_0.png"],
+            "portrait_files": ["spr_amalgam_fridge_0.png", "spr_amalgam_fridge_1.png", "spr_amalgam_fridge_2.png"]
+        },
+        
+        "tsunderplane": {
+            "path": os.path.join("assets", "undertale", "Characters", "Amalgamates"),
+            "files": ["spr_amalgam_dogball_0.png"],
+            "portrait_files": ["spr_amalgam_dogball_0.png", "spr_amalgam_dogball_1.png", "spr_amalgam_dogball_2.png"]
+        },
+        
+        # Special creature - Temmie
+        "temmie": {
+            "path": os.path.join("assets", "undertale", "Characters", "Temmie"),
+            "files": ["spr_temmie_hive_0.png"],
+            "portrait_files": ["spr_temmie_hive_0.png", "spr_temmie_hive_1.png", "spr_temmie_hive_2.png", "spr_temmie_hive_3.png"]
+        },
+        
+        # Boss-level Spider
+        "muffet": {
+            "path": os.path.join("assets", "undertale", "Characters", "Muffet"),
+            "files": ["spr_muffet_overworld_0.png"],
+            "portrait_files": ["spr_muffet_overworld_0.png", "spr_muffet_overworld_1.png", "spr_muffet_overworld_2.png", "spr_muffet_overworld_3.png"]
+        },
+        
+        # Flowey (multiple animation frames)
+        "flowey": {
+            "path": os.path.join("assets", "undertale", "Characters", "Flowey"),
+            "files": ["spr_flowey_0.png"],
+            "portrait_files": ["spr_flowey_0.png", "spr_flowey_1.png", "spr_floweylaughoverworld_0.png", "spr_floweylaughoverworld_1.png"]
+        },
+        
+        # Sans (multiple poses for animation)
+        "sans": {
+            "path": os.path.join("assets", "undertale", "Characters", "sans"),
+            "files": ["spr_sans_d_0.png"],
+            "portrait_files": ["spr_sans_d_0.png", "spr_sans_d_1.png", "spr_sans_d_2.png", "spr_sans_d_3.png"],
+            "portrait_path": os.path.join("assets", "undertale", "Characters", "Portraits-20250721T005640Z-1-001", "Portraits", "Sans")
+        },
+        
+        # Papyrus
+        "papyrus": {
+            "path": os.path.join("assets", "undertale", "Characters", "Papyrus"),
+            "files": ["spr_papyrus_d_0.png"],
+            "portrait_files": ["spr_papyrus_d_0.png", "spr_papyrus_d_1.png", "spr_papyrus_d_2.png", "spr_papyrus_d_3.png"],
+            "portrait_path": os.path.join("assets", "undertale", "Characters", "Portraits-20250721T005640Z-1-001", "Portraits", "Papyrus")
+        },
+        
+        # Undyne  
+        "undyne": {
+            "path": os.path.join("assets", "undertale", "Characters", "Undyne", "No Armor"),
+            "files": ["spr_undyne_d_0.png"],
+            "portrait_files": ["spr_undyne_d_0.png", "spr_undyne_d_1.png", "spr_undyne_d_2.png", "spr_undyne_d_3.png"],
+            "portrait_path": os.path.join("assets", "undertale", "Characters", "Portraits-20250721T005640Z-1-001", "Portraits", "Undyne")
+        },
+        
+        # Mettaton
+        "mettaton": {
+            "path": os.path.join("assets", "undertale", "Characters", "Mettaton"),
+            "files": ["spr_mettaton_talk_0.png"],
+            "portrait_files": ["spr_mettaton_talk_0.png", "spr_mettaton_talk_1.png", "spr_mettaton_wave_0.png", "spr_mettaton_wave_1.png"]
+        },
+        
+        # Alphys
+        "alphys": {
+            "path": os.path.join("assets", "undertale", "Characters", "Alphys"),
+            "files": ["spr_alphys_d_0.png"],
+            "portrait_files": ["spr_alphys_d_0.png", "spr_alphys_d_1.png", "spr_alphys_d_2.png", "spr_alphys_d_3.png"],
+            "portrait_path": os.path.join("assets", "undertale", "Characters", "Portraits-20250721T005640Z-1-001", "Portraits", "Alphys")
+        },
+        
+        # Toriel
+        "toriel": {
+            "path": os.path.join("assets", "undertale", "Characters", "Toriel"),
+            "files": ["spr_toriel_d_0.png"],
+            "portrait_files": ["spr_toriel_d_0.png", "spr_toriel_d_1.png", "spr_toriel_d_2.png", "spr_toriel_d_3.png"],
+            "portrait_path": os.path.join("assets", "undertale", "Characters", "Portraits-20250721T005640Z-1-001", "Portraits", "Toriel")
+        },
+        
+        # Asgore
+        "asgore": {
+            "path": os.path.join("assets", "undertale", "Characters", "Asgore"), 
+            "files": ["spr_asgore_d_0.png"],
+            "portrait_files": ["spr_asgore_d_0.png", "spr_asgore_d_1.png", "spr_asgore_d_2.png", "spr_asgore_d_3.png"],
+            "portrait_path": os.path.join("assets", "undertale", "Characters", "Portraits-20250721T005640Z-1-001", "Portraits", "Asgore")
+        },
+        
+        # Ghost enemy
+        "napstablook": {
+            "path": os.path.join("assets", "undertale", "Characters", "Napstablook"),
+            "files": ["spr_napstablook_d_0.png"],
+            "portrait_files": ["spr_napstablook_d_0.png", "spr_napstablook_l_0.png", "spr_napstablook_r_0.png"]
+        },
+        
+        # Fire creature
+        "grillby": {
+            "path": os.path.join("assets", "undertale", "Characters", "Grillby"),
+            "files": ["spr_grillby_d_0.png"],
+            "portrait_files": ["spr_grillby_d_0.png", "spr_grillby_d_1.png", "spr_grillby_d_2.png", "spr_grillby_d_3.png"]
+        },
+        
+        # Sea creature
+        "onionsan": {
+            "path": os.path.join("assets", "undertale", "Characters", "Onionsan"),
+            "files": ["spr_onionsan_bright_0.png"],
+            "portrait_files": ["spr_onionsan_bright_0.png", "spr_onionsan_bright_1.png", "spr_onionsan_kawaii_0.png", "spr_onionsan_kawaii_1.png"]
+        }
+    }
+    
+    # Load all enemy sprites and portraits
+    for enemy_name, config in enemy_sprite_mapping.items():
+        # Load main sprite
+        sprite_loaded = False
+        for sprite_file in config["files"]:
+            sprite_path = os.path.join(config["path"], sprite_file)
+            # Try fallback path if main path doesn't work
+            if not os.path.exists(sprite_path) and "fallback_path" in config:
+                sprite_path = os.path.join(config["fallback_path"], sprite_file)
+            
+            if os.path.exists(sprite_path):
+                try:
+                    enemy_sprite = pygame.image.load(sprite_path)
+                    sprites[f"monster_{enemy_name}"] = pygame.transform.scale(enemy_sprite, (TILE_SIZE, TILE_SIZE))
+                    sprite_loaded = True
+                    break
+                except pygame.error:
+                    continue
+        
+        # Load portrait animation frames
+        portrait_frames = []
+        
+        # Try portrait-specific path first
+        if "portrait_path" in config and os.path.exists(config["portrait_path"]):
+            for portrait_file in os.listdir(config["portrait_path"]):
+                if portrait_file.endswith('.png') and not portrait_file.startswith('Unused'):
+                    portrait_path = os.path.join(config["portrait_path"], portrait_file)
+                    try:
+                        portrait_frame = pygame.image.load(portrait_path)
+                        portrait_frames.append(pygame.transform.scale(portrait_frame, (128, 128)))
+                    except pygame.error:
+                        continue
+        
+        # Fallback to main character folder
+        if not portrait_frames:
+            for portrait_file in config["portrait_files"]:
+                portrait_path = os.path.join(config["path"], portrait_file)
+                # Try fallback path if main path doesn't work
+                if not os.path.exists(portrait_path) and "fallback_path" in config:
+                    portrait_path = os.path.join(config["fallback_path"], portrait_file)
+                
+                if os.path.exists(portrait_path):
+                    try:
+                        portrait_frame = pygame.image.load(portrait_path)
+                        portrait_frames.append(pygame.transform.scale(portrait_frame, (128, 128)))
+                    except pygame.error:
+                        continue
+        
+        if portrait_frames:
+            portrait_animations[f"enemy_{enemy_name}"] = PortraitAnimation(portrait_frames, 800)
+        
+        if sprite_loaded:
+            print(f"  Loaded: {enemy_name} - {len(portrait_frames)} portrait frames")
+        else:
+            print(f"  Warning: Could not load sprite for {enemy_name}")
+    
+    # No longer need simplified enemies mapping - all enemies now have proper sprites!
+    
+    # Load original crawl enemies as fallbacks
+    print("Loading original crawl enemy sprites...")
+    original_enemies = {
         "goblin": "goblin.png",
         "orc": "orc_warrior.png", 
         "troll": "troll.png",
-        "dragon": "dragon.png"      # Changed from dragon_gold.png to dragon.png
+        "dragon": "dragon.png"
     }
     
-    for monster_name, sprite_file in monster_sprites.items():
-        try:
-            sprite_file_path = os.path.join(monster_path, sprite_file)
-            if os.path.exists(sprite_file_path):
-                sprites[f"monster_{monster_name}"] = pygame.image.load(sprite_file_path)
-                sprites[f"monster_{monster_name}"] = pygame.transform.scale(sprites[f"monster_{monster_name}"], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {monster_name} ({sprite_file})")
-            else:
-                print(f"  Warning: Monster sprite not found: {sprite_file_path}")
-        except pygame.error as e:
-            print(f"  Error loading monster sprite {sprite_file}: {e}")
+    monster_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-mon")
+    for enemy_name, sprite_file in original_enemies.items():
+        sprite_path = os.path.join(monster_path, sprite_file)
+        if os.path.exists(sprite_path):
+            try:
+                enemy_sprite = pygame.image.load(sprite_path)
+                sprites[f"monster_{enemy_name}"] = pygame.transform.scale(enemy_sprite, (TILE_SIZE, TILE_SIZE))
+                # Create simple portrait animation
+                portrait_frames = [pygame.transform.scale(enemy_sprite, (128, 128))]
+                portrait_animations[f"enemy_{enemy_name}"] = PortraitAnimation(portrait_frames, 1000)
+                print(f"  Loaded: {enemy_name} (original)")
+            except pygame.error:
+                continue
     
     # Load item sprites  
     print("Loading item sprites...")
@@ -288,7 +673,7 @@ def load_sprites():
         except pygame.error as e:
             print(f"  Error loading additional weapon sprite {weapon_file}: {e}")
     
-    print(f"Sprite loading complete. Loaded {len(sprites)} sprites.")
+    print(f"Sprite loading complete. Loaded {len(sprites)} sprites and {len(portrait_animations)} portrait animations.")
 
     # Load skill spell icons
     print("Loading skill spell icons...")
@@ -651,7 +1036,7 @@ MUSIC_CONFIG = {
     "combat_goblin": "Spider_Dance_music.ogg",
     "combat_orc": "Heartache_music.ogg",
     "combat_troll": "Heartache_music.ogg", 
-    "combat_dragon": "Dummy!_music.ogg"
+    "combat_asgore": "Dummy!_music.ogg"
 }
 
 def load_sounds():
@@ -779,16 +1164,20 @@ def stop_music():
 
 def get_combat_music_for_enemies(enemies):
     """Determine which combat music to play based on enemy types."""
-    # Priority order: dragon > troll > orc > goblin
+    # Priority order for Undertale enemies: boss > strong > medium > weak
     enemy_types = [enemy.enemy_type for enemy in enemies]
     
-    if "dragon" in enemy_types:
-        return "combat_dragon"
-    elif "troll" in enemy_types:
+    # Boss enemies
+    if any(boss in enemy_types for boss in ["asgore", "undyne", "mettaton", "papyrus", "toriel"]):
+        return "combat_asgore"
+    # Strong enemies
+    elif any(strong in enemy_types for strong in ["mad_dummy", "lesser_dog", "greater_dog", "muffet", "alphys"]):
         return "combat_troll"
-    elif "orc" in enemy_types:
+    # Medium enemies
+    elif any(medium in enemy_types for medium in ["aaron", "woshua", "shyren", "temmie", "napstablook", "sans"]):
         return "combat_orc"
-    elif "goblin" in enemy_types:
+    # Weak enemies
+    elif any(weak in enemy_types for weak in ["dummy", "froggit", "whimsun", "vegetoid", "moldsmal", "loox", "migosp"]):
         return "combat_goblin"
     else:
         return "combat_goblin"  # Default fallback
@@ -797,7 +1186,9 @@ def play_sound(sound_name, volume=1.0):
     """Play a sound effect if it exists."""
     if sound_name in sounds and sounds[sound_name]:
         sound = sounds[sound_name]
-        sound.set_volume(volume)
+        # Apply global sound volume setting
+        final_volume = volume * game_settings["sound_volume"]
+        sound.set_volume(final_volume)
         sound.play()
 
 def play_random_sound(sound_list, volume=1.0):
@@ -852,6 +1243,55 @@ CLASSES = {
 
 # --- Enemy Types ---
 ENEMIES = {
+    # Early game enemies (Levels 1-2)
+    "dummy": {"hp": 30, "attack": 8, "defense": 2, "xp": 10, "icon": UI["goblin"]},
+    "froggit": {"hp": 40, "attack": 10, "defense": 4, "xp": 15, "icon": UI["goblin"]}, 
+    "whimsun": {"hp": 35, "attack": 9, "defense": 3, "xp": 12, "icon": UI["goblin"]},
+    
+    # Mid game enemies (Levels 2-3)  
+    "loox": {"hp": 60, "attack": 14, "defense": 5, "xp": 20, "icon": UI["orc"]},
+    "vegetoid": {"hp": 70, "attack": 16, "defense": 6, "xp": 25, "icon": UI["orc"]},
+    "moldsmal": {"hp": 50, "attack": 12, "defense": 4, "xp": 18, "icon": UI["orc"]},
+    "migosp": {"hp": 55, "attack": 13, "defense": 5, "xp": 22, "icon": UI["orc"]},
+    
+    # Medium difficulty enemies (Levels 3-4)
+    "aaron": {"hp": 80, "attack": 19, "defense": 7, "xp": 32, "icon": UI["orc"]},
+    "woshua": {"hp": 75, "attack": 17, "defense": 8, "xp": 28, "icon": UI["orc"]},
+    "shyren": {"hp": 85, "attack": 21, "defense": 6, "xp": 35, "icon": UI["orc"]},
+    
+    # Later game enemies (Levels 3-4)
+    "snowdrake": {"hp": 85, "attack": 18, "defense": 7, "xp": 30, "icon": UI["troll"]},
+    "icecap": {"hp": 90, "attack": 20, "defense": 8, "xp": 35, "icon": UI["troll"]},
+    "gyftrot": {"hp": 110, "attack": 22, "defense": 9, "xp": 40, "icon": UI["troll"]},
+    
+    # High level enemies (Levels 4-5)
+    "pyrope": {"hp": 130, "attack": 25, "defense": 12, "xp": 50, "icon": UI["troll"]},
+    "vulkin": {"hp": 140, "attack": 28, "defense": 14, "xp": 55, "icon": UI["troll"]},
+    "tsunderplane": {"hp": 160, "attack": 30, "defense": 16, "xp": 65, "icon": UI["troll"]},
+    "mad_dummy": {"hp": 150, "attack": 26, "defense": 13, "xp": 60, "icon": UI["troll"]},
+    "lesser_dog": {"hp": 120, "attack": 24, "defense": 11, "xp": 48, "icon": UI["troll"]},
+    "greater_dog": {"hp": 170, "attack": 29, "defense": 15, "xp": 70, "icon": UI["troll"]},
+    
+    # Special creature enemies
+    "temmie": {"hp": 75, "attack": 15, "defense": 8, "xp": 35, "icon": UI["orc"]},
+    "muffet": {"hp": 180, "attack": 26, "defense": 12, "xp": 80, "icon": UI["troll"]},
+    "napstablook": {"hp": 65, "attack": 12, "defense": 15, "xp": 30, "icon": UI["orc"]},
+    "grillby": {"hp": 100, "attack": 20, "defense": 10, "xp": 45, "icon": UI["troll"]},
+    "onionsan": {"hp": 95, "attack": 18, "defense": 12, "xp": 42, "icon": UI["troll"]},
+    
+    # Boss enemies (Level 5)
+    "papyrus": {"hp": 200, "attack": 32, "defense": 18, "xp": 100, "icon": UI["dragon"]},
+    "undyne": {"hp": 250, "attack": 36, "defense": 20, "xp": 120, "icon": UI["dragon"]},
+    "sans": {"hp": 180, "attack": 40, "defense": 15, "xp": 150, "icon": UI["dragon"]},
+    "mettaton": {"hp": 280, "attack": 35, "defense": 22, "xp": 180, "icon": UI["dragon"]},
+    "flowey": {"hp": 350, "attack": 42, "defense": 25, "xp": 250, "icon": UI["dragon"]},
+    
+    # Ultimate bosses
+    "toriel": {"hp": 220, "attack": 28, "defense": 16, "xp": 110, "icon": UI["dragon"]},
+    "alphys": {"hp": 160, "attack": 24, "defense": 20, "xp": 85, "icon": UI["troll"]},
+    "asgore": {"hp": 400, "attack": 45, "defense": 28, "xp": 300, "icon": UI["dragon"]},
+    
+    # Original enemies (balanced)
     "goblin": {"hp": 45, "attack": 10, "defense": 3, "xp": 15, "icon": UI["goblin"]},
     "orc": {"hp": 75, "attack": 16, "defense": 6, "xp": 25, "icon": UI["orc"]},
     "troll": {"hp": 120, "attack": 22, "defense": 10, "xp": 40, "icon": UI["troll"]},
@@ -1019,6 +1459,7 @@ class Player(Entity):
     def __init__(self, x, y, name, char_class):
         super().__init__(x, y, name, CLASSES[char_class]["hp"], CLASSES[char_class]["attack"], CLASSES[char_class]["defense"], CLASSES[char_class]["icon"])
         self.char_class = char_class
+        self.direction = "down"  # Default direction for sprite display
         self.xp = 0
         self.level = 1
         self.gold = 100  # Starting gold for shopping
@@ -1367,7 +1808,7 @@ class Dungeon:
         else: # Boss level
             boss_room = self.rooms[-1]
             boss_x, boss_y = boss_room.center()
-            self.enemies.append(Enemy(boss_x, boss_y, "dragon", self.level))
+            self.enemies.append(Enemy(boss_x, boss_y, "asgore", self.level))
 
     def determine_room_type(self, room_num, chest_room_placed, chest_room_attempts):
         """Determine what type of room to generate."""
@@ -1476,35 +1917,36 @@ class Dungeon:
 
     def get_enemy_type_for_level(self):
         """Get an appropriate enemy type based on current dungeon level."""
+        # Use Undertale enemy names based on level progression
         if self.level == 1:
-            # Level 1: Mostly goblins (80%), some orcs (20%)
+            # Level 1: Weak enemies (80% weak, 20% medium)
             return random.choices(
-                ['goblin', 'orc'],
-                weights=[80, 20]
+                ['dummy', 'froggit', 'whimsun'],
+                weights=[40, 30, 30]
             )[0]
         elif self.level == 2:
-            # Level 2: More balanced, goblins (60%), orcs (35%), few trolls (5%)
+            # Level 2: Mix of weak and medium enemies
             return random.choices(
-                ['goblin', 'orc', 'troll'],
-                weights=[60, 35, 5]
+                ['froggit', 'whimsun', 'vegetoid', 'moldsmal', 'loox'],
+                weights=[25, 25, 20, 15, 15]
             )[0]
         elif self.level == 3:
-            # Level 3: Fewer goblins (30%), more orcs (50%), more trolls (20%)
+            # Level 3: Medium difficulty enemies
             return random.choices(
-                ['goblin', 'orc', 'troll'],
-                weights=[30, 50, 20]
+                ['vegetoid', 'loox', 'migosp', 'moldsmal', 'aaron', 'woshua'],
+                weights=[20, 20, 20, 15, 15, 10]
             )[0]
         elif self.level == 4:
-            # Level 4: Rare goblins (15%), orcs (45%), trolls (40%)
+            # Level 4: Stronger enemies
             return random.choices(
-                ['goblin', 'orc', 'troll'],
-                weights=[15, 45, 40]
+                ['aaron', 'woshua', 'shyren', 'temmie', 'mad_dummy'],
+                weights=[25, 25, 20, 15, 15]
             )[0]
         else:
-            # Level 5+: Boss level - orcs (30%), trolls (70%), dragons handled separately
+            # Level 5+: Strong enemies and bosses
             return random.choices(
-                ['orc', 'troll'],
-                weights=[30, 70]
+                ['mad_dummy', 'lesser_dog', 'greater_dog', 'papyrus', 'undyne', 'mettaton'],
+                weights=[20, 15, 15, 20, 15, 15]
             )[0]
 
     def place_treasure_room_content(self, room):
@@ -1519,13 +1961,13 @@ class Dungeon:
                 enemy = Enemy(x, y, enemy_type, self.level)
                 
                 # Same weapon drops as normal rooms
-                if enemy_type == "goblin":
+                if enemy_type in ["dummy", "froggit", "whimsun"]:
                     enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]
-                elif enemy_type == "orc":
+                elif enemy_type in ["vegetoid", "moldsmal", "loox", "migosp"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]
-                elif enemy_type == "troll":
+                elif enemy_type in ["aaron", "woshua", "shyren", "temmie"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]
-                elif enemy_type == "dragon":
+                elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]
                 
                 self.enemies.append(enemy)
@@ -1651,13 +2093,13 @@ class Dungeon:
                 enemy = Enemy(x, y, enemy_type, self.level)
                 
                 # Add weapon drops based on enemy type
-                if enemy_type == "goblin":
+                if enemy_type in ["dummy", "froggit", "whimsun"]:
                     enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]  # Basic weapons
-                elif enemy_type == "orc":
+                elif enemy_type in ["vegetoid", "moldsmal", "loox", "migosp"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]  # Intermediate weapons
-                elif enemy_type == "troll":
+                elif enemy_type in ["aaron", "woshua", "shyren", "temmie"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]  # Advanced weapons and armor
-                elif enemy_type == "dragon":
+                elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]  # Epic weapons
                 
                 self.enemies.append(enemy)
@@ -1946,12 +2388,26 @@ class Game:
                 draw_gradient_rect(screen, glow_rect, (255, 255, 0, 50), (255, 215, 0, 30))
                 pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], glow_rect, width=3, border_radius=8)
             
-            # Player name and class with icons
+            # Player name and class with animated portraits and icons
             if game_settings['use_emojis']:
                 status = f'{player.icon} {player.name} (Lv.{player.level})'
-            else:
+                # Draw static sprite as fallback
                 class_sprite_key = f"player_{player.char_class}"
                 if class_sprite_key in sprites:
+                    screen.blit(sprites[class_sprite_key], (player_section_x, y_pos))
+            else:
+                class_sprite_key = f"player_{player.char_class}"
+                # Try to draw animated portrait first, fallback to static sprite
+                portrait_key = f"{player.char_class}_{player.direction}"  # Use player's actual direction
+                if portrait_key in portrait_animations:
+                    # Update and draw animated portrait
+                    portrait_animations[portrait_key].update()
+                    current_frame = portrait_animations[portrait_key].get_current_frame()
+                    if current_frame:
+                        # Scale portrait for combat display
+                        portrait_scaled = pygame.transform.scale(current_frame, (TILE_SIZE, TILE_SIZE))
+                        screen.blit(portrait_scaled, (player_section_x, y_pos))
+                elif class_sprite_key in sprites:
                     screen.blit(sprites[class_sprite_key], (player_section_x, y_pos))
                 status = f'{player.name} (Lv.{player.level}, {player.char_class.title()})'
             
@@ -2052,12 +2508,26 @@ class Game:
                 draw_gradient_rect(screen, glow_rect, (255, 0, 0, 50), (255, 100, 100, 30))
                 pygame.draw.rect(screen, ENHANCED_COLORS['danger_red'], glow_rect, width=3, border_radius=8)
             
-            # Enemy sprite and name
+            # Enemy sprite and name with animated portraits
             if game_settings['use_emojis']:
                 status = f'{enemy.icon} {enemy.name} (Lv.{self.dungeon_level})'
-            else:
+                # Draw static sprite as fallback
                 enemy_sprite_key = f"monster_{enemy.enemy_type}"
                 if enemy_sprite_key in sprites:
+                    screen.blit(sprites[enemy_sprite_key], (enemy_section_x, y_pos))
+            else:
+                enemy_sprite_key = f"monster_{enemy.enemy_type}"
+                # Try to draw animated portrait first, fallback to static sprite
+                enemy_portrait_key = f"enemy_{enemy.enemy_type}"
+                if enemy_portrait_key in portrait_animations:
+                    # Update and draw animated portrait
+                    portrait_animations[enemy_portrait_key].update()
+                    current_frame = portrait_animations[enemy_portrait_key].get_current_frame()
+                    if current_frame:
+                        # Scale portrait for combat display - make enemies slightly larger
+                        portrait_scaled = pygame.transform.scale(current_frame, (48, 48))
+                        screen.blit(portrait_scaled, (enemy_section_x, y_pos))
+                elif enemy_sprite_key in sprites:
                     screen.blit(sprites[enemy_sprite_key], (enemy_section_x, y_pos))
                 status = f'{enemy.name} (Level {self.dungeon_level})'
             
@@ -3247,66 +3717,86 @@ class Game:
     def settings_menu(self):
         global game_settings
         screen.fill(BLACK)
-        self.draw_text("Settings", SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 200)
+        self.draw_text("Settings", SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 250)
         
-        # Draw emoji setting with UI button sprite
+        button_x = SCREEN_WIDTH // 2 - 250
+        start_y = SCREEN_HEIGHT // 2 - 200
+        
+        # 1. Resolution setting
+        res_text = f"Resolution: {game_settings['resolution'][0]}x{game_settings['resolution'][1]}"
+        if game_settings['fullscreen']:
+            res_text += " (Fullscreen)"
+        self.draw_text(f"1. {res_text}", button_x, start_y)
+        if "tab_unselected" in ui_elements:
+            screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y - 5))
+        
+        # 2. Music Volume
+        music_vol = int(game_settings['music_volume'] * 100)
+        self.draw_text(f"2. Music Volume: {music_vol}%", button_x, start_y + 40)
+        if "tab_unselected" in ui_elements:
+            screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 35))
+        
+        # Volume bar for music
+        bar_x = button_x + 200
+        bar_y = start_y + 45
+        bar_width = 200
+        bar_height = 10
+        pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
+        fill_width = int(bar_width * game_settings['music_volume'])
+        pygame.draw.rect(screen, GREEN, (bar_x, bar_y, fill_width, bar_height))
+        
+        # 3. Sound Volume  
+        sound_vol = int(game_settings['sound_volume'] * 100)
+        self.draw_text(f"3. Sound Volume: {sound_vol}%", button_x, start_y + 80)
+        if "tab_unselected" in ui_elements:
+            screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 75))
+        
+        # Volume bar for sound
+        bar_y = start_y + 85
+        pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
+        fill_width = int(bar_width * game_settings['sound_volume'])
+        pygame.draw.rect(screen, BLUE, (bar_x, bar_y, fill_width, bar_height))
+        
+        # 4. Display mode (emoji/sprite)
         emoji_status = "ON" if game_settings['use_emojis'] else "OFF"
-        button_x = SCREEN_WIDTH // 2 - 200
-        button_y = SCREEN_HEIGHT // 2 - 150
-        
-        # Use different sprite based on setting state
         button_sprite = "tab_selected" if game_settings['use_emojis'] else "tab_unselected"
         if button_sprite in ui_elements:
-            screen.blit(ui_elements[button_sprite], (button_x - 30, button_y - 5))
-        
-        self.draw_text(f"1. Use Emojis: {emoji_status}", button_x, button_y)
+            screen.blit(ui_elements[button_sprite], (button_x - 30, start_y + 115))
+        self.draw_text(f"4. Use Emojis: {emoji_status}", button_x, start_y + 120)
         
         # Only show sprite options if not using emojis
         if not game_settings['use_emojis']:
-            # Show current wall selection with preview and UI button
+            # 5. Wall Style
             wall_name = game_settings['wall_sprite'].replace('.png', '').replace('_', ' ').title()
-            wall_button_y = SCREEN_HEIGHT // 2 - 100
-            
+            self.draw_text(f"5. Wall Style: {wall_name}", button_x, start_y + 160)
             if "tab_unselected" in ui_elements:
-                screen.blit(ui_elements["tab_unselected"], (button_x - 30, wall_button_y - 5))
+                screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 155))
             
-            self.draw_text(f"2. Wall Style: {wall_name}", button_x, wall_button_y)
-            
-            # Show wall preview
+            # Wall preview
             sprite_key = f"wall_{game_settings['wall_sprite']}"
             if sprite_key in sprites:
-                preview_sprite = pygame.transform.scale(sprites[sprite_key], (48, 48))
-                screen.blit(preview_sprite, (SCREEN_WIDTH // 2 + 150, wall_button_y - 5))
+                preview_sprite = pygame.transform.scale(sprites[sprite_key], (32, 32))
+                screen.blit(preview_sprite, (button_x + 200, start_y + 155))
             
-            # Show current floor selection with preview and UI button
+            # 6. Floor Style
             floor_name = game_settings['floor_sprite'].replace('.png', '').replace('_', ' ').title()
-            floor_button_y = SCREEN_HEIGHT // 2 - 50
-            
+            self.draw_text(f"6. Floor Style: {floor_name}", button_x, start_y + 200)
             if "tab_unselected" in ui_elements:
-                screen.blit(ui_elements["tab_unselected"], (button_x - 30, floor_button_y - 5))
+                screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 195))
             
-            self.draw_text(f"3. Floor Style: {floor_name}", button_x, floor_button_y)
-            
-            # Show floor preview
+            # Floor preview
             sprite_key = f"floor_{game_settings['floor_sprite']}"
             if sprite_key in sprites:
-                preview_sprite = pygame.transform.scale(sprites[sprite_key], (48, 48))
-                screen.blit(preview_sprite, (SCREEN_WIDTH // 2 + 150, floor_button_y - 5))
-                
-            # Show instruction for sprite mode
-            self.draw_text("Use numbers 2-3 to change sprite styles", 
-                          SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 20, GRAY)
-        else:
-            # Show emoji mode message
-            self.draw_text("Emoji mode enabled - sprite options hidden", 
-                          SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 80, GRAY)
+                preview_sprite = pygame.transform.scale(sprites[sprite_key], (32, 32))
+                screen.blit(preview_sprite, (button_x + 200, start_y + 195))
         
-        # Back button with UI sprite
-        back_button_y = SCREEN_HEIGHT // 2 + 60
-        if "tab_mouseover" in ui_elements:
-            screen.blit(ui_elements["tab_mouseover"], (SCREEN_WIDTH // 2 - 130, back_button_y - 5))
+        # Instructions
+        self.draw_text("Controls:", button_x, start_y + 250, YELLOW)
+        self.draw_text("Numbers 1-6: Select setting", button_x, start_y + 280, GRAY)
+        self.draw_text("Arrow keys: Adjust volume", button_x, start_y + 300, GRAY)  
+        self.draw_text("F11: Toggle fullscreen", button_x, start_y + 320, GRAY)
+        self.draw_text("ESC: Back to main menu", button_x, start_y + 340, GRAY)
         
-        self.draw_text("Press ESC to go back", SCREEN_WIDTH // 2 - 100, back_button_y)
         pygame.display.flip()
         
         for event in pygame.event.get():
@@ -3314,12 +3804,39 @@ class Game:
                 self.game_over = True
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
+                    self.game_state = "resolution_selection"
+                elif event.key == pygame.K_2 or event.key == pygame.K_3:
+                    # Volume adjustment with arrow keys
+                    pass  # Handle below
+                elif event.key == pygame.K_4:
                     game_settings['use_emojis'] = not game_settings['use_emojis']
                     save_settings(game_settings)
-                elif event.key == pygame.K_2 and not game_settings['use_emojis']:
+                elif event.key == pygame.K_5 and not game_settings['use_emojis']:
                     self.game_state = "wall_selection"
-                elif event.key == pygame.K_3 and not game_settings['use_emojis']:
+                elif event.key == pygame.K_6 and not game_settings['use_emojis']:
                     self.game_state = "floor_selection"
+                elif event.key == pygame.K_F11:
+                    game_settings['fullscreen'] = not game_settings['fullscreen']
+                    save_settings(game_settings)
+                    apply_resolution_settings()
+                elif event.key == pygame.K_LEFT:
+                    # Decrease volume
+                    if pygame.key.get_pressed()[pygame.K_2]:  # Music volume
+                        game_settings['music_volume'] = max(0.0, game_settings['music_volume'] - 0.1)
+                        apply_audio_settings()
+                        save_settings(game_settings)
+                    elif pygame.key.get_pressed()[pygame.K_3]:  # Sound volume
+                        game_settings['sound_volume'] = max(0.0, game_settings['sound_volume'] - 0.1)
+                        save_settings(game_settings)
+                elif event.key == pygame.K_RIGHT:
+                    # Increase volume
+                    if pygame.key.get_pressed()[pygame.K_2]:  # Music volume
+                        game_settings['music_volume'] = min(1.0, game_settings['music_volume'] + 0.1)
+                        apply_audio_settings()
+                        save_settings(game_settings)
+                    elif pygame.key.get_pressed()[pygame.K_3]:  # Sound volume
+                        game_settings['sound_volume'] = min(1.0, game_settings['sound_volume'] + 0.1)
+                        save_settings(game_settings)
                 elif event.key == pygame.K_ESCAPE:
                     self.game_state = "main_menu"
 
@@ -3398,6 +3915,72 @@ class Game:
                     if 0 <= idx < len(floor_options):
                         game_settings['floor_sprite'] = floor_options[idx]
                         save_settings(game_settings)
+                elif event.key == pygame.K_ESCAPE:
+                    self.game_state = "settings_menu"
+
+    def resolution_selection(self):
+        global game_settings
+        screen.fill(BLACK)
+        
+        # Common resolution options
+        resolution_options = [
+            [1024, 768],   # 4:3
+            [1280, 720],   # 16:9 HD
+            [1366, 768],   # 16:9 HD+
+            [1920, 1080],  # 16:9 Full HD
+            [2560, 1440],  # 16:9 QHD
+            [3840, 2160]   # 16:9 4K
+        ]
+        
+        resolution_names = [
+            "1024x768 (4:3)",
+            "1280x720 (HD)",
+            "1366x768 (HD+)",
+            "1920x1080 (Full HD)",
+            "2560x1440 (QHD)",
+            "3840x2160 (4K)"
+        ]
+        
+        self.draw_text("Select Resolution", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 200)
+        
+        current_res = game_settings['resolution']
+        
+        # Display resolution options
+        for i, (res, name) in enumerate(zip(resolution_options, resolution_names)):
+            y_pos = SCREEN_HEIGHT // 2 - 150 + i * 40
+            marker = ">" if res == current_res else " "
+            
+            # Highlight current resolution
+            color = YELLOW if res == current_res else WHITE
+            self.draw_text(f"{marker} {i+1}. {name}", 
+                          SCREEN_WIDTH // 2 - 150, y_pos, color)
+        
+        # Fullscreen toggle
+        fs_status = "ON" if game_settings['fullscreen'] else "OFF"
+        fs_color = YELLOW if game_settings['fullscreen'] else WHITE
+        self.draw_text(f"F. Fullscreen: {fs_status}", 
+                      SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 100, fs_color)
+        
+        self.draw_text("Press number to select resolution", SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 140, GRAY)
+        self.draw_text("Press F to toggle fullscreen", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 160, GRAY)
+        self.draw_text("Press ESC to go back", SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2 + 180, GRAY)
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]:
+                    idx = int(pygame.key.name(event.key)) - 1
+                    if 0 <= idx < len(resolution_options):
+                        game_settings['resolution'] = resolution_options[idx]
+                        save_settings(game_settings)
+                        apply_resolution_settings()
+                elif event.key == pygame.K_f:
+                    game_settings['fullscreen'] = not game_settings['fullscreen']
+                    save_settings(game_settings)
+                    apply_resolution_settings()
                 elif event.key == pygame.K_ESCAPE:
                     self.game_state = "settings_menu"
 
@@ -3549,6 +4132,8 @@ class Game:
                 self.wall_selection()
             elif self.game_state == "floor_selection":
                 self.floor_selection()
+            elif self.game_state == "resolution_selection":
+                self.resolution_selection()
             elif self.game_state == "setup_num_players":
                 self.setup_num_players()
             elif self.game_state == "setup_player_name":
@@ -3898,10 +4483,19 @@ class Game:
 
     def move_player(self, player, direction):
         dx, dy = 0, 0
-        if direction == 'w': dy = -1
-        if direction == 's': dy = 1
-        if direction == 'a': dx = -1
-        if direction == 'd': dx = 1
+        # Map movement keys to directions and update player direction
+        if direction == 'w': 
+            dy = -1
+            player.direction = "up"
+        if direction == 's': 
+            dy = 1
+            player.direction = "down"
+        if direction == 'a': 
+            dx = -1
+            player.direction = "left"
+        if direction == 'd': 
+            dx = 1
+            player.direction = "right"
 
         new_x, new_y = player.x + dx, player.y + dy
 
@@ -4164,11 +4758,11 @@ class Game:
                     text = font.render(enemy.icon, True, RED)
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # Use static sprites
+                    # Use Undertale enemy sprites
                     sprite_drawn = False
                     
-                    # Use static enemy sprites
-                    enemy_type = enemy.name.lower()
+                    # Try Undertale enemy sprite first (from enemy_sprite_mapping)
+                    enemy_type = enemy.enemy_type
                     sprite_key = f"monster_{enemy_type}"
                     if sprite_key in sprites:
                         screen.blit(sprites[sprite_key], (screen_x, screen_y))
@@ -4211,13 +4805,17 @@ class Game:
                     text = font.render(player.icon, True, GREEN)
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # Use static sprites
+                    # Use directional sprites for better Undertale character movement
                     sprite_drawn = False
                     
-                    # Use static player sprites
-                    sprite_key = f"player_{player.char_class}"
-                    if sprite_key in sprites:
-                        screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                    # Try directional sprite first
+                    directional_sprite_key = f"player_{player.char_class}_{player.direction}"
+                    if directional_sprite_key in sprites:
+                        screen.blit(sprites[directional_sprite_key], (screen_x, screen_y))
+                        sprite_drawn = True
+                    # Fallback to static sprite
+                    elif f"player_{player.char_class}" in sprites:
+                        screen.blit(sprites[f"player_{player.char_class}"], (screen_x, screen_y))
                         sprite_drawn = True
                     
                     # Final fallback to colored rectangle
@@ -4412,8 +5010,8 @@ class Game:
             play_sound("success", 0.8)  # Victory sound
             self.add_message("You won the battle!")
             
-            # Check if dragon was defeated (victory condition)
-            dragon_defeated = any(enemy.enemy_type == "dragon" for enemy in self.combat_enemies)
+            # Check if Asgore was defeated (victory condition)
+            asgore_defeated = any(enemy.enemy_type == "asgore" for enemy in self.combat_enemies)
             
             # Handle enemy weapon drops before removing enemies
             for enemy in self.combat_enemies:
@@ -4443,7 +5041,7 @@ class Game:
                         self.add_message(f"{enemy.name} dropped a {dropped_item.name}!")
             
             # Check for victory condition
-            if dragon_defeated:
+            if asgore_defeated:
                 self.add_message("The dragon has been slain! You are victorious!")
                 stop_music()  # Stop current music
                 self.game_won = True

@@ -1,0 +1,167 @@
+{
+  "bg_ruinseasynam1.png": {
+    "tileset": "bg_ruinseasynam1.png",
+    "dimensions": [
+      8,
+      5
+    ],
+    "corners": {
+      "inner_top_left": [
+        5,
+        3
+      ],
+      "inner_top_right": [
+        1,
+        1
+      ],
+      "inner_bottom_left": [
+        1,
+        3
+      ],
+      "inner_bottom_right": [
+        2,
+        2
+      ]
+    },
+    "floor_tile": [
+      1,
+      2
+    ],
+    "wall_tile": [
+      4,
+      0
+    ]
+  },
+  "bg_tundratiles.png": {
+    "tileset": "bg_tundratiles.png",
+    "dimensions": [
+      9,
+      75
+    ],
+    "corners": {
+      "inner_top_left": [
+        0,
+        52
+      ],
+      "inner_top_right": [
+        4,
+        4
+      ],
+      "inner_bottom_left": [
+        4,
+        16
+      ],
+      "inner_bottom_right": [
+        5,
+        31
+      ]
+    },
+    "floor_tile": [
+      3,
+      4
+    ],
+    "wall_tile": [
+      0,
+      2
+    ]
+  },
+  "bg_watertiles.png": {
+    "tileset": "bg_watertiles.png",
+    "dimensions": [
+      14,
+      16
+    ],
+    "corners": {
+      "inner_top_left": [
+        0,
+        8
+      ],
+      "inner_top_right": [
+        2,
+        2
+      ],
+      "inner_bottom_left": [
+        3,
+        1
+      ],
+      "inner_bottom_right": [
+        9,
+        7
+      ]
+    },
+    "floor_tile": [
+      13,
+      0
+    ],
+    "wall_tile": [
+      0,
+      0
+    ]
+  },
+  "bg_firetiles.png": {
+    "tileset": "bg_firetiles.png",
+    "dimensions": [
+      18,
+      20
+    ],
+    "corners": {
+      "inner_top_left": [
+        10,
+        16
+      ],
+      "inner_top_right": [
+        16,
+        0
+      ],
+      "inner_bottom_left": [
+        14,
+        1
+      ],
+      "inner_bottom_right": [
+        5,
+        4
+      ]
+    },
+    "floor_tile": [
+      15,
+      0
+    ],
+    "wall_tile": [
+      0,
+      0
+    ]
+  },
+  "bg_labtiles.png": {
+    "tileset": "bg_labtiles.png",
+    "dimensions": [
+      6,
+      12
+    ],
+    "corners": {
+      "inner_top_left": [
+        0,
+        7
+      ],
+      "inner_top_right": [
+        5,
+        8
+      ],
+      "inner_bottom_left": [
+        5,
+        1
+      ],
+      "inner_bottom_right": [
+        5,
+        9
+      ]
+    },
+    "floor_tile": [
+      5,
+      0
+    ],
+    "wall_tile": [
+      0,
+      0
+    ]
+  }
+}
