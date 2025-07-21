@@ -1,59 +1,62 @@
 {
   "players": [
     {
-      "x": 32,
-      "y": 10,
+      "x": 11,
+      "y": 14,
       "name": "1",
       "char_class": "warrior",
-      "hp": 115,
-      "max_hp": 120,
-      "base_attack": 17,
-      "base_defense": 10,
-      "level": 2,
-      "xp": 17,
-      "mana": 5,
-      "max_mana": 5,
-      "skill_cooldown": 3,
+      "hp": 97,
+      "max_hp": 100,
+      "base_attack": 12,
+      "base_defense": 8,
+      "level": 1,
+      "xp": 70,
+      "mana": 0,
+      "max_mana": 0,
+      "gold": 100,
+      "skill_cooldown": 0,
       "inventory": [
         {
           "type": "Weapon",
-          "name": "Short Bow",
+          "name": "Iron Sword",
           "rarity": "common",
           "attack_bonus": 5,
           "allowed_classes": [
-            "archer"
+            "warrior"
           ],
-          "sprite_name": "bow1"
+          "sprite_name": "long_sword1"
+        },
+        {
+          "type": "Weapon",
+          "name": "Long Sword",
+          "rarity": "common",
+          "attack_bonus": 6,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "long_sword1"
         },
         {
           "type": "Armor",
-          "name": "Splint Mail",
-          "rarity": "uncommon",
-          "defense_bonus": 8,
+          "name": "Ring Mail",
+          "rarity": "common",
+          "defense_bonus": 4,
           "allowed_classes": [
-            "warrior"
+            "warrior",
+            "archer"
           ],
-          "sprite_name": "splint_mail1"
+          "sprite_name": "ring_mail1"
         },
         {
-          "type": "Weapon",
-          "name": "Battle Axe",
-          "rarity": "uncommon",
-          "attack_bonus": 8,
+          "type": "Armor",
+          "name": "Scale Mail",
+          "rarity": "common",
+          "defense_bonus": 5,
           "allowed_classes": [
-            "warrior"
+            "warrior",
+            "archer"
           ],
-          "sprite_name": "battle_axe1"
-        },
-        {
-          "type": "Weapon",
-          "name": "War Axe",
-          "rarity": "uncommon",
-          "attack_bonus": 10,
-          "allowed_classes": [
-            "warrior"
-          ],
-          "sprite_name": "war_axe1"
+          "sprite_name": "scale_mail1"
         },
         {
           "type": "Potion",
@@ -63,58 +66,67 @@
         },
         {
           "type": "Potion",
-          "name": "Healing Potion",
-          "rarity": "common",
-          "hp_gain": 25
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
         },
         {
-          "type": "Armor",
-          "name": "Banded Mail",
+          "type": "Potion",
+          "name": "Greater Healing",
           "rarity": "uncommon",
-          "defense_bonus": 7,
+          "hp_gain": 40
+        },
+        {
+          "type": "Weapon",
+          "name": "Short Sword",
+          "rarity": "common",
+          "attack_bonus": 4,
           "allowed_classes": [
             "warrior"
           ],
-          "sprite_name": "banded_mail1"
+          "sprite_name": "short_sword1"
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
         }
       ],
       "weapon": {
-        "name": "War Axe",
-        "attack_bonus": 10,
+        "name": "Long Sword",
+        "attack_bonus": 6,
         "allowed_classes": [
           "warrior"
         ],
-        "rarity": "uncommon",
-        "sprite_name": "war_axe1"
+        "rarity": "common",
+        "sprite_name": "long_sword1"
       },
       "armor": {
-        "name": "Splint Mail",
-        "defense_bonus": 8,
+        "name": "Scale Mail",
+        "defense_bonus": 5,
         "allowed_classes": [
-          "warrior"
+          "warrior",
+          "archer"
         ],
-        "rarity": "uncommon",
-        "sprite_name": "splint_mail1"
+        "rarity": "common",
+        "sprite_name": "scale_mail1"
       }
     }
   ],
-  "dungeon_level": 3,
+  "dungeon_level": 2,
   "current_player_idx": 0,
   "game_state": "playing",
-  "camera_x": 20,
-  "camera_y": 3,
+  "camera_x": 1,
+  "camera_y": 5,
   "obtained_items": [
-    "Short Sword",
-    "Short Bow",
+    "Scale Mail",
+    "Long Sword",
+    "Rusty Dagger",
     "Ring Mail",
     "Superior Healing",
-    "Chain Mail",
-    "Healing Potion",
-    "War Axe",
-    "Minor Healing",
-    "Banded Mail",
-    "Splint Mail",
-    "Iron Sword",
-    "Battle Axe"
+    "Short Sword",
+    "Greater Healing",
+    "Iron Sword"
   ]
 }

@@ -1,6 +1,6 @@
-# Python RPG Adventure - Pygame Version (v1.19)
+# Python RPG Adventure - Pygame Version (v1.20)
 
-A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, and immersive dungeon exploration. Created with the help of large language models by **LukesScammell**.
+A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and shop system. Created with the help of large language models by **LukesScammell**.
 
 ## Features
 
@@ -9,6 +9,11 @@ A modern graphical RPG adventure game built with Pygame, featuring enhanced visu
     *   **Advanced Animation System:** Particle effects, smooth transitions, and coordinated visual timing
     *   **Enhanced Combat Interface:** Fixed UI overlapping issues, professional health/mana bars with gradients
     *   **Enhanced Inventory System:** Visual item sprites displayed alongside text, categorized display, rarity color coding, and interactive feedback
+*   **Dynamic Shop System:** Trade with merchant NPCs for weapons, armor, and potions
+    *   **Shop Rooms:** Merchant rooms (15% spawn chance) with peaceful trading environments
+    *   **Buy & Sell Interface:** Professional shop UI with separate buy/sell modes and item pricing
+    *   **Gold Economy:** Complete currency system with starting gold and item-based pricing
+    *   **Smart Pricing:** Dynamic pricing based on item rarity and type with 50% sell-back value
 *   **Dynamic Audio System:** Context-aware background music with 6+ tracks and 26+ professional sound effects
 *   **Full-Screen Gaming Experience:** 1920x1080 optimized display with 64+ professional sprites and 48px tile system
 *   **Dual Display Modes:** Toggle between emoji-based graphics and detailed pixel art sprites with visual previews
@@ -55,6 +60,15 @@ A modern graphical RPG adventure game built with Pygame, featuring enhanced visu
         *   Select different wall styles (Stone Brick, Stone Dark, Brick Brown, Marble Wall)
         *   Select different floor styles (Sandstone, Dirt, Pebble Brown, Marble Floor)
     *   **Exploration:** Use the **W, A, S, D** keys to move your party through the dungeon.
+    *   **Interaction:** Press **E** when standing on objects to interact:
+        *   **Treasure Chests:** Open chests to collect multiple items
+        *   **Items:** Pick up weapons, armor, and potions from the ground
+        *   **Shop NPCs:** Trade with merchants in special shop rooms (🧙‍♂️)
+    *   **Shopping:** When you find a merchant, press **E** to open the shop:
+        *   Use **TAB** to switch between Buy and Sell modes
+        *   Use arrow keys (← → ↑ ↓) to navigate players and items
+        *   Press **Enter** to complete purchases/sales
+        *   Press **ESC** or **Q** to close the shop
     *   **Inventory:** Press **I** to access the inventory system:
         *   Use arrow keys (← → ↑ ↓) to navigate between players and items
         *   Press **Enter** to use/equip items
@@ -121,6 +135,68 @@ The game includes a comprehensive settings system accessible from the main menu:
 ---
 
 ## Version History & Development Notes
+
+### v1.20.1: Enhanced Shop UX & Error Handling
+**Improved Shop Interface & User Experience:**
+- **Enhanced TAB Key Visibility**: Prominent "Press [TAB] to Switch" instruction displayed below Buy/Sell tabs
+  - **Golden Highlighting**: TAB instruction shown in highlighted box with gradient background for maximum visibility
+  - **Better Layout**: Reorganized shop interface to accommodate TAB instruction without clutter
+  - **Clear Visual Hierarchy**: TAB switching instruction is now unmistakable and prominently positioned
+- **Comprehensive Error Messages**: Professional error handling for all shop transaction failures
+  - **Insufficient Gold**: Shows "❌ Not enough gold! Need Xg, have Yg" with specific amounts
+  - **Full Inventory**: Detailed messages showing current/max capacity by item type:
+    - "❌ Weapon inventory full! (3/3)"
+    - "❌ Armor inventory full! (2/2)"
+    - "❌ Potion inventory full! (5/5)"
+  - **Enhanced Visual Feedback**: Success messages with "✅" and error messages with "❌" for clarity
+- **Smart Purchase Indicators**: Visual cues for item availability in shop interface
+  - **Unaffordable Items**: Items too expensive display in red with "[TOO EXPENSIVE]" tag
+  - **Full Inventory**: Items that can't be carried show in orange with "[INVENTORY FULL]" tag
+  - **Available Items**: Purchaseable items display in normal color for clear distinction
+- **Improved Audio Feedback**: Proper sound effects for all shop interactions
+  - **Error Sounds**: Dedicated error sound for failed transactions (insufficient gold, full inventory)
+  - **Success Sounds**: Coin pickup sounds for successful purchases and sales
+  - **Interactive Audio**: Different sound cues for different types of shop feedback
+
+**User Request**: "could you show that tab is the button to press to change from buy to sell and could you have a message pop up if someone tries to buy an item with a full backpack or they dont have enough gold"
+
+**Technical Implementation**:
+- Enhanced `draw_shop_screen()` with prominent TAB instruction display and improved layout
+- Updated `buy_item()` method with comprehensive error checking and detailed feedback messages
+- Added visual affordability indicators in `draw_shop_buy_items()` with color-coded item status
+- Improved `sell_item()` method with better equipped item detection and error messaging
+- Integrated proper sound effects for all shop transaction outcomes
+
+### v1.20: Shop System Implementation
+**Dynamic Trading & Economy System:**
+- **Shop Room Generation**: Added merchant rooms (15% spawn chance, max 1 per level) with peaceful trading environments
+  - **Shopkeeper NPCs**: Friendly merchant characters (🧙‍♂️) that spawn in special shop rooms
+  - **No Combat Zones**: Shop rooms contain no enemies, providing safe trading havens
+  - **Smart Room Placement**: Shop rooms never spawn in first or last rooms of each dungeon level
+- **Complete Shop Interface**: Professional trading UI with buy/sell functionality
+  - **Dual Mode System**: TAB to switch between Buy and Sell modes with visual indicators
+  - **Visual Item Display**: Items show sprites, stats, and prices with clear affordability indicators  
+  - **Player Selection**: Navigate between party members for individual gold management
+  - **Intuitive Controls**: Arrow keys for navigation, ENTER to trade, ESC to close
+- **Gold Economy System**: Full currency implementation with balanced pricing
+  - **Starting Capital**: All players begin with 100 gold for early purchases
+  - **Smart Pricing**: Dynamic pricing based on item rarity (common=50g, epic=400g+) and type
+  - **Sell-Back Value**: Items sell for 50% of purchase price, encouraging strategic trading
+  - **Persistent Wealth**: Gold amounts saved and loaded with game progress
+- **Merchant Inventory**: Randomly generated shop contents with 4-6 items per visit
+  - **Mixed Stock**: Balanced selection of weapons, armor, and potions for all classes
+  - **Rarity Distribution**: Higher-tier items available but more expensive
+  - **Dynamic Restocking**: Each shop visit generates new random inventory
+
+**User Request**: "how easy would it be to implement a room that spawns with a shop" → "could you implement that"
+
+**Technical Implementation**:
+- Added `Shopkeeper` class with inventory generation and pricing methods
+- Enhanced `determine_room_type()` to include shop room generation with spawn tracking
+- Implemented `place_shop_room_content()` for peaceful merchant room setup
+- Created complete shop UI system with `draw_shop_screen()`, buy/sell interfaces, and input handling
+- Extended Player class with gold tracking and integrated with save/load system
+- Added shopkeeper rendering to main game display with proper visibility and sprite support
 
 ### v1.19: Enhanced Inventory Visual System
 **Enhanced Item Display & User Experience:**

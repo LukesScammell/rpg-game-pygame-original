@@ -1021,6 +1021,7 @@ class Player(Entity):
         self.char_class = char_class
         self.xp = 0
         self.level = 1
+        self.gold = 100  # Starting gold for shopping
         
         # Class-specific starting weapon
         if char_class == "warrior":
@@ -1176,6 +1177,90 @@ class Enemy(Entity):
         self.xp = int(base_xp * level_multiplier)
         self.weapon_drops = []  # List of possible weapon drops
 
+class Shopkeeper:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.name = "Merchant"
+        self.icon = "🧙‍♂️"  # Wizard emoji for shopkeeper
+        self.inventory = []  # Shop's inventory
+        self.generate_shop_inventory()
+    
+    def generate_shop_inventory(self):
+        """Generate random items for the shop."""
+        self.inventory = []
+        
+        # Generate 4-6 items for sale
+        num_items = random.randint(4, 6)
+        
+        for _ in range(num_items):
+            item_type = random.choice(["weapon", "armor", "potion"])
+            
+            if item_type == "weapon":
+                weapon = self.generate_random_weapon()
+                if weapon:
+                    self.inventory.append(weapon)
+            elif item_type == "armor":
+                armor = self.generate_random_armor()
+                if armor:
+                    self.inventory.append(armor)
+            else:  # potion
+                chosen_potion = random.choice(ALL_POTIONS)
+                potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                self.inventory.append(potion_copy)
+    
+    def generate_random_weapon(self):
+        """Generate a random weapon for the shop inventory."""
+        available_weapons = ALL_WEAPONS
+        if available_weapons:
+            chosen_weapon = random.choice(available_weapons)
+            return Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                         chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                         chosen_weapon.sprite_name)
+        return None
+    
+    def generate_random_armor(self):
+        """Generate a random armor for the shop inventory."""
+        available_armor = ALL_ARMOR
+        if available_armor:
+            chosen_armor = random.choice(available_armor)
+            return Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                        chosen_armor.allowed_classes, chosen_armor.rarity,
+                        chosen_armor.sprite_name)
+        return None
+    
+    def get_item_price(self, item):
+        """Calculate the price of an item based on its rarity and type."""
+        base_price = 50  # Base price for common items
+        
+        # Price multipliers based on rarity
+        rarity_multipliers = {
+            "common": 1.0,
+            "uncommon": 2.0,
+            "rare": 4.0,
+            "epic": 8.0
+        }
+        
+        # Get item rarity
+        if hasattr(item, 'rarity'):
+            multiplier = rarity_multipliers.get(item.rarity, 1.0)
+        else:
+            multiplier = 1.0  # Default for potions
+        
+        # Different base prices for different item types
+        if isinstance(item, Weapon):
+            base_price = 75
+        elif isinstance(item, Armor):
+            base_price = 60
+        elif isinstance(item, Potion):
+            base_price = 25
+        
+        return int(base_price * multiplier)
+    
+    def sell_item_price(self, item):
+        """Calculate how much the shop will pay for an item (50% of buy price)."""
+        return self.get_item_price(item) // 2
+
 # --- Map Generation ---
 class Rect:
     def __init__(self, x, y, w, h):
@@ -1203,6 +1288,7 @@ class Dungeon:
         self.items = []
         self.enemies = []
         self.treasures = []  # New: treasure chests
+        self.shopkeepers = []  # Shop NPCs
         self.stairs_down = None
         # Fog of war system
         self.explored = [[False for _ in range(width)] for _ in range(height)]
@@ -1251,7 +1337,10 @@ class Dungeon:
             
             # Determine room type and place content accordingly
             room_type = self.determine_room_type(room_num, chest_room_placed, chest_room_attempts)
-            if room_type == "chest_room":
+            if room_type == "shop_room":
+                self.place_shop_room_content(new_room)
+                self.shop_room_placed = True
+            elif room_type == "chest_room":
                 self.place_chest_room_content(new_room)
                 chest_room_placed = True
             elif room_type == "treasure_room":
@@ -1285,6 +1374,12 @@ class Dungeon:
         # Never make first or last room special (first = entrance, last = stairs/boss)
         if room_num == 0 or room_num >= MAX_ROOMS - 1:
             return "normal"
+        
+        # Shop room (15% chance, max 1 per level) - increased for better gameplay
+        if not hasattr(self, 'shop_room_placed'):
+            self.shop_room_placed = False
+        if not self.shop_room_placed and random.random() < 0.15:
+            return "shop_room"
         
         # One guaranteed chest room per level but much rarer (3% chance on each applicable room)
         if not chest_room_placed and random.random() < 0.03:
@@ -1513,8 +1608,18 @@ class Dungeon:
                 item.y = y
                 self.items.append(item)
 
+    def place_shop_room_content(self, room):
+        """Place content for a shop room - shopkeeper with no enemies."""
+        # Place shopkeeper at the center of the room
+        center_x, center_y = room.center()
+        shopkeeper = Shopkeeper(center_x, center_y)
+        self.shopkeepers.append(shopkeeper)
+        
+        # No enemies in shop rooms for peaceful trading
+        # No other items on the ground - everything sold by shopkeeper
+
     def clear_room_content(self, room):
-        """Clear all enemies, items, and treasures from a specific room."""
+        """Clear all enemies, items, treasures, and shopkeepers from a specific room."""
         # Remove enemies in this room
         self.enemies = [e for e in self.enemies if not (room.x1 < e.x < room.x2 and room.y1 < e.y < room.y2)]
         
@@ -1523,6 +1628,9 @@ class Dungeon:
         
         # Remove treasures in this room
         self.treasures = [t for t in self.treasures if not (room.x1 < t.x < room.x2 and room.y1 < t.y < room.y2)]
+        
+        # Remove shopkeepers in this room
+        self.shopkeepers = [s for s in self.shopkeepers if not (room.x1 < s.x < room.x2 and room.y1 < s.y < room.y2)]
 
     def place_content(self, room):
         # Normal room: balanced enemy and loot distribution with level-based enemy scaling
@@ -1781,6 +1889,11 @@ class Game:
         self.inventory_state = "closed"  # closed, open, selecting
         self.selected_player_idx = 0
         self.selected_item_idx = 0
+        # Shop system
+        self.shop_state = "closed"  # closed, open, buying, selling
+        self.current_shopkeeper = None
+        self.shop_mode = "buy"  # buy or sell
+        self.selected_shop_item_idx = 0
         # Item replacement system
         self.pending_replacement = None
     def draw_combat_screen(self):
@@ -2298,12 +2411,16 @@ class Game:
         draw_text_with_shadow(screen, f"ATK: {current_player.attack} | DEF: {current_player.defense}", 
                             140, 500, ENHANCED_COLORS['text_secondary'], small_font, 1)
         
+        # Gold display
+        draw_text_with_shadow(screen, f"💰 Gold: {current_player.gold}", 
+                            140, 520, ENHANCED_COLORS['accent_gold'], small_font, 1)
+        
         if current_player.char_class == "mage":
             draw_text_with_shadow(screen, f"Mana: {current_player.mana}/{current_player.max_mana}", 
-                                140, 520, BLUE, small_font, 1)
+                                140, 540, BLUE, small_font, 1)
         
         # Equipped items (positioned below the stats panel)
-        equipped_y = 560
+        equipped_y = 580  # Moved down to accommodate gold display
         draw_text_with_shadow(screen, "Equipped:", 140, equipped_y, ENHANCED_COLORS['accent_silver'], font, 1)
         
         weapon_text = f"Weapon: {current_player.weapon.name if current_player.weapon else 'None'}"
@@ -2467,6 +2584,222 @@ class Game:
     def add_message(self, text):
         self.messages.appendleft(text)
     
+    def draw_shop_screen(self):
+        """Draw the shop interface for buying and selling items."""
+        # Enhanced background
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['background_light'])
+        
+        # Shop title
+        title_y = 20
+        title_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, title_y - 10, 300, 60)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        
+        draw_text_with_shadow(screen, "🏪 SHOP 🏪", SCREEN_WIDTH // 2 - 100, title_y, 
+                            ENHANCED_COLORS['accent_gold'])
+        
+        # Shop mode tabs (Buy/Sell) - Enhanced visual indication
+        tab_y = 100
+        buy_tab_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, tab_y, 140, 50)
+        sell_tab_rect = pygame.Rect(SCREEN_WIDTH // 2 - 10, tab_y, 140, 50)
+        
+        # Draw tabs with enhanced visual feedback
+        if self.shop_mode == "buy":
+            draw_gradient_rect(screen, buy_tab_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], buy_tab_rect, width=3, border_radius=8)
+            draw_gradient_rect(screen, sell_tab_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+            pygame.draw.rect(screen, ENHANCED_COLORS['text_disabled'], sell_tab_rect, width=2, border_radius=8)
+        else:
+            draw_gradient_rect(screen, sell_tab_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], sell_tab_rect, width=3, border_radius=8)
+            draw_gradient_rect(screen, buy_tab_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+            pygame.draw.rect(screen, ENHANCED_COLORS['text_disabled'], buy_tab_rect, width=2, border_radius=8)
+        
+        draw_text_with_shadow(screen, "BUY", SCREEN_WIDTH // 2 - 120, tab_y + 15, 
+                            ENHANCED_COLORS['text_primary'], font, 1)
+        draw_text_with_shadow(screen, "SELL", SCREEN_WIDTH // 2 + 20, tab_y + 15, 
+                            ENHANCED_COLORS['text_primary'], font, 1)
+        
+        # TAB key instruction prominently displayed
+        tab_instruction_y = tab_y + 60
+        tab_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, tab_instruction_y, 200, 30)
+        draw_gradient_rect(screen, tab_bg_rect, (50, 50, 80), (70, 70, 100))
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], tab_bg_rect, width=2, border_radius=6)
+        draw_text_with_shadow(screen, "Press [TAB] to Switch", SCREEN_WIDTH // 2 - 85, tab_instruction_y + 5, 
+                            ENHANCED_COLORS['accent_gold'], small_font, 1)
+        
+        # Instructions panel (moved down to accommodate TAB instruction)
+        instruction_panel_rect = pygame.Rect(50, 200, 400, 150)
+        draw_gradient_rect(screen, instruction_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], instruction_panel_rect, width=2, border_radius=8)
+        
+        draw_text_with_shadow(screen, "Controls:", 70, 215, ENHANCED_COLORS['accent_silver'], small_font, 1)
+        instructions = [
+            "← → : Switch Player", 
+            "↑ ↓ : Navigate Items",
+            "ENTER : Buy/Sell Item",
+            "ESC/Q : Close Shop"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            key_part, desc_part = instruction.split(":", 1)
+            draw_text_with_shadow(screen, key_part.strip(), 70, 235 + i * 20, ENHANCED_COLORS['accent_gold'], small_font, 1)
+            draw_text_with_shadow(screen, ":" + desc_part, 130, 235 + i * 20, ENHANCED_COLORS['text_secondary'], small_font, 1)
+        
+        # Current player info (adjusted position)
+        current_player = self.players[self.selected_player_idx]
+        player_panel_rect = pygame.Rect(500, 200, 300, 150)
+        draw_gradient_rect(screen, player_panel_rect, ENHANCED_COLORS['primary_dark'], ENHANCED_COLORS['primary_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], player_panel_rect, width=2, border_radius=6)
+        
+        draw_text_with_shadow(screen, f"{current_player.name}", 520, 215, ENHANCED_COLORS['accent_gold'], font, 1)
+        draw_text_with_shadow(screen, f"Level {current_player.level} {current_player.char_class.title()}", 
+                            520, 240, ENHANCED_COLORS['text_primary'], small_font, 1)
+        draw_text_with_shadow(screen, f"Gold: {current_player.gold}", 520, 265, 
+                            (255, 215, 0), font, 1)  # Gold color for gold amount
+        draw_text_with_shadow(screen, f"HP: {current_player.hp}/{current_player.max_hp}", 
+                            520, 290, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
+        
+        # Main shop panel
+        shop_panel_rect = pygame.Rect(100, 350, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 400)
+        draw_gradient_rect(screen, shop_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], shop_panel_rect, width=3, border_radius=10)
+        
+        if self.shop_mode == "buy":
+            self.draw_shop_buy_items(shop_panel_rect)
+        else:
+            self.draw_shop_sell_items(shop_panel_rect)
+        
+        pygame.display.flip()
+    
+    def draw_shop_buy_items(self, panel_rect):
+        """Draw items available for purchase."""
+        draw_text_with_shadow(screen, f"🛒 {self.current_shopkeeper.name}'s Wares", 
+                            panel_rect.x + 20, panel_rect.y + 20, ENHANCED_COLORS['accent_gold'], font, 1)
+        
+        if not self.current_shopkeeper.inventory:
+            draw_text_with_shadow(screen, "Shop is sold out!", panel_rect.x + 20, panel_rect.y + 60, 
+                                ENHANCED_COLORS['text_disabled'], small_font, 1)
+            return
+        
+        y_offset = 60
+        for i, item in enumerate(self.current_shopkeeper.inventory):
+            y_pos = panel_rect.y + y_offset + i * 40
+            if y_pos > panel_rect.y + panel_rect.height - 40:
+                break  # Don't draw items outside the panel
+            
+            # Highlight selected item
+            if i == self.selected_shop_item_idx:
+                highlight_rect = pygame.Rect(panel_rect.x + 10, y_pos - 5, panel_rect.width - 20, 35)
+                draw_gradient_rect(screen, highlight_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], highlight_rect, width=2, border_radius=5)
+            
+            # Draw item sprite if available
+            sprite_x = panel_rect.x + 25
+            text_x = sprite_x + 35
+            
+            if hasattr(item, 'sprite_name') and item.sprite_name:
+                sprite_key = None
+                if isinstance(item, Weapon):
+                    sprite_key = f"weapon_{item.sprite_name}"
+                elif isinstance(item, Armor):
+                    sprite_key = f"armor_{item.sprite_name}"
+                elif isinstance(item, Potion):
+                    sprite_key = "item_potion"
+                
+                if sprite_key and sprite_key in sprites:
+                    sprite = pygame.transform.scale(sprites[sprite_key], (24, 24))
+                    screen.blit(sprite, (sprite_x, y_pos))
+            
+            # Item name and stats with affordability indicators
+            price = self.current_shopkeeper.get_item_price(item)
+            current_player = self.players[self.selected_player_idx]
+            
+            item_text = f"{item.name}"
+            
+            if isinstance(item, Weapon):
+                item_text += f" (ATK +{item.attack_bonus}) - {price}g"
+            elif isinstance(item, Armor):
+                item_text += f" (DEF +{item.defense_bonus}) - {price}g"
+            elif isinstance(item, Potion):
+                item_text += f" (Heals {item.hp_gain} HP) - {price}g"
+            
+            # Color based on affordability and inventory space
+            can_afford = current_player.gold >= price
+            can_carry = current_player.can_carry_item(item)
+            
+            if not can_afford:
+                text_color = ENHANCED_COLORS['danger_red']
+                item_text += " [TOO EXPENSIVE]"
+            elif not can_carry:
+                text_color = ENHANCED_COLORS['warning_orange']
+                item_text += " [INVENTORY FULL]"
+            else:
+                text_color = ENHANCED_COLORS['text_primary']
+            
+            draw_text_with_shadow(screen, item_text, text_x, y_pos, text_color, small_font, 1)
+    
+    def draw_shop_sell_items(self, panel_rect):
+        """Draw player items available for sale."""
+        current_player = self.players[self.selected_player_idx]
+        draw_text_with_shadow(screen, f"💰 Sell {current_player.name}'s Items", 
+                            panel_rect.x + 20, panel_rect.y + 20, ENHANCED_COLORS['accent_gold'], font, 1)
+        
+        if not current_player.inventory:
+            draw_text_with_shadow(screen, "No items to sell!", panel_rect.x + 20, panel_rect.y + 60, 
+                                ENHANCED_COLORS['text_disabled'], small_font, 1)
+            return
+        
+        y_offset = 60
+        for i, item in enumerate(current_player.inventory):
+            y_pos = panel_rect.y + y_offset + i * 40
+            if y_pos > panel_rect.y + panel_rect.height - 40:
+                break  # Don't draw items outside the panel
+            
+            # Highlight selected item
+            if i == self.selected_item_idx:
+                highlight_rect = pygame.Rect(panel_rect.x + 10, y_pos - 5, panel_rect.width - 20, 35)
+                draw_gradient_rect(screen, highlight_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], highlight_rect, width=2, border_radius=5)
+            
+            # Draw item sprite if available
+            sprite_x = panel_rect.x + 25
+            text_x = sprite_x + 35
+            
+            if hasattr(item, 'sprite_name') and item.sprite_name:
+                sprite_key = None
+                if isinstance(item, Weapon):
+                    sprite_key = f"weapon_{item.sprite_name}"
+                elif isinstance(item, Armor):
+                    sprite_key = f"armor_{item.sprite_name}"
+                elif isinstance(item, Potion):
+                    sprite_key = "item_potion"
+                
+                if sprite_key and sprite_key in sprites:
+                    sprite = pygame.transform.scale(sprites[sprite_key], (24, 24))
+                    screen.blit(sprite, (sprite_x, y_pos))
+            
+            # Item name and sell price
+            price = self.current_shopkeeper.sell_item_price(item)
+            item_text = f"{item.name}"
+            
+            if isinstance(item, Weapon):
+                item_text += f" (ATK +{item.attack_bonus}) - {price}g"
+            elif isinstance(item, Armor):
+                item_text += f" (DEF +{item.defense_bonus}) - {price}g"
+            elif isinstance(item, Potion):
+                item_text += f" (Heals {item.hp_gain} HP) - {price}g"
+            
+            # Show if equipped (can't sell equipped items)
+            is_equipped = hasattr(item, 'equipped') and item.equipped
+            if is_equipped:
+                item_text += " [EQUIPPED]"
+            
+            text_color = ENHANCED_COLORS['text_disabled'] if is_equipped else ENHANCED_COLORS['text_primary']
+            
+            draw_text_with_shadow(screen, item_text, text_x, y_pos, text_color, small_font, 1)
+    
     def log_action(self, text):
         """Log action for debugging or history purposes."""
         print(f"LOG: {text}")
@@ -2499,6 +2832,7 @@ class Game:
                     "xp": player.xp,
                     "mana": player.mana,
                     "max_mana": player.max_mana,
+                    "gold": getattr(player, 'gold', 100),  # Save gold with default fallback
                     "skill_cooldown": getattr(player, 'skill_cooldown', 0),
                     "inventory": [],
                     "weapon": None,
@@ -2597,6 +2931,7 @@ class Game:
                 player.xp = player_data["xp"]
                 player.mana = player_data["mana"]
                 player.max_mana = player_data["max_mana"]
+                player.gold = player_data.get("gold", 100)  # Load gold with default fallback
                 player.skill_cooldown = player_data.get("skill_cooldown", 0)
                 
                 # Clear starting inventory
@@ -3246,7 +3581,9 @@ class Game:
         self.draw_game()
 
     def handle_input(self, key):
-        if self.inventory_state == "open":
+        if self.shop_state == "open":
+            self.handle_shop_input(key)
+        elif self.inventory_state == "open":
             self.handle_inventory_input(key)
         else:
             player = self.players[self.current_player_idx]
@@ -3279,6 +3616,12 @@ class Game:
 
     def handle_interaction(self, player):
         """Handle player interaction with objects."""
+        # Check for shopkeeper at player's position
+        for shopkeeper in self.dungeon.shopkeepers:
+            if shopkeeper.x == player.x and shopkeeper.y == player.y:
+                self.open_shop(shopkeeper)
+                return
+        
         # Check for treasure chest at player's position
         for treasure in self.dungeon.treasures:
             if treasure.x == player.x and treasure.y == player.y and not treasure.opened:
@@ -3374,6 +3717,140 @@ class Game:
             self.add_message(f"Inventory: {current_count}/{max_count} {item_type_name}")
         
         self.pending_replacement = None
+
+    def open_shop(self, shopkeeper):
+        """Open the shop interface."""
+        self.shop_state = "open"
+        self.current_shopkeeper = shopkeeper
+        self.shop_mode = "buy"
+        self.selected_shop_item_idx = 0
+        self.selected_player_idx = 0
+        play_sound("interface1", 0.7)  # Shop open sound
+        self.add_message(f"Welcome to {shopkeeper.name}'s shop!")
+
+    def handle_shop_input(self, key):
+        """Handle input while in shop mode."""
+        if key == pygame.K_ESCAPE or key == pygame.K_q:
+            self.shop_state = "closed"
+            self.current_shopkeeper = None
+            play_sound("interface2", 0.7)
+            return
+        
+        if key == pygame.K_TAB:  # Switch between buy/sell modes
+            self.shop_mode = "sell" if self.shop_mode == "buy" else "buy"
+            self.selected_shop_item_idx = 0
+            play_sound("interface3", 0.7)
+            return
+        
+        # Navigation
+        if key == pygame.K_UP:
+            if self.shop_mode == "buy":
+                self.selected_shop_item_idx = max(0, self.selected_shop_item_idx - 1)
+            else:  # sell mode
+                self.selected_item_idx = max(0, self.selected_item_idx - 1)
+        elif key == pygame.K_DOWN:
+            if self.shop_mode == "buy":
+                max_items = len(self.current_shopkeeper.inventory) - 1
+                self.selected_shop_item_idx = min(max_items, self.selected_shop_item_idx + 1)
+            else:  # sell mode
+                player_inventory = self.players[self.selected_player_idx].inventory
+                max_items = len(player_inventory) - 1
+                self.selected_item_idx = min(max_items, self.selected_item_idx + 1)
+        elif key == pygame.K_LEFT:
+            self.selected_player_idx = max(0, self.selected_player_idx - 1)
+        elif key == pygame.K_RIGHT:
+            self.selected_player_idx = min(len(self.players) - 1, self.selected_player_idx + 1)
+        
+        # Buy/Sell action
+        if key == pygame.K_RETURN:
+            if self.shop_mode == "buy":
+                self.buy_item()
+            else:
+                self.sell_item()
+
+    def buy_item(self):
+        """Handle buying an item from the shop."""
+        if not self.current_shopkeeper.inventory:
+            self.add_message("The shop has no items for sale!")
+            play_sound("error", 0.7)
+            return
+        
+        if self.selected_shop_item_idx >= len(self.current_shopkeeper.inventory):
+            return
+        
+        item = self.current_shopkeeper.inventory[self.selected_shop_item_idx]
+        price = self.current_shopkeeper.get_item_price(item)
+        player = self.players[self.selected_player_idx]
+        
+        # Check if player has enough gold
+        if player.gold < price:
+            self.add_message(f"❌ Not enough gold! Need {price}g, have {player.gold}g")
+            play_sound("error", 0.7)  # Error sound
+            return
+        
+        # Check if player can carry the item
+        if not player.can_carry_item(item):
+            item_type = type(item).__name__.lower()
+            if isinstance(item, Weapon):
+                max_items = player.max_weapons
+                current_count = len([i for i in player.inventory if isinstance(i, Weapon)])
+                self.add_message(f"❌ Weapon inventory full! ({current_count}/{max_items})")
+            elif isinstance(item, Armor):
+                max_items = player.max_armor
+                current_count = len([i for i in player.inventory if isinstance(i, Armor)])
+                self.add_message(f"❌ Armor inventory full! ({current_count}/{max_items})")
+            elif isinstance(item, Potion):
+                max_items = player.max_potions
+                current_count = len([i for i in player.inventory if isinstance(i, Potion)])
+                self.add_message(f"❌ Potion inventory full! ({current_count}/{max_items})")
+            else:
+                self.add_message(f"❌ Cannot carry more {item_type}s!")
+            play_sound("error", 0.7)
+            return
+        
+        # Complete the transaction
+        player.inventory.append(item)
+        player.gold -= price
+        self.current_shopkeeper.inventory.remove(item)
+        self.add_message(f"✅ Bought {item.name} for {price} gold!")
+        play_sound("pickup_coin", 0.8)
+        
+        # Adjust selection if we removed the last item
+        if self.selected_shop_item_idx >= len(self.current_shopkeeper.inventory):
+            self.selected_shop_item_idx = max(0, len(self.current_shopkeeper.inventory) - 1)
+
+    def sell_item(self):
+        """Handle selling an item to the shop."""
+        player = self.players[self.selected_player_idx]
+        
+        if not player.inventory:
+            self.add_message("❌ You have no items to sell!")
+            play_sound("error", 0.7)
+            return
+        
+        if self.selected_item_idx >= len(player.inventory):
+            return
+        
+        item = player.inventory[self.selected_item_idx]
+        
+        # Check if item is equipped (can't sell equipped items)
+        if ((isinstance(item, Weapon) and item == player.weapon) or
+            (isinstance(item, Armor) and item == player.armor)):
+            self.add_message("❌ Cannot sell equipped items!")
+            play_sound("error", 0.7)  # Error sound
+            return
+        
+        price = self.current_shopkeeper.sell_item_price(item)
+        
+        # Complete the transaction
+        player.inventory.remove(item)
+        player.gold += price
+        self.add_message(f"✅ Sold {item.name} for {price} gold!")
+        play_sound("pickup_coin2", 0.8)
+        
+        # Adjust selection if we removed the last item
+        if self.selected_item_idx >= len(player.inventory):
+            self.selected_item_idx = max(0, len(player.inventory) - 1)
 
     def open_treasure_chest(self, treasure, player):
         """Open a treasure chest and give items to player."""
@@ -3503,7 +3980,9 @@ class Game:
             self.add_message("You can't move there.")
 
     def draw_game(self):
-        if self.inventory_state == "open":
+        if self.shop_state == "open":
+            self.draw_shop_screen()
+        elif self.inventory_state == "open":
             self.draw_inventory_screen()
         else:
             self.draw_main_game()
@@ -3699,6 +4178,27 @@ class Game:
                     if not sprite_drawn:
                         pygame.draw.rect(screen, RED, (screen_x + 2, screen_y + 2, TILE_SIZE - 4, TILE_SIZE - 4))
                 
+        # Draw shopkeepers (only if visible)
+        for shopkeeper in self.dungeon.shopkeepers:
+            if (viewport_start_x <= shopkeeper.x < viewport_end_x and 
+                viewport_start_y <= shopkeeper.y < viewport_end_y and
+                self.dungeon.is_visible(shopkeeper.x, shopkeeper.y)):
+                
+                screen_x = (shopkeeper.x - self.camera_x) * TILE_SIZE
+                screen_y = (shopkeeper.y - self.camera_y) * TILE_SIZE
+                
+                if game_settings['use_emojis']:
+                    text = font.render(shopkeeper.icon, True, (255, 215, 0))  # Gold color
+                    screen.blit(text, (screen_x, screen_y))
+                else:
+                    # For sprite mode, use a simple colored rectangle or merchant sprite if available
+                    sprite_key = "npc_merchant"
+                    if sprite_key in sprites:
+                        screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                    else:
+                        # Gold-colored rectangle for merchant
+                        pygame.draw.rect(screen, (255, 215, 0), (screen_x + 4, screen_y + 4, TILE_SIZE - 8, TILE_SIZE - 8))
+
         # Draw players
         for player in self.players:
             if (viewport_start_x <= player.x < viewport_end_x and 
