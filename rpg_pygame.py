@@ -85,14 +85,18 @@ def apply_resolution_settings():
     SCREEN_HEIGHT = game_settings["resolution"][1]
     
     if game_settings["fullscreen"]:
-        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+        # Get desktop resolution for proper fullscreen
+        desktop_info = pygame.display.Info()
+        screen = pygame.display.set_mode((desktop_info.current_w, desktop_info.current_h), pygame.FULLSCREEN)
+        # Update SCREEN dimensions to actual fullscreen size
+        SCREEN_WIDTH = desktop_info.current_w
+        SCREEN_HEIGHT = desktop_info.current_h
     else:
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("RPG Game - Undertale Edition")
 
-# Initial screen setup
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("RPG Game - Undertale Edition")
+# Initial screen setup - Apply settings immediately
+apply_resolution_settings()
 
 # Apply audio volume settings
 def apply_audio_settings():
@@ -936,7 +940,10 @@ ENHANCED_COLORS = {
     'background_dark': (15, 20, 25),
     'background_light': (35, 40, 45),
     'panel_dark': (40, 45, 50),
-    'panel_light': (55, 60, 65)
+    'panel_light': (55, 60, 65),
+    'button_normal': (40, 45, 50),
+    'button_hover': (55, 60, 65),
+    'button_selected': (70, 130, 180)
 }
 
 # Animation system
@@ -3716,86 +3723,162 @@ class Game:
 
     def settings_menu(self):
         global game_settings
-        screen.fill(BLACK)
-        self.draw_text("Settings", SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 - 250)
+        # Enhanced background with gradient (matching main menu)
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['primary_dark'])
         
-        button_x = SCREEN_WIDTH // 2 - 250
-        start_y = SCREEN_HEIGHT // 2 - 200
+        # Update animations
+        animation_manager.update()
+        
+        # Get mouse position for hover effects
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # Animated title with shadow (matching main menu)
+        title_y = SCREEN_HEIGHT // 2 - 250
+        title_x = SCREEN_WIDTH // 2 - 120
+        
+        # Title background panel
+        title_bg_rect = pygame.Rect(title_x - 40, title_y - 20, 320, 80)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        
+        # Main title with enhanced text
+        draw_text_with_shadow(screen, "Game Settings", title_x, title_y, ENHANCED_COLORS['accent_gold'])
+        
+        # Settings panel
+        panel_y = title_y + 100
+        panel_width = SCREEN_WIDTH - 200
+        panel_height = 420
+        panel_x = (SCREEN_WIDTH - panel_width) // 2
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        draw_gradient_rect(screen, panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], panel_rect, width=2, border_radius=8)
+        
+        # Settings options
+        settings_x = panel_x + 50
+        start_y = panel_y + 30
+        line_height = 50
         
         # 1. Resolution setting
         res_text = f"Resolution: {game_settings['resolution'][0]}x{game_settings['resolution'][1]}"
         if game_settings['fullscreen']:
             res_text += " (Fullscreen)"
-        self.draw_text(f"1. {res_text}", button_x, start_y)
-        if "tab_unselected" in ui_elements:
-            screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y - 5))
+        
+        setting_rect_1 = pygame.Rect(settings_x - 20, start_y - 10, 250, 35)
+        draw_gradient_rect(screen, setting_rect_1, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+        draw_text_with_shadow(screen, "1.", settings_x - 10, start_y, ENHANCED_COLORS['accent_gold'])
+        draw_text_with_shadow(screen, res_text, settings_x + 30, start_y, ENHANCED_COLORS['text_primary'])
         
         # 2. Music Volume
         music_vol = int(game_settings['music_volume'] * 100)
-        self.draw_text(f"2. Music Volume: {music_vol}%", button_x, start_y + 40)
-        if "tab_unselected" in ui_elements:
-            screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 35))
+        setting_rect_2 = pygame.Rect(settings_x - 20, start_y + line_height - 10, 250, 35)
+        draw_gradient_rect(screen, setting_rect_2, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+        draw_text_with_shadow(screen, "2.", settings_x - 10, start_y + line_height, ENHANCED_COLORS['accent_gold'])
+        draw_text_with_shadow(screen, f"Music Volume: {music_vol}%", settings_x + 30, start_y + line_height, ENHANCED_COLORS['text_primary'])
         
-        # Volume bar for music
-        bar_x = button_x + 200
-        bar_y = start_y + 45
+        # Enhanced volume bar for music
+        bar_x = settings_x + 300
+        bar_y = start_y + line_height + 5
         bar_width = 200
-        bar_height = 10
-        pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
+        bar_height = 20
+        bar_bg_rect = pygame.Rect(bar_x - 2, bar_y - 2, bar_width + 4, bar_height + 4)
+        draw_gradient_rect(screen, bar_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], bar_bg_rect, width=1, border_radius=10)
+        
+        pygame.draw.rect(screen, ENHANCED_COLORS['background_dark'], (bar_x, bar_y, bar_width, bar_height), border_radius=8)
         fill_width = int(bar_width * game_settings['music_volume'])
-        pygame.draw.rect(screen, GREEN, (bar_x, bar_y, fill_width, bar_height))
+        if fill_width > 0:
+            pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], (bar_x, bar_y, fill_width, bar_height), border_radius=8)
         
         # 3. Sound Volume  
         sound_vol = int(game_settings['sound_volume'] * 100)
-        self.draw_text(f"3. Sound Volume: {sound_vol}%", button_x, start_y + 80)
-        if "tab_unselected" in ui_elements:
-            screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 75))
+        setting_rect_3 = pygame.Rect(settings_x - 20, start_y + line_height * 2 - 10, 250, 35)
+        draw_gradient_rect(screen, setting_rect_3, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+        draw_text_with_shadow(screen, "3.", settings_x - 10, start_y + line_height * 2, ENHANCED_COLORS['accent_gold'])
+        draw_text_with_shadow(screen, f"Sound Volume: {sound_vol}%", settings_x + 30, start_y + line_height * 2, ENHANCED_COLORS['text_primary'])
         
-        # Volume bar for sound
-        bar_y = start_y + 85
-        pygame.draw.rect(screen, GRAY, (bar_x, bar_y, bar_width, bar_height))
+        # Enhanced volume bar for sound
+        bar_y = start_y + line_height * 2 + 5
+        bar_bg_rect = pygame.Rect(bar_x - 2, bar_y - 2, bar_width + 4, bar_height + 4)
+        draw_gradient_rect(screen, bar_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], bar_bg_rect, width=1, border_radius=10)
+        
+        pygame.draw.rect(screen, ENHANCED_COLORS['background_dark'], (bar_x, bar_y, bar_width, bar_height), border_radius=8)
         fill_width = int(bar_width * game_settings['sound_volume'])
-        pygame.draw.rect(screen, BLUE, (bar_x, bar_y, fill_width, bar_height))
+        if fill_width > 0:
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], (bar_x, bar_y, fill_width, bar_height), border_radius=8)
         
         # 4. Display mode (emoji/sprite)
         emoji_status = "ON" if game_settings['use_emojis'] else "OFF"
-        button_sprite = "tab_selected" if game_settings['use_emojis'] else "tab_unselected"
-        if button_sprite in ui_elements:
-            screen.blit(ui_elements[button_sprite], (button_x - 30, start_y + 115))
-        self.draw_text(f"4. Use Emojis: {emoji_status}", button_x, start_y + 120)
+        status_color = ENHANCED_COLORS['success_green'] if game_settings['use_emojis'] else ENHANCED_COLORS['danger_red']
+        
+        setting_rect_4 = pygame.Rect(settings_x - 20, start_y + line_height * 3 - 10, 350, 35)
+        draw_gradient_rect(screen, setting_rect_4, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+        draw_text_with_shadow(screen, "4.", settings_x - 10, start_y + line_height * 3, ENHANCED_COLORS['accent_gold'])
+        draw_text_with_shadow(screen, f"Use Emojis: ", settings_x + 30, start_y + line_height * 3, ENHANCED_COLORS['text_primary'])
+        draw_text_with_shadow(screen, emoji_status, settings_x + 160, start_y + line_height * 3, status_color)
         
         # Only show sprite options if not using emojis
+        current_line = 4
         if not game_settings['use_emojis']:
             # 5. Wall Style
             wall_name = game_settings['wall_sprite'].replace('.png', '').replace('_', ' ').title()
-            self.draw_text(f"5. Wall Style: {wall_name}", button_x, start_y + 160)
-            if "tab_unselected" in ui_elements:
-                screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 155))
+            setting_rect_5 = pygame.Rect(settings_x - 20, start_y + line_height * current_line - 10, 250, 35)
+            draw_gradient_rect(screen, setting_rect_5, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+            draw_text_with_shadow(screen, "5.", settings_x - 10, start_y + line_height * current_line, ENHANCED_COLORS['accent_gold'])
+            draw_text_with_shadow(screen, f"Wall Style: {wall_name}", settings_x + 30, start_y + line_height * current_line, ENHANCED_COLORS['text_primary'])
             
-            # Wall preview
+            # Wall preview with border
             sprite_key = f"wall_{game_settings['wall_sprite']}"
             if sprite_key in sprites:
+                preview_x = settings_x + 300
+                preview_y = start_y + line_height * current_line - 5
+                preview_rect = pygame.Rect(preview_x - 2, preview_y - 2, 36, 36)
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], preview_rect, border_radius=4)
                 preview_sprite = pygame.transform.scale(sprites[sprite_key], (32, 32))
-                screen.blit(preview_sprite, (button_x + 200, start_y + 155))
+                screen.blit(preview_sprite, (preview_x, preview_y))
             
+            current_line += 1
             # 6. Floor Style
             floor_name = game_settings['floor_sprite'].replace('.png', '').replace('_', ' ').title()
-            self.draw_text(f"6. Floor Style: {floor_name}", button_x, start_y + 200)
-            if "tab_unselected" in ui_elements:
-                screen.blit(ui_elements["tab_unselected"], (button_x - 30, start_y + 195))
+            setting_rect_6 = pygame.Rect(settings_x - 20, start_y + line_height * current_line - 10, 250, 35)
+            draw_gradient_rect(screen, setting_rect_6, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+            draw_text_with_shadow(screen, "6.", settings_x - 10, start_y + line_height * current_line, ENHANCED_COLORS['accent_gold'])
+            draw_text_with_shadow(screen, f"Floor Style: {floor_name}", settings_x + 30, start_y + line_height * current_line, ENHANCED_COLORS['text_primary'])
             
-            # Floor preview
+            # Floor preview with border
             sprite_key = f"floor_{game_settings['floor_sprite']}"
             if sprite_key in sprites:
+                preview_x = settings_x + 300
+                preview_y = start_y + line_height * current_line - 5
+                preview_rect = pygame.Rect(preview_x - 2, preview_y - 2, 36, 36)
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], preview_rect, border_radius=4)
                 preview_sprite = pygame.transform.scale(sprites[sprite_key], (32, 32))
-                screen.blit(preview_sprite, (button_x + 200, start_y + 195))
+                screen.blit(preview_sprite, (preview_x, preview_y))
         
-        # Instructions
-        self.draw_text("Controls:", button_x, start_y + 250, YELLOW)
-        self.draw_text("Numbers 1-6: Select setting", button_x, start_y + 280, GRAY)
-        self.draw_text("Arrow keys: Adjust volume", button_x, start_y + 300, GRAY)  
-        self.draw_text("F11: Toggle fullscreen", button_x, start_y + 320, GRAY)
-        self.draw_text("ESC: Back to main menu", button_x, start_y + 340, GRAY)
+        # Instructions panel at bottom
+        instructions_y = panel_y + panel_height + 20
+        instructions_rect = pygame.Rect(panel_x, instructions_y, panel_width, 120)
+        draw_gradient_rect(screen, instructions_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], instructions_rect, width=2, border_radius=8)
+        
+        # Enhanced instructions with proper spacing
+        inst_x = instructions_rect.x + 30
+        inst_y = instructions_y + 20
+        draw_text_with_shadow(screen, "Controls:", inst_x, inst_y, ENHANCED_COLORS['accent_gold'])
+        
+        instructions = [
+            "Numbers 1-6: Select setting to change",
+            "← → Arrow Keys: Adjust volume (hold number + arrow)",
+            "F11: Toggle fullscreen mode",
+            "ESC: Return to main menu"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            draw_text_with_shadow(screen, instruction, inst_x, inst_y + 25 + i * 20, ENHANCED_COLORS['text_secondary'])
+        
+        # Draw particles if any
+        animation_manager.draw_particles(screen)
         
         pygame.display.flip()
         
@@ -3803,19 +3886,26 @@ class Game:
             if event.type == pygame.QUIT:
                 self.game_over = True
             if event.type == pygame.KEYDOWN:
+                play_sound("menu_select", 0.5)  # Sound feedback
+                
                 if event.key == pygame.K_1:
+                    animation_manager.add_particles(settings_x + 100, start_y, ENHANCED_COLORS['accent_gold'], 10)
                     self.game_state = "resolution_selection"
                 elif event.key == pygame.K_2 or event.key == pygame.K_3:
                     # Volume adjustment with arrow keys
                     pass  # Handle below
                 elif event.key == pygame.K_4:
+                    animation_manager.add_particles(settings_x + 100, start_y + line_height * 3, ENHANCED_COLORS['accent_gold'], 10)
                     game_settings['use_emojis'] = not game_settings['use_emojis']
                     save_settings(game_settings)
                 elif event.key == pygame.K_5 and not game_settings['use_emojis']:
+                    animation_manager.add_particles(settings_x + 100, start_y + line_height * 4, ENHANCED_COLORS['accent_gold'], 10)
                     self.game_state = "wall_selection"
                 elif event.key == pygame.K_6 and not game_settings['use_emojis']:
+                    animation_manager.add_particles(settings_x + 100, start_y + line_height * 5, ENHANCED_COLORS['accent_gold'], 10)
                     self.game_state = "floor_selection"
                 elif event.key == pygame.K_F11:
+                    animation_manager.add_particles(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, ENHANCED_COLORS['accent_blue'], 15)
                     game_settings['fullscreen'] = not game_settings['fullscreen']
                     save_settings(game_settings)
                     apply_resolution_settings()
@@ -3825,19 +3915,24 @@ class Game:
                         game_settings['music_volume'] = max(0.0, game_settings['music_volume'] - 0.1)
                         apply_audio_settings()
                         save_settings(game_settings)
+                        animation_manager.add_particles(bar_x + fill_width, start_y + line_height + 10, ENHANCED_COLORS['success_green'], 5)
                     elif pygame.key.get_pressed()[pygame.K_3]:  # Sound volume
                         game_settings['sound_volume'] = max(0.0, game_settings['sound_volume'] - 0.1)
                         save_settings(game_settings)
+                        animation_manager.add_particles(bar_x + fill_width, start_y + line_height * 2 + 10, ENHANCED_COLORS['accent_blue'], 5)
                 elif event.key == pygame.K_RIGHT:
                     # Increase volume
                     if pygame.key.get_pressed()[pygame.K_2]:  # Music volume
                         game_settings['music_volume'] = min(1.0, game_settings['music_volume'] + 0.1)
                         apply_audio_settings()
                         save_settings(game_settings)
+                        animation_manager.add_particles(bar_x + fill_width, start_y + line_height + 10, ENHANCED_COLORS['success_green'], 5)
                     elif pygame.key.get_pressed()[pygame.K_3]:  # Sound volume
                         game_settings['sound_volume'] = min(1.0, game_settings['sound_volume'] + 0.1)
                         save_settings(game_settings)
+                        animation_manager.add_particles(bar_x + fill_width, start_y + line_height * 2 + 10, ENHANCED_COLORS['accent_blue'], 5)
                 elif event.key == pygame.K_ESCAPE:
+                    play_sound("menu_back", 0.5)
                     self.game_state = "main_menu"
 
     def wall_selection(self):
@@ -3920,7 +4015,24 @@ class Game:
 
     def resolution_selection(self):
         global game_settings
-        screen.fill(BLACK)
+        # Enhanced background with gradient (matching main menu)
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['primary_dark'])
+        
+        # Update animations
+        animation_manager.update()
+        
+        # Animated title with shadow
+        title_y = SCREEN_HEIGHT // 2 - 250
+        title_x = SCREEN_WIDTH // 2 - 150
+        
+        # Title background panel
+        title_bg_rect = pygame.Rect(title_x - 40, title_y - 20, 340, 80)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        
+        # Main title with enhanced text
+        draw_text_with_shadow(screen, "Select Resolution", title_x, title_y, ENHANCED_COLORS['accent_gold'])
         
         # Common resolution options
         resolution_options = [
@@ -3941,29 +4053,69 @@ class Game:
             "3840x2160 (4K)"
         ]
         
-        self.draw_text("Select Resolution", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 200)
-        
         current_res = game_settings['resolution']
         
+        # Resolution panel
+        panel_y = title_y + 100
+        panel_width = 500
+        panel_height = 350
+        panel_x = (SCREEN_WIDTH - panel_width) // 2
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        draw_gradient_rect(screen, panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], panel_rect, width=2, border_radius=8)
+        
         # Display resolution options
+        options_x = panel_x + 30
+        start_y = panel_y + 30
         for i, (res, name) in enumerate(zip(resolution_options, resolution_names)):
-            y_pos = SCREEN_HEIGHT // 2 - 150 + i * 40
-            marker = ">" if res == current_res else " "
+            y_pos = start_y + i * 40
             
-            # Highlight current resolution
-            color = YELLOW if res == current_res else WHITE
-            self.draw_text(f"{marker} {i+1}. {name}", 
-                          SCREEN_WIDTH // 2 - 150, y_pos, color)
+            # Create selection rectangle for current resolution
+            if res == current_res:
+                selection_rect = pygame.Rect(options_x - 15, y_pos - 8, 440, 32)
+                draw_gradient_rect(screen, selection_rect, ENHANCED_COLORS['accent_gold'], ENHANCED_COLORS['accent_blue'])
+                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], selection_rect, width=2, border_radius=6)
+            
+            # Number and resolution text
+            number_color = ENHANCED_COLORS['accent_gold'] if res == current_res else ENHANCED_COLORS['text_secondary']
+            text_color = ENHANCED_COLORS['background_dark'] if res == current_res else ENHANCED_COLORS['text_primary']
+            
+            draw_text_with_shadow(screen, f"{i+1}.", options_x, y_pos, number_color)
+            draw_text_with_shadow(screen, name, options_x + 30, y_pos, text_color)
         
-        # Fullscreen toggle
+        # Fullscreen toggle section
+        fs_y = start_y + len(resolution_options) * 40 + 20
         fs_status = "ON" if game_settings['fullscreen'] else "OFF"
-        fs_color = YELLOW if game_settings['fullscreen'] else WHITE
-        self.draw_text(f"F. Fullscreen: {fs_status}", 
-                      SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 100, fs_color)
+        fs_status_color = ENHANCED_COLORS['success_green'] if game_settings['fullscreen'] else ENHANCED_COLORS['danger_red']
         
-        self.draw_text("Press number to select resolution", SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 140, GRAY)
-        self.draw_text("Press F to toggle fullscreen", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 160, GRAY)
-        self.draw_text("Press ESC to go back", SCREEN_WIDTH // 2 - 80, SCREEN_HEIGHT // 2 + 180, GRAY)
+        fs_rect = pygame.Rect(options_x - 15, fs_y - 8, 200, 32)
+        draw_gradient_rect(screen, fs_rect, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+        
+        draw_text_with_shadow(screen, "F.", options_x, fs_y, ENHANCED_COLORS['accent_gold'])
+        draw_text_with_shadow(screen, "Fullscreen: ", options_x + 30, fs_y, ENHANCED_COLORS['text_primary'])
+        draw_text_with_shadow(screen, fs_status, options_x + 150, fs_y, fs_status_color)
+        
+        # Instructions panel at bottom
+        instructions_y = panel_y + panel_height + 20
+        instructions_rect = pygame.Rect(panel_x, instructions_y, panel_width, 80)
+        draw_gradient_rect(screen, instructions_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], instructions_rect, width=2, border_radius=8)
+        
+        # Enhanced instructions
+        inst_x = instructions_rect.x + 20
+        inst_y = instructions_y + 15
+        
+        instructions = [
+            "Press number (1-6) to select resolution",
+            "Press F to toggle fullscreen mode", 
+            "Press ESC to return to settings"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            draw_text_with_shadow(screen, instruction, inst_x, inst_y + i * 18, ENHANCED_COLORS['text_secondary'])
+        
+        # Draw particles if any
+        animation_manager.draw_particles(screen)
         
         pygame.display.flip()
         
@@ -3971,17 +4123,22 @@ class Game:
             if event.type == pygame.QUIT:
                 self.game_over = True
             if event.type == pygame.KEYDOWN:
+                play_sound("menu_select", 0.5)  # Sound feedback
+                
                 if event.key in [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6]:
                     idx = int(pygame.key.name(event.key)) - 1
                     if 0 <= idx < len(resolution_options):
+                        animation_manager.add_particles(options_x + 200, start_y + idx * 40, ENHANCED_COLORS['accent_gold'], 12)
                         game_settings['resolution'] = resolution_options[idx]
                         save_settings(game_settings)
                         apply_resolution_settings()
                 elif event.key == pygame.K_f:
+                    animation_manager.add_particles(options_x + 100, fs_y, ENHANCED_COLORS['accent_blue'], 10)
                     game_settings['fullscreen'] = not game_settings['fullscreen']
                     save_settings(game_settings)
                     apply_resolution_settings()
                 elif event.key == pygame.K_ESCAPE:
+                    play_sound("menu_back", 0.5)
                     self.game_state = "settings_menu"
 
     def setup_num_players(self):

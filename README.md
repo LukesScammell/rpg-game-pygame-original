@@ -197,6 +197,27 @@ The game includes a comprehensive settings system accessible from the main menu:
 - Fixed enemy rendering code to properly use Undertale sprite mapping
 - Updated victory conditions from "dragon" to "asgore" with proper boss music integration
 
+### v1.21.1: UI Enhancement & Display Fix Patch
+**Settings Interface Polish & Display Corrections:**
+- **Settings UI Redesign**: Complete visual overhaul to match main menu aesthetic
+  - **Gradient Panel Backgrounds**: Enhanced settings panels with gradient styling matching main menu
+  - **Visual Volume Bars**: Added bordered volume indicators with percentage displays for music and sound effects
+  - **Enhanced Button Styling**: Consistent button animations, hover effects, and visual feedback throughout settings
+  - **Particle Effects Integration**: Added responsive particle effects for user interactions in settings menu
+- **Fullscreen Display Fix**: Resolved game not filling entire screen in fullscreen mode
+  - **Desktop Resolution Detection**: Fixed fullscreen to use actual desktop resolution instead of preset dimensions
+  - **Proper Screen Initialization**: Cleaned up duplicate screen setup code for better performance and reliability
+  - **Dynamic Resolution Handling**: Enhanced resolution switching between windowed and fullscreen modes
+- **Color System Enhancement**: Added missing button color definitions to ENHANCED_COLORS palette
+  - **Button State Colors**: Added `button_normal`, `button_hover`, and `button_selected` color definitions
+  - **Consistent Theming**: Resolved KeyError crashes and ensured visual consistency across all UI elements
+
+**Technical Fixes:**
+- Enhanced `apply_resolution_settings()` with desktop resolution detection for proper fullscreen
+- Redesigned `settings_menu()` with gradient backgrounds, enhanced panels, and visual volume bars
+- Added missing color keys to `ENHANCED_COLORS` dictionary to prevent KeyError crashes
+- Improved screen initialization process with proper settings application at startup
+
 ### v1.20.1: Enhanced Shop UX & Error Handling
 **Improved Shop Interface & User Experience:**
 - **Enhanced TAB Key Visibility**: Prominent "Press [TAB] to Switch" instruction displayed below Buy/Sell tabs

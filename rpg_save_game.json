@@ -1,0 +1,127 @@
+{
+  "players": [
+    {
+      "x": 5,
+      "y": 8,
+      "name": "1",
+      "char_class": "warrior",
+      "hp": 100,
+      "max_hp": 100,
+      "base_attack": 12,
+      "base_defense": 8,
+      "level": 1,
+      "xp": 0,
+      "mana": 0,
+      "max_mana": 0,
+      "gold": 100,
+      "skill_cooldown": 0,
+      "inventory": [
+        {
+          "type": "Weapon",
+          "name": "Iron Sword",
+          "rarity": "common",
+          "attack_bonus": 5,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "long_sword1"
+        },
+        {
+          "type": "Weapon",
+          "name": "Long Sword",
+          "rarity": "common",
+          "attack_bonus": 6,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "long_sword1"
+        },
+        {
+          "type": "Armor",
+          "name": "Scale Mail",
+          "rarity": "common",
+          "defense_bonus": 5,
+          "allowed_classes": [
+            "warrior",
+            "archer"
+          ],
+          "sprite_name": "scale_mail1"
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        },
+        {
+          "type": "Potion",
+          "name": "Healing Potion",
+          "rarity": "common",
+          "hp_gain": 25
+        },
+        {
+          "type": "Potion",
+          "name": "Healing Potion",
+          "rarity": "common",
+          "hp_gain": 25
+        },
+        {
+          "type": "Armor",
+          "name": "Splint Mail",
+          "rarity": "uncommon",
+          "defense_bonus": 8,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "splint_mail1"
+        },
+        {
+          "type": "Weapon",
+          "name": "War Axe",
+          "rarity": "uncommon",
+          "attack_bonus": 10,
+          "allowed_classes": [
+            "warrior"
+          ],
+          "sprite_name": "war_axe1"
+        },
+        {
+          "type": "Potion",
+          "name": "Superior Healing",
+          "rarity": "rare",
+          "hp_gain": 60
+        }
+      ],
+      "weapon": {
+        "name": "Iron Sword",
+        "attack_bonus": 5,
+        "allowed_classes": [
+          "warrior"
+        ],
+        "rarity": "common",
+        "sprite_name": "long_sword1"
+      },
+      "armor": null
+    }
+  ],
+  "dungeon_level": 3,
+  "current_player_idx": 0,
+  "game_state": "playing",
+  "camera_x": 0,
+  "camera_y": 1,
+  "obtained_items": [
+    "Splint Mail",
+    "Healing Potion",
+    "Iron Sword",
+    "Superior Healing",
+    "Long Sword",
+    "Scale Mail",
+    "War Axe"
+  ]
+}
