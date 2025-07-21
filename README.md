@@ -1,4 +1,4 @@
-# Python RPG Adventure - Pygame Version (v1.21)
+# Python RPG Adventure - Pygame Version (v1.22)
 
 A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and shop system. Created with the help of large language models by **LukesScammell**.
 
@@ -135,6 +135,32 @@ The game includes a comprehensive settings system accessible from the main menu:
 ---
 
 ## Version History & Development Notes
+
+### v1.22: UI Enhancement & Optimization Edition
+**Camera & Viewport Improvements:**
+- **Enhanced Zoom System**: Increased viewport from 20×15 to 26×18 tiles (30% wider, 20% taller view)
+  - **Improved Wall Visibility**: Walls no longer cut off at screen edges, providing better spatial awareness
+  - **Enhanced Exploration**: Players can see more of the dungeon layout at once for better navigation
+  - **Optimized Camera Following**: Maintained smooth camera movement with expanded field of view
+
+**Enhanced Text Spacing & Readability:**
+- **Improved UI Layout**: Increased spacing between all text elements for better readability
+  - **Player Status**: Increased spacing from 35px to 45px between each player's status line
+  - **Inventory Display**: Enhanced spacing in right panel inventory section (35px/65px/95px/125px)
+  - **Controls Section**: Improved control text spacing from 20px intervals to 25px intervals
+  - **Floating Text System**: Enhanced padding system with semi-transparent backgrounds for all UI text
+
+**Professional UI Polish:**
+- **Floating Overlay System**: Removed obstructive black bars, replaced with clean floating elements
+- **Dynamic Text Padding**: All UI text now features configurable padding backgrounds for enhanced readability
+- **Optimized Screen Utilization**: Maximized usable game area by removing fixed UI bars
+- **Enhanced Visual Hierarchy**: Better text organization with improved spacing and visual grouping
+
+**Technical Enhancements:**
+- Updated `VIEWPORT_WIDTH` and `VIEWPORT_HEIGHT` constants for expanded camera view
+- Enhanced `draw_ui()` function with improved text spacing calculations
+- Refined `draw_text()` function with enhanced padding system for better text readability
+- Optimized UI layout calculations for better screen space utilization
 
 ### v1.21: Complete Undertale Integration & Advanced Settings
 **Complete Undertale Character System:**

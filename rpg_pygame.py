@@ -12,9 +12,15 @@ SCREEN_WIDTH = 1920  # Increased for larger display
 SCREEN_HEIGHT = 1080  # Increased for larger display
 MAP_WIDTH = 40
 MAP_HEIGHT = 20
-TILE_SIZE = 48  # Increased tile size for better visibility
-VIEWPORT_WIDTH = 20  # More tiles visible horizontally
-VIEWPORT_HEIGHT = 15  # More tiles visible vertically
+TILE_SIZE = 64  # Larger tiles to better fill screen space
+# Dynamic viewport - will be calculated based on screen size
+VIEWPORT_WIDTH = 26  # Increased to show more of the world (was 20)
+VIEWPORT_HEIGHT = 18  # Increased to show more of the world (was 15)
+# Game area positioning for centering
+GAME_AREA_WIDTH = 1600  # Default, will be updated dynamically
+GAME_AREA_HEIGHT = 800  # Default, will be updated dynamically
+GAME_OFFSET_X = 0  # Default, will be updated dynamically
+GAME_OFFSET_Y = 0  # Default, will be updated dynamically
 MINIMAP_SIZE = 250  # Larger minimap
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
@@ -47,10 +53,10 @@ def load_settings():
         "use_emojis": True,
         "wall_sprite": "stone_brick1.png",
         "floor_sprite": "sandstone_floor0.png",
-        "resolution": [1024, 768],  # [width, height]
+        "resolution": [1920, 1080],  # [width, height]
         "music_volume": 0.5,  # 0.0 to 1.0
         "sound_volume": 0.7,  # 0.0 to 1.0
-        "fullscreen": False
+        "fullscreen": True
     }
     try:
         with open(SETTINGS_FILE, 'r') as f:
@@ -80,7 +86,7 @@ SCREEN_HEIGHT = game_settings["resolution"][1]
 
 # Initialize screen with settings-based resolution
 def apply_resolution_settings():
-    global screen, SCREEN_WIDTH, SCREEN_HEIGHT
+    global screen, SCREEN_WIDTH, SCREEN_HEIGHT, VIEWPORT_WIDTH, VIEWPORT_HEIGHT, GAME_AREA_WIDTH, GAME_AREA_HEIGHT, GAME_OFFSET_X, GAME_OFFSET_Y
     SCREEN_WIDTH = game_settings["resolution"][0]
     SCREEN_HEIGHT = game_settings["resolution"][1]
     
@@ -94,6 +100,23 @@ def apply_resolution_settings():
     else:
         screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("RPG Game - Undertale Edition")
+    
+    # Calculate game area and viewport to fill most of the screen
+    # Reserve minimal space for UI: 80px top, 120px bottom, 260px right for minimap
+    ui_top_height = 80
+    ui_bottom_height = 120
+    ui_right_width = 260
+    
+    GAME_AREA_WIDTH = SCREEN_WIDTH - ui_right_width
+    GAME_AREA_HEIGHT = SCREEN_HEIGHT - ui_top_height - ui_bottom_height
+    
+    # Calculate viewport size to fit the available game area
+    VIEWPORT_WIDTH = max(25, GAME_AREA_WIDTH // TILE_SIZE)
+    VIEWPORT_HEIGHT = max(18, GAME_AREA_HEIGHT // TILE_SIZE)
+    
+    # Center the game area in the available space
+    GAME_OFFSET_X = (GAME_AREA_WIDTH - (VIEWPORT_WIDTH * TILE_SIZE)) // 2
+    GAME_OFFSET_Y = ui_top_height + (GAME_AREA_HEIGHT - (VIEWPORT_HEIGHT * TILE_SIZE)) // 2
 
 # Initial screen setup - Apply settings immediately
 apply_resolution_settings()
@@ -1181,10 +1204,10 @@ def get_combat_music_for_enemies(enemies):
     elif any(strong in enemy_types for strong in ["mad_dummy", "lesser_dog", "greater_dog", "muffet", "alphys"]):
         return "combat_troll"
     # Medium enemies
-    elif any(medium in enemy_types for medium in ["aaron", "woshua", "shyren", "temmie", "napstablook", "sans"]):
+    elif any(medium in enemy_types for medium in ["pyrope", "vulkin", "tsunderplane", "temmie", "napstablook", "sans"]):
         return "combat_orc"
     # Weak enemies
-    elif any(weak in enemy_types for weak in ["dummy", "froggit", "whimsun", "vegetoid", "moldsmal", "loox", "migosp"]):
+    elif any(weak in enemy_types for weak in ["dummy", "froggit", "whimsun", "vegetoid", "moldsmal", "loox"]):
         return "combat_goblin"
     else:
         return "combat_goblin"  # Default fallback
@@ -1259,15 +1282,9 @@ ENEMIES = {
     "loox": {"hp": 60, "attack": 14, "defense": 5, "xp": 20, "icon": UI["orc"]},
     "vegetoid": {"hp": 70, "attack": 16, "defense": 6, "xp": 25, "icon": UI["orc"]},
     "moldsmal": {"hp": 50, "attack": 12, "defense": 4, "xp": 18, "icon": UI["orc"]},
-    "migosp": {"hp": 55, "attack": 13, "defense": 5, "xp": 22, "icon": UI["orc"]},
     
     # Medium difficulty enemies (Levels 3-4)
-    "aaron": {"hp": 80, "attack": 19, "defense": 7, "xp": 32, "icon": UI["orc"]},
-    "woshua": {"hp": 75, "attack": 17, "defense": 8, "xp": 28, "icon": UI["orc"]},
-    "shyren": {"hp": 85, "attack": 21, "defense": 6, "xp": 35, "icon": UI["orc"]},
-    
-    # Later game enemies (Levels 3-4)
-    "snowdrake": {"hp": 85, "attack": 18, "defense": 7, "xp": 30, "icon": UI["troll"]},
+    "pyrope": {"hp": 85, "attack": 18, "defense": 7, "xp": 30, "icon": UI["troll"]},
     "icecap": {"hp": 90, "attack": 20, "defense": 8, "xp": 35, "icon": UI["troll"]},
     "gyftrot": {"hp": 110, "attack": 22, "defense": 9, "xp": 40, "icon": UI["troll"]},
     
@@ -1629,8 +1646,8 @@ class Shopkeeper:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.name = "Merchant"
-        self.icon = "🧙‍♂️"  # Wizard emoji for shopkeeper
+        self.name = "Temmie"
+        self.icon = "temmie"  # Use temmie sprite instead of emoji
         self.inventory = []  # Shop's inventory
         self.generate_shop_inventory()
     
@@ -1940,13 +1957,13 @@ class Dungeon:
         elif self.level == 3:
             # Level 3: Medium difficulty enemies
             return random.choices(
-                ['vegetoid', 'loox', 'migosp', 'moldsmal', 'aaron', 'woshua'],
-                weights=[20, 20, 20, 15, 15, 10]
+                ['vegetoid', 'loox', 'moldsmal', 'pyrope', 'vulkin'],
+                weights=[25, 25, 25, 15, 10]
             )[0]
         elif self.level == 4:
             # Level 4: Stronger enemies
             return random.choices(
-                ['aaron', 'woshua', 'shyren', 'temmie', 'mad_dummy'],
+                ['pyrope', 'vulkin', 'tsunderplane', 'temmie', 'mad_dummy'],
                 weights=[25, 25, 20, 15, 15]
             )[0]
         else:
@@ -1970,9 +1987,9 @@ class Dungeon:
                 # Same weapon drops as normal rooms
                 if enemy_type in ["dummy", "froggit", "whimsun"]:
                     enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]
-                elif enemy_type in ["vegetoid", "moldsmal", "loox", "migosp"]:
+                elif enemy_type in ["vegetoid", "moldsmal", "loox"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]
-                elif enemy_type in ["aaron", "woshua", "shyren", "temmie"]:
+                elif enemy_type in ["pyrope", "vulkin", "tsunderplane", "temmie"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]
                 elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]
@@ -2102,9 +2119,9 @@ class Dungeon:
                 # Add weapon drops based on enemy type
                 if enemy_type in ["dummy", "froggit", "whimsun"]:
                     enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]  # Basic weapons
-                elif enemy_type in ["vegetoid", "moldsmal", "loox", "migosp"]:
+                elif enemy_type in ["vegetoid", "moldsmal", "loox"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]  # Intermediate weapons
-                elif enemy_type in ["aaron", "woshua", "shyren", "temmie"]:
+                elif enemy_type in ["pyrope", "vulkin", "tsunderplane", "temmie"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]  # Advanced weapons and armor
                 elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
                     enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]  # Epic weapons
@@ -3574,8 +3591,23 @@ class Game:
             for p in self.players:
                 self.dungeon.update_visibility(p.x, p.y)
 
-    def draw_text(self, text, x, y, color=WHITE):
+    def draw_text(self, text, x, y, color=WHITE, padding=0):
+        """Draw text with optional padding background."""
         text_surface = font.render(text, True, color)
+        
+        if padding > 0:
+            # Create a padded background
+            text_rect = text_surface.get_rect()
+            padded_rect = pygame.Rect(x - padding, y - padding, 
+                                    text_rect.width + padding * 2, 
+                                    text_rect.height + padding * 2)
+            
+            # Semi-transparent dark background
+            padding_surface = pygame.Surface((padded_rect.width, padded_rect.height))
+            padding_surface.set_alpha(180)
+            padding_surface.fill((0, 0, 0))
+            screen.blit(padding_surface, (padded_rect.x, padded_rect.y))
+        
         screen.blit(text_surface, (x, y))
 
     def main_menu(self):
@@ -3674,7 +3706,7 @@ class Game:
         
         # Show current display mode and version info
         mode_text = "Display: " + ("Emoji Mode" if game_settings['use_emojis'] else "Sprite Mode")
-        version_text = "Version 1.17 - Enhanced Balance Edition"
+        version_text = "Version 1.22 - UI Enhancement & Optimization Edition"
         
         mode_surface = small_font.render(mode_text, True, ENHANCED_COLORS['text_secondary'])
         version_surface = small_font.render(version_text, True, ENHANCED_COLORS['text_secondary'])
@@ -4663,8 +4695,8 @@ class Game:
 
         if self.dungeon.grid[new_y][new_x] == UI["stairs"]:
             # Add particle effect for stairs
-            screen_x = (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
-            screen_y = (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+            screen_x = GAME_OFFSET_X + (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+            screen_y = GAME_OFFSET_Y + (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
             animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_gold'], 20)
             
             self.dungeon_level += 1
@@ -4676,8 +4708,8 @@ class Game:
             enemies_in_pos = [e for e in self.dungeon.enemies if e.x == new_x and e.y == new_y]
             if enemies_in_pos:
                 # Add combat particles
-                screen_x = (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
-                screen_y = (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                screen_x = GAME_OFFSET_X + (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                screen_y = GAME_OFFSET_Y + (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
                 animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['danger_red'], 15)
                 self.start_combat(enemies_in_pos)
             else:
@@ -4691,8 +4723,8 @@ class Game:
                         success, message = player.try_add_item(item, auto_replace=True)
                         if success:
                             # Add pickup particle effect
-                            screen_x = (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
-                            screen_y = (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                            screen_x = GAME_OFFSET_X + (new_x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                            screen_y = GAME_OFFSET_Y + (new_y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
                             
                             # Different particles for different item types
                             if isinstance(item, Weapon):
@@ -4759,8 +4791,8 @@ class Game:
         # Draw map tiles in viewport
         for world_y in range(viewport_start_y, viewport_end_y):
             for world_x in range(viewport_start_x, viewport_end_x):
-                screen_x = (world_x - self.camera_x) * TILE_SIZE
-                screen_y = (world_y - self.camera_y) * TILE_SIZE
+                screen_x = GAME_OFFSET_X + (world_x - self.camera_x) * TILE_SIZE
+                screen_y = GAME_OFFSET_Y + (world_y - self.camera_y) * TILE_SIZE
                 
                 tile_type = self.dungeon.grid[world_y][world_x]
                 is_visible = self.dungeon.is_visible(world_x, world_y)
@@ -4821,8 +4853,8 @@ class Game:
                 viewport_start_y <= item.y < viewport_end_y and
                 self.dungeon.is_visible(item.x, item.y)):
                 
-                screen_x = (item.x - self.camera_x) * TILE_SIZE
-                screen_y = (item.y - self.camera_y) * TILE_SIZE
+                screen_x = GAME_OFFSET_X + (item.x - self.camera_x) * TILE_SIZE
+                screen_y = GAME_OFFSET_Y + (item.y - self.camera_y) * TILE_SIZE
                 
                 if game_settings['use_emojis']:
                     text = font.render(item.icon, True, WHITE)
@@ -4882,8 +4914,8 @@ class Game:
                 viewport_start_y <= treasure.y < viewport_end_y and
                 self.dungeon.is_visible(treasure.x, treasure.y)):
                 
-                screen_x = (treasure.x - self.camera_x) * TILE_SIZE
-                screen_y = (treasure.y - self.camera_y) * TILE_SIZE
+                screen_x = GAME_OFFSET_X + (treasure.x - self.camera_x) * TILE_SIZE
+                screen_y = GAME_OFFSET_Y + (treasure.y - self.camera_y) * TILE_SIZE
                 
                 if game_settings['use_emojis']:
                     chest_icon = "📦" if not treasure.opened else "📭"
@@ -4908,8 +4940,8 @@ class Game:
                 viewport_start_y <= enemy.y < viewport_end_y and
                 self.dungeon.is_visible(enemy.x, enemy.y)):
                 
-                screen_x = (enemy.x - self.camera_x) * TILE_SIZE
-                screen_y = (enemy.y - self.camera_y) * TILE_SIZE
+                screen_x = GAME_OFFSET_X + (enemy.x - self.camera_x) * TILE_SIZE
+                screen_y = GAME_OFFSET_Y + (enemy.y - self.camera_y) * TILE_SIZE
                 
                 if game_settings['use_emojis']:
                     text = font.render(enemy.icon, True, RED)
@@ -4935,19 +4967,22 @@ class Game:
                 viewport_start_y <= shopkeeper.y < viewport_end_y and
                 self.dungeon.is_visible(shopkeeper.x, shopkeeper.y)):
                 
-                screen_x = (shopkeeper.x - self.camera_x) * TILE_SIZE
-                screen_y = (shopkeeper.y - self.camera_y) * TILE_SIZE
+                screen_x = GAME_OFFSET_X + (shopkeeper.x - self.camera_x) * TILE_SIZE
+                screen_y = GAME_OFFSET_Y + (shopkeeper.y - self.camera_y) * TILE_SIZE
                 
                 if game_settings['use_emojis']:
-                    text = font.render(shopkeeper.icon, True, (255, 215, 0))  # Gold color
+                    # Use temmie emoji for consistency
+                    text = font.render("🐱", True, (255, 215, 0))  # Cat emoji for Temmie
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # For sprite mode, use a simple colored rectangle or merchant sprite if available
-                    sprite_key = "npc_merchant"
+                    # For sprite mode, use temmie sprite
+                    sprite_key = f"monster_{shopkeeper.icon}"
                     if sprite_key in sprites:
                         screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                    elif "monster_temmie" in sprites:
+                        screen.blit(sprites["monster_temmie"], (screen_x, screen_y))
                     else:
-                        # Gold-colored rectangle for merchant
+                        # Gold-colored rectangle for merchant as fallback
                         pygame.draw.rect(screen, (255, 215, 0), (screen_x + 4, screen_y + 4, TILE_SIZE - 8, TILE_SIZE - 8))
 
         # Draw players
@@ -4955,8 +4990,8 @@ class Game:
             if (viewport_start_x <= player.x < viewport_end_x and 
                 viewport_start_y <= player.y < viewport_end_y):
                 
-                screen_x = (player.x - self.camera_x) * TILE_SIZE
-                screen_y = (player.y - self.camera_y) * TILE_SIZE
+                screen_x = GAME_OFFSET_X + (player.x - self.camera_x) * TILE_SIZE
+                screen_y = GAME_OFFSET_Y + (player.y - self.camera_y) * TILE_SIZE
                 
                 if game_settings['use_emojis']:
                     text = font.render(player.icon, True, GREEN)
@@ -4992,8 +5027,9 @@ class Game:
 
     def draw_minimap(self):
         """Draw a small overview map in the top right corner."""
-        minimap_x = SCREEN_WIDTH - MINIMAP_SIZE - 10
-        minimap_y = 10
+        # Position minimap to align with the right panel
+        minimap_x = SCREEN_WIDTH - 240 - 5  # Align with right panel
+        minimap_y = 15  # Small offset from top
         
         # Draw minimap background
         minimap_surface = pygame.Surface((MINIMAP_SIZE, MINIMAP_SIZE))
@@ -5057,60 +5093,79 @@ class Game:
         screen.blit(minimap_text, (minimap_x, minimap_y - 20))
 
     def draw_ui(self):
-        # Create a semi-transparent background for UI elements
-        ui_surface = pygame.Surface((SCREEN_WIDTH - MINIMAP_SIZE - 30, 150))  # Leave space for minimap
-        ui_surface.set_alpha(200)
-        ui_surface.fill(BLACK)
-        screen.blit(ui_surface, (0, 0))
+        # Remove the top black bar - now we'll use floating text with padding
         
-        # Draw player status with better spacing
-        y = 15
+        # Player status in top-left corner with padding
+        status_y = 15
+        status_x = 25
         for i, p in enumerate(self.players):
-            # Use conditional icons based on emoji setting
             if game_settings['use_emojis']:
                 status_text = f'{p.icon} {p.name} ({p.char_class}) | {UI["level"]} {p.level} | {UI["hp"]} {p.hp}/{p.max_hp}'
             else:
-                # Use text-based display when sprites are enabled
-                status_text = f'{p.name} ({p.char_class}) | Level {p.level} | HP {p.hp}/{p.max_hp}'
+                status_text = f'{p.name} ({p.char_class}) | Lv.{p.level} | HP {p.hp}/{p.max_hp}'
                 
-            # Add mana display for mage characters
+            # Add mana for mages
             if p.char_class == "mage":
                 if game_settings['use_emojis']:
                     status_text += f' | {UI["mana"]} {p.mana}/{p.max_mana}'
                 else:
-                    status_text += f' | Mana {p.mana}/{p.max_mana}'
+                    status_text += f' | MP {p.mana}/{p.max_mana}'
                     
-            self.draw_text(status_text, 15, y, WHITE)
-            y += 35
-
-        # Draw messages with background (positioned to not overlap with minimap)
+            self.draw_text(status_text, status_x, status_y, WHITE, padding=8)
+            status_y += 45  # Increased spacing between player status lines
+        
+        # Bottom message area - only when there are messages, with padding
         if self.messages:
-            msg_surface = pygame.Surface((SCREEN_WIDTH - MINIMAP_SIZE - 30, 120))
-            msg_surface.set_alpha(180)
-            msg_surface.fill(BLACK)
-            screen.blit(msg_surface, (0, SCREEN_HEIGHT - 120))
-            
-            y = SCREEN_HEIGHT - 110
+            msg_y = SCREEN_HEIGHT - 60
             for i, msg in enumerate(self.messages):
-                if i < 4:  # Limit to 4 messages to prevent overlap
-                    self.draw_text(msg, 15, y - i * 25, WHITE)
+                if i < 3:  # Show only last 3 messages
+                    self.draw_text(msg, 25, msg_y - i * 25, WHITE, padding=6)
         
-        # Draw current dungeon level and inventory status
+        # Right panel for minimap and info (keep the panel but make it smaller)
+        right_panel_width = 240
+        right_panel_x = SCREEN_WIDTH - right_panel_width - 10
+        
+        # Smaller semi-transparent background for right panel (starts after minimap area)
+        panel_start_y = MINIMAP_SIZE + 50
+        panel_height = SCREEN_HEIGHT - panel_start_y - 20
+        right_panel_surface = pygame.Surface((right_panel_width, panel_height))
+        right_panel_surface.set_alpha(160)
+        right_panel_surface.fill((0, 0, 0))
+        screen.blit(right_panel_surface, (right_panel_x, panel_start_y))
+        
+        # Info text in right panel with padding
+        info_x = right_panel_x + 15
+        info_start_y = panel_start_y + 15
+        
+        # Dungeon level
         level_text = f"Dungeon Level: {self.dungeon_level}"
-        self.draw_text(level_text, 15, 155, LIGHT_GRAY)
+        self.draw_text(level_text, info_x, info_start_y, LIGHT_GRAY, padding=4)
         
-        # Show inventory status for current player
+        # Inventory status for current player
         if self.players:
             current_player = self.players[self.current_player_idx]
             weapons = len(current_player.get_inventory_by_type(Weapon))
             armor = len(current_player.get_inventory_by_type(Armor))
             potions = len(current_player.get_inventory_by_type(Potion))
-            inventory_text = f"Inventory: {weapons}/{current_player.max_weapons}⚔️ {armor}/{current_player.max_armor}🛡️ {potions}/{current_player.max_potions}🧪"
-            self.draw_text(inventory_text, 15, 175, LIGHT_GRAY)
+            
+            inv_text = f"Inventory:"
+            self.draw_text(inv_text, info_x, info_start_y + 35, LIGHT_GRAY, padding=4)
+            
+            weapon_text = f"⚔️ {weapons}/{current_player.max_weapons}"
+            armor_text = f"🛡️ {armor}/{current_player.max_armor}" 
+            potion_text = f"🧪 {potions}/{current_player.max_potions}"
+            
+            self.draw_text(weapon_text, info_x, info_start_y + 65, WHITE, padding=3)
+            self.draw_text(armor_text, info_x, info_start_y + 95, WHITE, padding=3)
+            self.draw_text(potion_text, info_x, info_start_y + 125, WHITE, padding=3)
         
-        # Draw controls hint
-        controls_text = "Controls: WASD=Move, E=Interact, R=Replace, I=Inventory, Q=Menu"
-        self.draw_text(controls_text, 15, 200, GRAY)
+        # Controls at bottom of right panel with padding
+        controls_y = SCREEN_HEIGHT - 140
+        self.draw_text("Controls:", info_x, controls_y, GRAY, padding=4)
+        self.draw_text("WASD - Move", info_x, controls_y + 25, GRAY, padding=3)
+        self.draw_text("E - Interact", info_x, controls_y + 50, GRAY, padding=3)
+        self.draw_text("I - Inventory", info_x, controls_y + 75, GRAY, padding=3)
+        self.draw_text("Q - Menu", info_x, controls_y + 100, GRAY, padding=3)
 
 
     def start_combat(self, enemies):
