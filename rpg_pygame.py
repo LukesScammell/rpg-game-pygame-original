@@ -3299,7 +3299,7 @@ class Game:
         print(f"LOG: {text}")
     
     def save_game(self):
-        """Save the current game state."""
+        """Save the current game state including dungeon layout."""
         try:
             save_data = {
                 "players": [],
@@ -3308,8 +3308,152 @@ class Game:
                 "game_state": "playing",  # Always save as playing state
                 "camera_x": self.camera_x,
                 "camera_y": self.camera_y,
-                "obtained_items": list(self.obtained_items) if hasattr(self, 'obtained_items') else []
+                "obtained_items": list(self.obtained_items) if hasattr(self, 'obtained_items') else [],
+                "dungeon": None  # Add dungeon data
             }
+            
+            # Save dungeon layout if it exists
+            if self.dungeon:
+                dungeon_data = {
+                    "width": self.dungeon.width,
+                    "height": self.dungeon.height,
+                    "level": self.dungeon.level,
+                    "grid": self.dungeon.grid,  # Save the complete map layout
+                    "rooms": [],  # Save room positions
+                    "items": [],  # Save items on the ground
+                    "enemies": [],  # Save enemies
+                    "treasures": [],  # Save treasure chests
+                    "shopkeepers": [],  # Save shop NPCs
+                    "stairs_down": self.dungeon.stairs_down,
+                    "explored": self.dungeon.explored,  # Save fog of war
+                    "visible": self.dungeon.visible
+                }
+                
+                # Save room data
+                for room in self.dungeon.rooms:
+                    room_data = {
+                        "x1": room.x1,
+                        "y1": room.y1,
+                        "x2": room.x2,
+                        "y2": room.y2
+                    }
+                    dungeon_data["rooms"].append(room_data)
+                
+                # Save items on the ground
+                for item in self.dungeon.items:
+                    item_data = {
+                        "x": item.x,
+                        "y": item.y,
+                        "type": type(item).__name__,
+                        "name": item.name,
+                        "rarity": getattr(item, 'rarity', 'common')
+                    }
+                    
+                    if isinstance(item, Weapon):
+                        item_data.update({
+                            "attack_bonus": item.attack_bonus,
+                            "allowed_classes": item.allowed_classes,
+                            "sprite_name": item.sprite_name
+                        })
+                    elif isinstance(item, Armor):
+                        item_data.update({
+                            "defense_bonus": item.defense_bonus,
+                            "allowed_classes": item.allowed_classes,
+                            "sprite_name": item.sprite_name
+                        })
+                    elif isinstance(item, Potion):
+                        item_data["hp_gain"] = item.hp_gain
+                    
+                    dungeon_data["items"].append(item_data)
+                
+                # Save enemies
+                for enemy in self.dungeon.enemies:
+                    enemy_data = {
+                        "x": enemy.x,
+                        "y": enemy.y,
+                        "name": enemy.name,
+                        "enemy_type": enemy.enemy_type,
+                        "hp": enemy.hp,
+                        "max_hp": enemy.max_hp,
+                        "attack": enemy.attack,
+                        "defense": enemy.defense,
+                        "xp": enemy.xp
+                    }
+                    dungeon_data["enemies"].append(enemy_data)
+                
+                # Save treasure chests
+                for treasure in self.dungeon.treasures:
+                    treasure_data = {
+                        "x": treasure.x,
+                        "y": treasure.y,
+                        "opened": treasure.opened,
+                        "items": []
+                    }
+                    
+                    # Save items in treasure chest
+                    for item in treasure.items:
+                        chest_item_data = {
+                            "type": type(item).__name__,
+                            "name": item.name,
+                            "rarity": getattr(item, 'rarity', 'common')
+                        }
+                        
+                        if isinstance(item, Weapon):
+                            chest_item_data.update({
+                                "attack_bonus": item.attack_bonus,
+                                "allowed_classes": item.allowed_classes,
+                                "sprite_name": item.sprite_name
+                            })
+                        elif isinstance(item, Armor):
+                            chest_item_data.update({
+                                "defense_bonus": item.defense_bonus,
+                                "allowed_classes": item.allowed_classes,
+                                "sprite_name": item.sprite_name
+                            })
+                        elif isinstance(item, Potion):
+                            chest_item_data["hp_gain"] = item.hp_gain
+                        
+                        treasure_data["items"].append(chest_item_data)
+                    
+                    dungeon_data["treasures"].append(treasure_data)
+                
+                # Save shopkeepers
+                for shopkeeper in self.dungeon.shopkeepers:
+                    shopkeeper_data = {
+                        "x": shopkeeper.x,
+                        "y": shopkeeper.y,
+                        "name": shopkeeper.name,
+                        "inventory": []
+                    }
+                    
+                    # Save shopkeeper inventory
+                    for item in shopkeeper.inventory:
+                        shop_item_data = {
+                            "type": type(item).__name__,
+                            "name": item.name,
+                            "rarity": getattr(item, 'rarity', 'common')
+                        }
+                        
+                        if isinstance(item, Weapon):
+                            shop_item_data.update({
+                                "attack_bonus": item.attack_bonus,
+                                "allowed_classes": item.allowed_classes,
+                                "sprite_name": item.sprite_name
+                            })
+                        elif isinstance(item, Armor):
+                            shop_item_data.update({
+                                "defense_bonus": item.defense_bonus,
+                                "allowed_classes": item.allowed_classes,
+                                "sprite_name": item.sprite_name
+                            })
+                        elif isinstance(item, Potion):
+                            shop_item_data["hp_gain"] = item.hp_gain
+                        
+                        shopkeeper_data["inventory"].append(shop_item_data)
+                    
+                    dungeon_data["shopkeepers"].append(shopkeeper_data)
+                
+                save_data["dungeon"] = dungeon_data
             
             # Save player data
             for player in self.players:
@@ -3395,7 +3539,7 @@ class Game:
             return False
     
     def load_game(self):
-        """Load a saved game state."""
+        """Load a saved game state including dungeon layout."""
         try:
             if not os.path.exists(SAVE_FILE):
                 return False
@@ -3477,12 +3621,103 @@ class Game:
             elif len(self.players) == 1:
                 self.obtained_items = set()
             
-            # Generate new level (we don't save dungeon layout for simplicity)
-            self.new_level()
-            
-            # Set player classes for dungeon generation
-            if self.dungeon:
+            # Load dungeon from save data if available
+            if "dungeon" in save_data and save_data["dungeon"]:
+                dungeon_data = save_data["dungeon"]
+                
+                # Create dungeon with saved dimensions
+                self.dungeon = Dungeon(dungeon_data["width"], dungeon_data["height"], dungeon_data["level"])
+                
+                # Restore the map grid
+                self.dungeon.grid = dungeon_data["grid"]
+                
+                # Restore fog of war
+                self.dungeon.explored = dungeon_data["explored"]
+                self.dungeon.visible = dungeon_data["visible"]
+                
+                # Restore stairs
+                self.dungeon.stairs_down = dungeon_data["stairs_down"]
+                
+                # Restore rooms
+                self.dungeon.rooms = []
+                for room_data in dungeon_data["rooms"]:
+                    room = Rect(
+                        room_data["x1"],
+                        room_data["y1"], 
+                        room_data["x2"] - room_data["x1"],
+                        room_data["y2"] - room_data["y1"]
+                    )
+                    self.dungeon.rooms.append(room)
+                
+                # Restore items on the ground
+                self.dungeon.items = []
+                for item_data in dungeon_data["items"]:
+                    item = self.create_item_from_data(item_data)
+                    if item:
+                        item.x = item_data["x"]
+                        item.y = item_data["y"]
+                        self.dungeon.items.append(item)
+                
+                # Restore enemies
+                self.dungeon.enemies = []
+                for enemy_data in dungeon_data["enemies"]:
+                    enemy = Enemy(
+                        enemy_data["x"],
+                        enemy_data["y"],
+                        enemy_data["name"],
+                        enemy_data["enemy_type"]
+                    )
+                    enemy.hp = enemy_data["hp"]
+                    enemy.max_hp = enemy_data["max_hp"]
+                    enemy.attack = enemy_data["attack"]
+                    enemy.defense = enemy_data["defense"]
+                    enemy.xp = enemy_data["xp"]
+                    self.dungeon.enemies.append(enemy)
+                
+                # Restore treasure chests
+                self.dungeon.treasures = []
+                for treasure_data in dungeon_data["treasures"]:
+                    treasure = Treasure(treasure_data["x"], treasure_data["y"])
+                    treasure.opened = treasure_data["opened"]
+                    treasure.items = []
+                    
+                    # Restore items in treasure chest
+                    for item_data in treasure_data["items"]:
+                        item = self.create_item_from_data(item_data)
+                        if item:
+                            treasure.items.append(item)
+                    
+                    self.dungeon.treasures.append(treasure)
+                
+                # Restore shopkeepers
+                self.dungeon.shopkeepers = []
+                for shopkeeper_data in dungeon_data["shopkeepers"]:
+                    shopkeeper = Shopkeeper(shopkeeper_data["x"], shopkeeper_data["y"])
+                    shopkeeper.name = shopkeeper_data["name"]
+                    shopkeeper.inventory = []
+                    
+                    # Restore shopkeeper inventory
+                    for item_data in shopkeeper_data["inventory"]:
+                        item = self.create_item_from_data(item_data)
+                        if item:
+                            shopkeeper.inventory.append(item)
+                    
+                    self.dungeon.shopkeepers.append(shopkeeper)
+                
+                # Set player classes for dungeon
                 self.dungeon.player_classes = [p.char_class for p in self.players]
+                
+                # Set obtained items
+                if hasattr(self, 'obtained_items'):
+                    self.dungeon.obtained_items = self.obtained_items.copy()
+            
+            else:
+                # Fallback: Generate new level if no dungeon data (backward compatibility)
+                self.new_level()
+                
+                # Set player classes for dungeon generation
+                if self.dungeon:
+                    self.dungeon.player_classes = [p.char_class for p in self.players]
             
             return True
             
