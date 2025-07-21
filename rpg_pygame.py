@@ -46,7 +46,7 @@ pygame.display.set_caption("Python RPG Adventure")
 def load_settings():
     """Load game settings from file."""
     default_settings = {
-        "use_emojis": True,
+        "use_emojis": False,
         "wall_sprite": "stone_brick1.png",
         "floor_sprite": "sandstone_floor0.png"
     }
@@ -77,280 +77,1050 @@ sprites = {}
 ui_elements = {}
 
 def load_sprites():
-    """Load all sprite images."""
+    """Load all sprite images with Undertale theme."""
     global sprites
-    sprite_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-dngn")
     
-    # Load wall sprites
-    wall_path = os.path.join(sprite_path, "wall")
-    floor_path = os.path.join(sprite_path, "floor")
+    print("=== Loading Undertale-themed sprites ===")
     
-    # Load specific wall and floor sprites
-    wall_files = ["stone_brick1.png", "stone_dark0.png", "brick_brown0.png", "marble_wall1.png"]
-    floor_files = ["sandstone_floor0.png", "dirt0.png", "pebble_brown0.png", "marble_floor1.png"]
+    # Load Undertale background/tileset sprites for walls and floors
+    print("Loading Undertale tileset sprites...")
+    undertale_tilesets_path = os.path.join("assets", "undertale", "Overworld", "Locations", "01 - Ruins", "Tilesets")
     
-    print("Loading wall sprites...")
-    for wall_file in wall_files:
+    # Load Undertale tileset sprites for walls and floors based on dungeon level
+    print("Loading Undertale tileset sprites...")
+    
+    # Define different tilesets for different dungeon levels
+    level_tilesets = {
+        1: {  # Ruins (Level 1)
+            "folder": os.path.join("assets", "undertale", "Overworld", "Locations", "01 - Ruins", "Tilesets"),
+            "tileset": "bg_ruinseasynam1.png",
+            "backup_tilesets": ["bg_ruinseasynam2.png", "bg_ruinseasynam3.png"]
+        },
+        2: {  # Snowdin (Level 2)
+            "folder": os.path.join("assets", "undertale", "Overworld", "Locations", "02 - Snowdin", "Tilesets"),
+            "tileset": "bg_tundratiles.png",
+            "backup_tilesets": ["bg_icecave.png"]
+        },
+        3: {  # Waterfall (Level 3)
+            "folder": os.path.join("assets", "undertale", "Overworld", "Locations", "03 - Waterfall", "Tilesets"),
+            "tileset": "bg_watertiles.png",
+            "backup_tilesets": ["bg_watertiles_2.png"]
+        },
+        4: {  # Hotland (Level 4)
+            "folder": os.path.join("assets", "undertale", "Overworld", "Locations", "04 - Hotland", "Tilesets"),
+            "tileset": "bg_firetiles.png",
+            "backup_tilesets": ["bg_labtiles.png", "bg_brownground.png"]
+        },
+        5: {  # Core (Level 5) - fallback to Hotland if Core doesn't have tilesets
+            "folder": os.path.join("assets", "undertale", "Overworld", "Locations", "04 - Hotland", "Tilesets"),
+            "tileset": "bg_labtiles.png",
+            "backup_tilesets": ["bg_girdertile.png", "bg_firetiles.png"]
+        }
+    }
+    
+    def score_corner_candidate(surface, corner_type, floor_ref, wall_ref):
+        """Score a tile based on how well it could work as a rounded floor corner piece."""
         try:
-            wall_sprite_path = os.path.join(wall_path, wall_file)
-            if os.path.exists(wall_sprite_path):
-                sprites[f"wall_{wall_file}"] = pygame.image.load(wall_sprite_path)
-                sprites[f"wall_{wall_file}"] = pygame.transform.scale(sprites[f"wall_{wall_file}"], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {wall_file}")
+            # Convert surface to analyze pixels
+            pixels = pygame.PixelArray(surface)
+            width, height = surface.get_size()
+            
+            # For Undertale-style rounded corners, we want floor-like pieces with curved edges
+            # Score higher for tiles that:
+            # 1. Have floor-like base colors (similar to the main floor tile)
+            # 2. Have curved/rounded visual elements
+            # 3. Are NOT solid wall colors
+            
+            # Sample key pixels to understand the tile structure
+            center_pixels = []
+            edge_pixels = []
+            corner_pixels = []
+            
+            # Sample center area (should be floor-like)
+            for i in range(width//3, 2*width//3, 2):
+                for j in range(height//3, 2*height//3, 2):
+                    center_pixels.append(pixels[i][j])
+            
+            # Sample edges and corners for curve detection
+            for i in range(0, width, max(1, width//4)):
+                edge_pixels.extend([pixels[i][0], pixels[i][height-1]])
+            for j in range(0, height, max(1, height//4)):
+                edge_pixels.extend([pixels[0][j], pixels[width-1][j]])
+                
+            # Sample actual corners
+            corner_pixels = [pixels[0][0], pixels[width-1][0], pixels[0][height-1], pixels[width-1][height-1]]
+            
+            # Score based on color variety (good for detecting curves/gradients)
+            all_pixels = center_pixels + edge_pixels + corner_pixels
+            unique_colors = len(set(all_pixels))
+            variety_score = min(unique_colors / 8.0, 2.0)
+            
+            # Score based on having different colors in center vs edges (indicates curves)
+            center_unique = len(set(center_pixels)) if center_pixels else 0
+            edge_unique = len(set(edge_pixels)) if edge_pixels else 0
+            contrast_score = min((center_unique + edge_unique) / 6.0, 2.0)
+            
+            # Bonus for NOT being a solid color (avoid plain wall tiles)
+            if unique_colors > 4:
+                solid_penalty = 0.0
             else:
-                print(f"  Warning: Wall sprite not found: {wall_sprite_path}")
-        except pygame.error as e:
-            print(f"  Error loading wall sprite {wall_file}: {e}")
+                solid_penalty = -1.0
+            
+            del pixels
+            
+            # Total score - higher is better
+            total_score = variety_score + contrast_score + solid_penalty
+            return max(0.0, total_score)
+            
+        except Exception:
+            return 0.0
     
-    print("Loading floor sprites...")
-    for floor_file in floor_files:
+    def extract_tiles_from_tileset(tileset_path, tile_size=TILE_SIZE):
+        """Extract floor and wall tiles from an Undertale tileset with proper tile cutting."""
         try:
-            floor_sprite_path = os.path.join(floor_path, floor_file)
-            if os.path.exists(floor_sprite_path):
-                sprites[f"floor_{floor_file}"] = pygame.image.load(floor_sprite_path)
-                sprites[f"floor_{floor_file}"] = pygame.transform.scale(sprites[f"floor_{floor_file}"], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {floor_file}")
+            tileset_image = pygame.image.load(tileset_path)
+            
+            # Undertale tiles are typically 20x20 pixels in the original tilesets
+            undertale_tile_size = 20
+            img_width = tileset_image.get_width()
+            img_height = tileset_image.get_height()
+            
+            # Calculate how many tiles fit in each direction
+            tiles_per_row = img_width // undertale_tile_size
+            tiles_per_col = img_height // undertale_tile_size
+            
+            print(f"    Tileset {os.path.basename(tileset_path)}: {img_width}x{img_height}, {tiles_per_row}x{tiles_per_col} tiles")
+            
+            # Define better tile extraction positions based on common Undertale tileset layouts
+            floor_tile = None
+            wall_tile = None
+            
+            # For Ruins tileset (bg_ruinseasynam1.png) - 160x100 = 8x5 tiles
+            if "ruinseasynam" in tileset_path:
+                # Ruins typically have floor tiles in specific positions
+                floor_positions = [
+                    (0, 0), (1, 0), (2, 0), (3, 0),  # Top row - often floor variants
+                    (0, 1), (1, 1), (2, 1)           # Second row
+                ]
+                wall_positions = [
+                    (4, 0), (5, 0), (6, 0), (7, 0),  # Top row - often wall variants  
+                    (3, 1), (4, 1), (5, 1)           # Second row walls
+                ]
+            
+            # For Snowdin tileset (bg_tundratiles.png) - 186x1500 - very tall
+            elif "tundratiles" in tileset_path:
+                floor_positions = [
+                    (0, 0), (1, 0), (2, 0), (3, 0),  # Ice/snow floor tiles
+                    (0, 1), (1, 1), (2, 1), (3, 1)   # More floor variants
+                ]
+                wall_positions = [
+                    (4, 0), (5, 0), (6, 0), (7, 0),  # Ice walls
+                    (0, 2), (1, 2), (2, 2), (3, 2)   # Wall variants deeper in tileset
+                ]
+            
+            # For Waterfall tileset (bg_watertiles.png) - 280x320 = 14x16 tiles
+            elif "watertiles" in tileset_path:
+                # Try different positions for better cave/water floor tiles
+                floor_positions = [
+                    (2, 1), (3, 1), (4, 1), (5, 1),  # Second row - often better floor tiles
+                    (1, 2), (2, 2), (3, 2), (4, 2),  # Third row alternatives
+                    (0, 3), (1, 3), (2, 3)           # Fourth row for cave floors
+                ]
+                wall_positions = [
+                    (0, 0), (1, 0), (6, 0), (7, 0),  # Top row walls
+                    (0, 1), (1, 1), (6, 1), (7, 1),  # Second row walls
+                    (5, 2), (6, 2), (7, 2)           # Different wall positions
+                ]
+            
+            # For Hotland tileset (bg_firetiles.png) - 360x400 = 18x20 tiles
+            elif "firetiles" in tileset_path or "labtiles" in tileset_path:
+                # Try different positions for better lava/industrial floor
+                floor_positions = [
+                    (1, 1), (2, 1), (3, 1), (4, 1),  # Second row - often metallic floors
+                    (0, 2), (1, 2), (2, 2), (3, 2),  # Third row alternatives
+                    (1, 3), (2, 3), (3, 3)           # Fourth row for industrial floors
+                ]
+                wall_positions = [
+                    (5, 0), (6, 0), (7, 0), (8, 0),  # Different wall positions
+                    (4, 1), (5, 1), (6, 1), (7, 1),  # Industrial wall variants
+                    (0, 4), (1, 4), (2, 4)           # Lower wall positions
+                ]
+            
+            # Generic fallback positions
             else:
-                print(f"  Warning: Floor sprite not found: {floor_sprite_path}")
+                floor_positions = [(0, 0), (1, 0), (2, 0), (0, 1)]
+                wall_positions = [(3, 0), (4, 0), (1, 1), (2, 1)]
+            
+            # Try to extract floor tile
+            for tile_x, tile_y in floor_positions:
+                if tile_x < tiles_per_row and tile_y < tiles_per_col:
+                    try:
+                        x = tile_x * undertale_tile_size
+                        y = tile_y * undertale_tile_size
+                        floor_rect = pygame.Rect(x, y, undertale_tile_size, undertale_tile_size)
+                        floor_tile = tileset_image.subsurface(floor_rect).copy()
+                        floor_tile = pygame.transform.scale(floor_tile, (tile_size, tile_size))
+                        print(f"      Floor tile extracted from position ({tile_x}, {tile_y})")
+                        break
+                    except (pygame.error, ValueError):
+                        continue
+            
+            # Try to extract wall tile
+            for tile_x, tile_y in wall_positions:
+                if tile_x < tiles_per_row and tile_y < tiles_per_col:
+                    try:
+                        x = tile_x * undertale_tile_size
+                        y = tile_y * undertale_tile_size
+                        wall_rect = pygame.Rect(x, y, undertale_tile_size, undertale_tile_size)
+                        wall_tile = tileset_image.subsurface(wall_rect).copy()
+                        wall_tile = pygame.transform.scale(wall_tile, (tile_size, tile_size))
+                        print(f"      Wall tile extracted from position ({tile_x}, {tile_y})")
+                        break
+                    except (pygame.error, ValueError):
+                        continue
+            
+            # Try to extract corner tiles for 3D effect - systematically search for good corner pieces
+            corner_tiles = {}
+            
+            print(f"      Searching for corner pieces in {tiles_per_row}x{tiles_per_col} grid...")
+            
+            # For Undertale rounded rooms, we want floor pieces with curved edges 
+            # Focus on the key corner types that create smooth room curves
+            corner_types = ['inner_top_left', 'inner_top_right', 'inner_bottom_left', 'inner_bottom_right']
+            
+            # Define search areas for each tileset - focus on floor-like rounded pieces
+            if "bg_ruinseasynam1" in tileset_path:  # Level 1 - Ruins (8x5)
+                # In ruins, look for floor tiles with rounded edges in rows 1-4
+                # Avoid row 0 which tends to have basic tiles
+                search_positions = [(x, y) for x in range(8) for y in range(1, 5)]
+                print(f"      Ruins: Searching {len(search_positions)} positions for rounded floor pieces")
+                
+            elif "bg_tundratiles" in tileset_path:  # Level 2 - Snowdin (9x75) 
+                # Large tileset - focus on early sections which often have floor variants
+                search_positions = [(x, y) for x in range(9) for y in range(1, 15)]  # More focused search
+                print(f"      Snowdin: Searching {len(search_positions)} positions for icy rounded floor pieces")
+                
+            elif "bg_watertiles" in tileset_path:  # Level 3 - Waterfall (14x16)
+                # Focus on middle sections where floor variants are typically located
+                search_positions = [(x, y) for x in range(14) for y in range(1, 12)]
+                print(f"      Waterfall: Searching {len(search_positions)} positions for cave rounded floor pieces")
+                
+            elif "bg_firetiles" in tileset_path:  # Level 4 - Hotland (18x20)
+                # Large tileset - search systematically for lava/industrial floor pieces  
+                search_positions = [(x, y) for x in range(18) for y in range(1, 15)]
+                print(f"      Hotland: Searching {len(search_positions)} positions for lava rounded floor pieces")
+                
+            elif "bg_labtiles" in tileset_path:  # Level 5 - Lab/Core (6x12)
+                # Smaller tileset - search most areas for tech floor pieces
+                search_positions = [(x, y) for x in range(6) for y in range(1, 10)]
+                print(f"      Lab: Searching {len(search_positions)} positions for tech rounded floor pieces")
+            else:
+                # Generic search - focus on likely floor tile areas
+                search_positions = [(x, y) for x in range(tiles_per_row) for y in range(1, min(tiles_per_col, 8))]
+            
+            # For each corner type, find the best candidate with position preferences
+            corner_type_preferences = {
+                'inner_top_left': 'prefer_top_left',
+                'inner_top_right': 'prefer_top_right', 
+                'inner_bottom_left': 'prefer_bottom_left',
+                'inner_bottom_right': 'prefer_bottom_right'
+            }
+            
+            for corner_type in corner_types:
+                best_candidate = None
+                best_score = 0
+                preference = corner_type_preferences.get(corner_type, 'none')
+                
+                # Create weighted search based on corner type
+                weighted_positions = []
+                for tile_x, tile_y in search_positions:
+                    weight = 1.0  # Base weight
+                    
+                    # Add positional preferences for different corner types
+                    if preference == 'prefer_top_left' and tile_x < tiles_per_row//2 and tile_y < tiles_per_col//2:
+                        weight = 1.5
+                    elif preference == 'prefer_top_right' and tile_x >= tiles_per_row//2 and tile_y < tiles_per_col//2:
+                        weight = 1.5  
+                    elif preference == 'prefer_bottom_left' and tile_x < tiles_per_row//2 and tile_y >= tiles_per_col//2:
+                        weight = 1.5
+                    elif preference == 'prefer_bottom_right' and tile_x >= tiles_per_row//2 and tile_y >= tiles_per_col//2:
+                        weight = 1.5
+                    
+                    weighted_positions.append((tile_x, tile_y, weight))
+                
+                # Sort by weight (higher weight first) 
+                weighted_positions.sort(key=lambda x: x[2], reverse=True)
+                
+                for tile_x, tile_y, weight in weighted_positions:
+                    if tile_x >= tiles_per_row or tile_y >= tiles_per_col:
+                        continue
+                        
+                    try:
+                        x = tile_x * undertale_tile_size
+                        y = tile_y * undertale_tile_size
+                        corner_rect = pygame.Rect(x, y, undertale_tile_size, undertale_tile_size)
+                        
+                        # Extract the tile for analysis
+                        test_surface = pygame.Surface((undertale_tile_size, undertale_tile_size))
+                        test_surface.blit(tileset_image, (0, 0), corner_rect)
+                        
+                        # Score this tile as a potential corner piece
+                        base_score = score_corner_candidate(test_surface, corner_type, floor_tile, wall_tile)
+                        # Apply positional weight
+                        weighted_score = base_score * weight
+                        
+                        if weighted_score > best_score:
+                            best_score = weighted_score
+                            best_candidate = (tile_x, tile_y, test_surface.copy(), base_score)
+                            
+                    except (pygame.error, ValueError):
+                        continue
+                
+                # If we found a good candidate, use it
+                if best_candidate:
+                    tile_x, tile_y, surface, base_score = best_candidate
+                    corner_tile = pygame.transform.scale(surface, (tile_size, tile_size))
+                    corner_tiles[corner_type] = corner_tile
+                    print(f"      Rounded floor corner {corner_type} found at ({tile_x}, {tile_y}) [score: {base_score:.1f}]")
+                else:
+                    print(f"      No good rounded floor corner found for {corner_type}")
+            
+            return floor_tile, wall_tile, corner_tiles
+            
         except pygame.error as e:
-            print(f"  Error loading floor sprite {floor_file}: {e}")
+            print(f"  Error loading tileset {tileset_path}: {e}")
+            return None, None, {}
     
-    # Load stairs sprite
-    print("Loading stairs sprite...")
+    # Load tiles for all dungeon levels
+    level_sprites = {}
+    
+    for level, tileset_config in level_tilesets.items():
+        print(f"  Loading Level {level} tileset...")
+        
+        floor_tile = None
+        wall_tile = None
+        corner_tiles = {}
+        tileset_loaded = None
+        
+        # Try primary tileset first
+        primary_path = os.path.join(tileset_config["folder"], tileset_config["tileset"])
+        if os.path.exists(primary_path):
+            floor_tile, wall_tile, corner_tiles = extract_tiles_from_tileset(primary_path)
+            if floor_tile and wall_tile:
+                tileset_loaded = tileset_config["tileset"]
+        
+        # Try backup tilesets if primary failed
+        if not (floor_tile and wall_tile) and "backup_tilesets" in tileset_config:
+            for backup_tileset in tileset_config["backup_tilesets"]:
+                backup_path = os.path.join(tileset_config["folder"], backup_tileset)
+                if os.path.exists(backup_path):
+                    floor_tile, wall_tile, corner_tiles = extract_tiles_from_tileset(backup_path)
+                    if floor_tile and wall_tile:
+                        tileset_loaded = backup_tileset
+                        break
+        
+        # Create fallback tiles if extraction failed
+        if not floor_tile:
+            floor_tile = pygame.Surface((TILE_SIZE, TILE_SIZE))
+            # Use level-appropriate colors based on authentic Undertale palettes
+            if level == 1:  # Ruins - authentic pink from ruins
+                floor_tile.fill((158, 130, 153))  # Darker pink from actual ruins
+            elif level == 2:  # Snowdin - icy white/blue
+                floor_tile.fill((225, 235, 245))  # Light icy blue
+            elif level == 3:  # Waterfall - dark cave blue
+                floor_tile.fill((85, 110, 140))   # Dark blue-gray
+            elif level == 4:  # Hotland - orange/red lava
+                floor_tile.fill((180, 90, 60))    # Dark orange-red
+            elif level == 5:  # Core - metallic blue-gray
+                floor_tile.fill((120, 130, 145))  # Metallic blue-gray
+            
+            print(f"      Using fallback floor color for Level {level}")
+        
+        if not wall_tile:
+            wall_tile = pygame.Surface((TILE_SIZE, TILE_SIZE))
+            # Use level-appropriate wall colors
+            if level == 1:  # Ruins - dark purple/brown
+                wall_tile.fill((85, 65, 75))      # Darker ruins wall
+            elif level == 2:  # Snowdin - darker icy blue
+                wall_tile.fill((90, 115, 140))    # Darker ice
+            elif level == 3:  # Waterfall - very dark cave
+                wall_tile.fill((45, 60, 80))      # Very dark cave
+            elif level == 4:  # Hotland - dark red/black
+                wall_tile.fill((80, 45, 30))      # Dark lava rock
+            elif level == 5:  # Core - dark metallic
+                wall_tile.fill((60, 65, 80))      # Dark metal
+            
+            print(f"      Using fallback wall color for Level {level}")
+        
+        # Store the tiles
+        level_sprites[level] = {
+            "floor": floor_tile,
+            "wall": wall_tile,
+            "corners": corner_tiles,
+            "tileset_name": tileset_loaded or "fallback"
+        }
+        
+        print(f"    Level {level}: {level_sprites[level]['tileset_name']}")
+    
+    # Use Level 1 (Ruins) as the default for now, but store all levels
+    default_level = 1
+    wall_sprite = level_sprites[default_level]["wall"]
+    floor_sprite = level_sprites[default_level]["floor"]
+    
+    # Store level sprites globally so we can access them later
+    sprites["level_sprites"] = level_sprites
+    
+    print(f"  Loaded tiles for {len(level_sprites)} dungeon levels")
+    
+    # Use the SAME consistent sprites for ALL wall and floor variants
+    wall_variants = [
+        "wall_stone_brick1.png", "wall_stone_dark0.png", "wall_brick_brown0.png", 
+        "wall_marble_wall1.png", "wall_sandstone_wall0.png", "wall_metal_wall_brown.png"
+    ]
+    
+    floor_variants = [
+        "floor_sandstone_floor0.png", "floor_dirt0.png", "floor_pebble_brown0.png", 
+        "floor_marble_floor1.png", "floor_stone_floor0.png", "floor_wooden_floor.png"
+    ]
+    
+    # Assign the same consistent sprites to all variants
+    for wall_variant in wall_variants:
+        sprites[wall_variant] = wall_sprite.copy()
+    
+    for floor_variant in floor_variants:
+        sprites[floor_variant] = floor_sprite.copy()
+    
+    print("  Loaded: Consistent wall and floor textures for all variants")
+    
+    # Load stairs sprite (using a ruins door/passage)
+    print("Loading Undertale stairs sprite...")
     try:
-        stairs_path = os.path.join(sprite_path, "dngn_closed_door.png")
+        ruins_path = os.path.join("assets", "undertale", "Overworld", "Locations", "01 - Ruins")
+        stairs_path = os.path.join(ruins_path, "spr_ruinsdoor1_0.png")
         if os.path.exists(stairs_path):
             sprites["stairs"] = pygame.image.load(stairs_path)
             sprites["stairs"] = pygame.transform.scale(sprites["stairs"], (TILE_SIZE, TILE_SIZE))
-            print("  Loaded: stairs (dngn_closed_door.png)")
+            print("  Loaded: stairs (Undertale ruins door)")
         else:
-            print(f"  Warning: Stairs sprite not found: {stairs_path}")
+            print("  Warning: Undertale stairs sprite not found")
     except pygame.error as e:
-        print(f"  Error loading stairs sprite: {e}")
+        print(f"  Error loading Undertale stairs sprite: {e}")
     
-    # Load player sprites
-    print("Loading player sprites...")
-    player_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "player", "base")
-    player_sprites = {
-        "warrior": "human_m.png",       # Male human warrior
-        "mage": "human_f.png",         # Female human mage  
-        "archer": "elf_m.png",         # Male elf archer
-        "rogue": "elf_f.png"           # Female elf rogue
+    # Load Undertale player sprites (using different characters with directional movement)
+    print("Loading Undertale player sprites with directional movement...")
+    
+    # Warrior = Frisk (main character)
+    frisk_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Frisk")
+    frisk_sprites = {
+        "down": "spr_maincharad_0.png",    # Frisk facing down
+        "left": "spr_maincharal_0.png",    # Frisk facing left  
+        "right": "spr_maincharar_0.png",   # Frisk facing right
+        "up": "spr_maincharau_0.png"       # Frisk facing up
     }
     
-    for class_name, sprite_file in player_sprites.items():
+    # Load all directional sprites for warrior (Frisk)
+    for direction, sprite_file in frisk_sprites.items():
         try:
-            sprite_file_path = os.path.join(player_base_path, sprite_file)
+            sprite_file_path = os.path.join(frisk_path, sprite_file)
             if os.path.exists(sprite_file_path):
-                sprites[f"player_{class_name}"] = pygame.image.load(sprite_file_path)
-                sprites[f"player_{class_name}"] = pygame.transform.scale(sprites[f"player_{class_name}"], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {class_name} ({sprite_file})")
+                frisk_sprite = pygame.image.load(sprite_file_path)
+                sprites[f"player_warrior_{direction}"] = pygame.transform.scale(frisk_sprite, (TILE_SIZE, TILE_SIZE))
+                
+                # Also load larger portrait versions (for battle/inventory/shop screens)
+                sprites[f"portrait_warrior_{direction}"] = pygame.transform.scale(frisk_sprite, (128, 128))
+                
+                print(f"  Loaded: warrior_{direction} (Frisk - {sprite_file}) with portrait")
             else:
-                print(f"  Warning: Player sprite not found: {sprite_file_path}")
+                print(f"  Warning: Undertale Frisk sprite not found: {sprite_file_path}")
         except pygame.error as e:
-            print(f"  Error loading player sprite {sprite_file}: {e}")
+            print(f"  Error loading Undertale Frisk sprite {sprite_file}: {e}")
     
-    # Load monster sprites
-    print("Loading monster sprites...")
-    monster_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "dc-mon")
-    monster_sprites = {
-        "goblin": "goblin.png",
-        "orc": "orc_warrior.png", 
-        "troll": "troll.png",
-        "dragon": "dragon.png"      # Changed from dragon_gold.png to dragon.png
-    }
+    # Set default warrior sprite (facing down)
+    if "player_warrior_down" in sprites:
+        sprites["player_warrior"] = sprites["player_warrior_down"]
+        sprites["portrait_warrior"] = sprites["portrait_warrior_down"]
     
-    for monster_name, sprite_file in monster_sprites.items():
+    # Mage = Sans (skeleton mage)
+    sans_path = os.path.join("assets", "undertale", "Overworld", "Characters", "sans")
+    sans_files = ["spr_sans_0.png", "spr_sansoverworld_0.png"]
+    sans_loaded = False
+    
+    # Try to find Sans sprite files
+    for sans_file in sans_files:
         try:
-            sprite_file_path = os.path.join(monster_path, sprite_file)
-            if os.path.exists(sprite_file_path):
-                sprites[f"monster_{monster_name}"] = pygame.image.load(sprite_file_path)
-                sprites[f"monster_{monster_name}"] = pygame.transform.scale(sprites[f"monster_{monster_name}"], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {monster_name} ({sprite_file})")
-            else:
-                print(f"  Warning: Monster sprite not found: {sprite_file_path}")
+            sans_sprite_path = os.path.join(sans_path, sans_file)
+            if os.path.exists(sans_sprite_path):
+                sans_base = pygame.image.load(sans_sprite_path)
+                sans_base = pygame.transform.scale(sans_base, (TILE_SIZE, TILE_SIZE))
+                
+                # Create directional sprites for Sans (using same sprite, different rotations/flips)
+                sprites[f"player_mage_down"] = sans_base.copy()
+                sprites[f"player_mage_left"] = pygame.transform.flip(sans_base, True, False)  # Flip horizontally
+                sprites[f"player_mage_right"] = sans_base.copy()  
+                sprites[f"player_mage_up"] = sans_base.copy()  # Sans looks similar from all angles
+                sprites["player_mage"] = sans_base  # Default
+                
+                # Create portrait versions for Sans
+                sans_portrait = pygame.transform.scale(sans_base, (128, 128))
+                sprites[f"portrait_mage_down"] = sans_portrait.copy()
+                sprites[f"portrait_mage_left"] = pygame.transform.flip(sans_portrait, True, False)
+                sprites[f"portrait_mage_right"] = sans_portrait.copy()
+                sprites[f"portrait_mage_up"] = sans_portrait.copy()
+                sprites["portrait_mage"] = sans_portrait  # Default
+                
+                print(f"  Loaded: mage (Sans - {sans_file}) with directional variants and portraits")
+                sans_loaded = True
+                break
         except pygame.error as e:
-            print(f"  Error loading monster sprite {sprite_file}: {e}")
+            print(f"  Error loading Sans sprite {sans_file}: {e}")
     
-    # Load item sprites  
-    print("Loading item sprites...")
-    item_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "item")
+    if not sans_loaded:
+        print("  Warning: No Sans sprite found for mage")
     
-    # Load potions
-    potion_path = os.path.join(item_base_path, "potion", "i-heal-wounds.png")
-    if os.path.exists(potion_path):
-        sprites["item_potion"] = pygame.image.load(potion_path)
-        sprites["item_potion"] = pygame.transform.scale(sprites["item_potion"], (TILE_SIZE, TILE_SIZE))
-        print("  Loaded: potion (i-heal-wounds.png)")
-    else:
-        print("  Warning: Potion sprite not found")
+    # Archer = Monster Kid (dinosaur-like character)
+    monster_kid_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Monster Kid")
+    monster_kid_files = ["spr_mkid_0.png", "spr_mkidoverworld_0.png", "spr_mkid_walk_0.png"]
+    monster_kid_loaded = False
     
-    # Load weapon sprites
-    print("Loading weapon sprites...")
-    weapon_path = os.path.join(item_base_path, "weapon")
+    # Try to find Monster Kid sprite files
+    for mk_file in monster_kid_files:
+        try:
+            mk_sprite_path = os.path.join(monster_kid_path, mk_file)
+            if os.path.exists(mk_sprite_path):
+                mk_base = pygame.image.load(mk_sprite_path)
+                mk_base = pygame.transform.scale(mk_base, (TILE_SIZE, TILE_SIZE))
+                
+                # Create directional sprites for Monster Kid
+                sprites[f"player_archer_down"] = mk_base.copy()
+                sprites[f"player_archer_left"] = pygame.transform.flip(mk_base, True, False)
+                sprites[f"player_archer_right"] = mk_base.copy()
+                sprites[f"player_archer_up"] = mk_base.copy()
+                sprites["player_archer"] = mk_base  # Default
+                
+                # Create portrait versions for Monster Kid
+                mk_portrait = pygame.transform.scale(mk_base, (128, 128))
+                sprites[f"portrait_archer_down"] = mk_portrait.copy()
+                sprites[f"portrait_archer_left"] = pygame.transform.flip(mk_portrait, True, False)
+                sprites[f"portrait_archer_right"] = mk_portrait.copy()
+                sprites[f"portrait_archer_up"] = mk_portrait.copy()
+                sprites["portrait_archer"] = mk_portrait  # Default
+                
+                print(f"  Loaded: archer (Monster Kid - {mk_file}) with directional variants and portraits")
+                monster_kid_loaded = True
+                break
+        except pygame.error as e:
+            print(f"  Error loading Monster Kid sprite {mk_file}: {e}")
+    
+    # Fallback: Use Papyrus for archer if Monster Kid not found
+    if not monster_kid_loaded:
+        papyrus_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Papyrus")
+        papyrus_files = ["spr_papyrus_0.png", "spr_papyrusoverworld_0.png"]
+        
+        for papyrus_file in papyrus_files:
+            try:
+                papyrus_sprite_path = os.path.join(papyrus_path, papyrus_file)
+                if os.path.exists(papyrus_sprite_path):
+                    papyrus_base = pygame.image.load(papyrus_sprite_path)
+                    papyrus_base = pygame.transform.scale(papyrus_base, (TILE_SIZE, TILE_SIZE))
+                    
+                    # Create directional sprites for Papyrus
+                    sprites[f"player_archer_down"] = papyrus_base.copy()
+                    sprites[f"player_archer_left"] = pygame.transform.flip(papyrus_base, True, False)
+                    sprites[f"player_archer_right"] = papyrus_base.copy()
+                    sprites[f"player_archer_up"] = papyrus_base.copy()
+                    sprites["player_archer"] = papyrus_base  # Default
+                    
+                    # Create portrait versions for Papyrus
+                    papyrus_portrait = pygame.transform.scale(papyrus_base, (128, 128))
+                    sprites[f"portrait_archer_down"] = papyrus_portrait.copy()
+                    sprites[f"portrait_archer_left"] = pygame.transform.flip(papyrus_portrait, True, False)
+                    sprites[f"portrait_archer_right"] = papyrus_portrait.copy()
+                    sprites[f"portrait_archer_up"] = papyrus_portrait.copy()
+                    sprites["portrait_archer"] = papyrus_portrait  # Default
+                    
+                    print(f"  Loaded: archer (Papyrus fallback - {papyrus_file}) with directional variants and portraits")
+                    break
+            except pygame.error as e:
+                print(f"  Error loading Papyrus fallback sprite {papyrus_file}: {e}")
+    
+    # Rogue class (if needed) = Chara
+    chara_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Chara")
+    chara_files = ["spr_chara_0.png"]
+    chara_loaded = False
+    
+    # Try to find Chara sprite files
+    for chara_file in chara_files:
+        try:
+            chara_sprite_path = os.path.join(chara_path, chara_file)
+            if os.path.exists(chara_sprite_path):
+                chara_base = pygame.image.load(chara_sprite_path)
+                chara_base = pygame.transform.scale(chara_base, (TILE_SIZE, TILE_SIZE))
+                
+                # Create directional sprites for Chara
+                sprites[f"player_rogue_down"] = chara_base.copy()
+                sprites[f"player_rogue_left"] = pygame.transform.flip(chara_base, True, False)
+                sprites[f"player_rogue_right"] = chara_base.copy()
+                sprites[f"player_rogue_up"] = chara_base.copy()
+                sprites["player_rogue"] = chara_base  # Default
+                
+                # Create portrait versions for Chara
+                chara_portrait = pygame.transform.scale(chara_base, (128, 128))
+                sprites[f"portrait_rogue_down"] = chara_portrait.copy()
+                sprites[f"portrait_rogue_left"] = pygame.transform.flip(chara_portrait, True, False)
+                sprites[f"portrait_rogue_right"] = chara_portrait.copy()
+                sprites[f"portrait_rogue_up"] = chara_portrait.copy()
+                sprites["portrait_rogue"] = chara_portrait  # Default
+                
+                print(f"  Loaded: rogue (Chara - {chara_file}) with directional variants and portraits")
+                chara_loaded = True
+                break
+        except pygame.error as e:
+            print(f"  Error loading Chara sprite {chara_file}: {e}")
+    
+    # If no specific directional sprites exist, create fallbacks using the default sprite
+    for class_name in ["warrior", "mage", "archer", "rogue"]:
+        if f"player_{class_name}" in sprites:
+            base_sprite = sprites[f"player_{class_name}"]
+            base_portrait = pygame.transform.scale(base_sprite, (128, 128))
+            sprites[f"portrait_{class_name}"] = base_portrait
+            
+            for direction in ["down", "left", "right", "up"]:
+                if f"player_{class_name}_{direction}" not in sprites:
+                    sprites[f"player_{class_name}_{direction}"] = base_sprite.copy()
+                    sprites[f"portrait_{class_name}_{direction}"] = base_portrait.copy()
+                    if direction == "left":  # Flip for left direction
+                        sprites[f"player_{class_name}_{direction}"] = pygame.transform.flip(base_sprite, True, False)
+                        sprites[f"portrait_{class_name}_{direction}"] = pygame.transform.flip(base_portrait, True, False)
+    
+    # Load Undertale monster sprites 
+    print("Loading Undertale monster sprites...")
+    
+    # Load Dummy for goblin
+    dummy_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Dummies")
+    try:
+        dummy_sprite_path = os.path.join(dummy_path, "spr_dummy_0.png")
+        if os.path.exists(dummy_sprite_path):
+            dummy_sprite = pygame.image.load(dummy_sprite_path)
+            sprites["monster_goblin"] = pygame.transform.scale(dummy_sprite, (TILE_SIZE, TILE_SIZE))
+            sprites["portrait_goblin"] = pygame.transform.scale(dummy_sprite, (128, 128))
+            print("  Loaded: goblin (Undertale Dummy) with portrait")
+        else:
+            print("  Warning: Undertale dummy sprite not found")
+    except pygame.error as e:
+        print(f"  Error loading Undertale dummy sprite: {e}")
+    
+    # Load Flowey for orc  
+    flowey_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Flowey")
+    try:
+        flowey_sprite_path = os.path.join(flowey_path, "spr_flowey_0.png")
+        if os.path.exists(flowey_sprite_path):
+            flowey_sprite = pygame.image.load(flowey_sprite_path)
+            sprites["monster_orc"] = pygame.transform.scale(flowey_sprite, (TILE_SIZE, TILE_SIZE))
+            sprites["portrait_orc"] = pygame.transform.scale(flowey_sprite, (128, 128))
+            print("  Loaded: orc (Undertale Flowey) with portrait")
+        else:
+            print("  Warning: Undertale Flowey sprite not found")
+    except pygame.error as e:
+        print(f"  Error loading Undertale Flowey sprite: {e}")
+    
+    # Load Papyrus for troll
+    papyrus_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Papyrus")
+    try:
+        papyrus_files = ["spr_papyrus_0.png", "spr_papyrusoverworld_0.png"]
+        papyrus_loaded = False
+        for papyrus_file in papyrus_files:
+            papyrus_sprite_path = os.path.join(papyrus_path, papyrus_file)
+            if os.path.exists(papyrus_sprite_path):
+                papyrus_sprite = pygame.image.load(papyrus_sprite_path)
+                sprites["monster_troll"] = pygame.transform.scale(papyrus_sprite, (TILE_SIZE, TILE_SIZE))
+                sprites["portrait_troll"] = pygame.transform.scale(papyrus_sprite, (128, 128))
+                print(f"  Loaded: troll (Undertale Papyrus - {papyrus_file}) with portrait")
+                papyrus_loaded = True
+                break
+        
+        if not papyrus_loaded:
+            print("  Warning: No Undertale Papyrus sprite found")
+    except pygame.error as e:
+        print(f"  Error loading Undertale Papyrus sprite: {e}")
+    
+    # Load Sans for dragon (boss)
+    sans_path = os.path.join("assets", "undertale", "Overworld", "Characters", "sans")
+    try:
+        sans_files = ["spr_sans_0.png", "spr_sansoverworld_0.png"]
+        sans_loaded = False
+        for sans_file in sans_files:
+            sans_sprite_path = os.path.join(sans_path, sans_file)
+            if os.path.exists(sans_sprite_path):
+                sans_sprite = pygame.image.load(sans_sprite_path)
+                sprites["monster_dragon"] = pygame.transform.scale(sans_sprite, (TILE_SIZE, TILE_SIZE))
+                sprites["portrait_dragon"] = pygame.transform.scale(sans_sprite, (128, 128))
+                print(f"  Loaded: dragon (Undertale Sans - {sans_file}) with portrait")
+                sans_loaded = True
+                break
+        
+        if not sans_loaded:
+            print("  Warning: No Undertale Sans sprite found")
+    except pygame.error as e:
+        print(f"  Error loading Undertale Sans sprite: {e}")
+    
+    # Load Undertale item sprites  
+    print("Loading Undertale item sprites...")
+    
+    # Load potion sprite (use UI exclamation mark as potion)
+    ui_path = os.path.join("assets", "undertale", "UI-20250721T005822Z-1-001", "UI")
+    try:
+        potion_path = os.path.join(ui_path, "spr_exc_0.png")
+        if os.path.exists(potion_path):
+            sprites["item_potion"] = pygame.image.load(potion_path)
+            sprites["item_potion"] = pygame.transform.scale(sprites["item_potion"], (TILE_SIZE, TILE_SIZE))
+            print("  Loaded: potion (Undertale UI exclamation)")
+        else:
+            print("  Warning: Undertale potion sprite not found")
+    except pygame.error as e:
+        print(f"  Error loading Undertale potion sprite: {e}")
+    
+    # Load weapon sprites (create simple placeholder weapons from UI elements)
+    print("Loading Undertale-style weapon sprites...")
     weapon_sprites = [
-        "dagger.png", "short_sword1.png", "long_sword1.png", "battle_axe1.png", 
-        "war_axe1.png", "greatsword1.png", "executioner_axe1.png", "demon_blade.png",
-        "quarterstaff.png", "elven_dagger.png", "blessed_blade.png", "demon_trident.png", "trishula.png"
+        "dagger", "short_sword1", "long_sword1", "battle_axe1", 
+        "war_axe1", "greatsword1", "executioner_axe1", "demon_blade",
+        "quarterstaff", "elven_dagger", "blessed_blade", "demon_trident", "trishula"
     ]
+    
+    # Load weapon sprites from original Crawl tiles
+    print("Loading original weapon sprites...")
+    weapon_sprites = [
+        "dagger", "short_sword1", "long_sword1", "battle_axe1", 
+        "war_axe1", "greatsword1", "executioner_axe1", "demon_blade",
+        "quarterstaff", "elven_dagger", "blessed_blade", "demon_trident", "trishula"
+    ]
+    
+    # Load from crawl-tiles weapon folder
+    weapon_folder = os.path.join("assets", "crawl-tiles Oct-5-2010", "item", "weapon")
+    
+    for weapon_name in weapon_sprites:
+        try:
+            weapon_path = os.path.join(weapon_folder, f"{weapon_name}.png")
+            if os.path.exists(weapon_path):
+                weapon_sprite = pygame.image.load(weapon_path)
+                sprites[f"weapon_{weapon_name}"] = pygame.transform.scale(weapon_sprite, (TILE_SIZE, TILE_SIZE))
+                print(f"  Loaded: {weapon_name} (original crawl sprite)")
+            else:
+                # Try alternative names or create fallback
+                print(f"  Warning: {weapon_name} not found, using fallback")
+                fallback_sprite = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                fallback_sprite.fill((100, 100, 100))  # Gray fallback
+                sprites[f"weapon_{weapon_name}"] = fallback_sprite
+        except pygame.error as e:
+            print(f"  Error loading weapon sprite {weapon_name}: {e}")
     
     # Load ranged weapons
-    ranged_path = os.path.join(weapon_path, "ranged")
-    ranged_sprites = ["sling1.png", "bow1.png", "bow2.png", "crossbow1.png", "longbow.png", "throwing_net.png"]
+    ranged_sprites = ["sling1", "bow1", "bow2", "crossbow1", "longbow", "throwing_net"]
+    ranged_folder = os.path.join("assets", "crawl-tiles Oct-5-2010", "item", "weapon", "ranged")
     
-    for weapon_file in weapon_sprites:
+    for ranged_name in ranged_sprites:
         try:
-            weapon_sprite_path = os.path.join(weapon_path, weapon_file)
-            if os.path.exists(weapon_sprite_path):
-                sprite_key = f"weapon_{weapon_file.replace('.png', '')}"
-                sprites[sprite_key] = pygame.image.load(weapon_sprite_path)
-                sprites[sprite_key] = pygame.transform.scale(sprites[sprite_key], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {weapon_file}")
-            else:
-                print(f"  Warning: Weapon sprite not found: {weapon_file}")
+            # Try different possible names
+            possible_names = [ranged_name, ranged_name.replace("1", ""), ranged_name.replace("bow", "bow_")]
+            loaded = False
+            
+            for possible_name in possible_names:
+                ranged_path = os.path.join(ranged_folder, f"{possible_name}.png")
+                if os.path.exists(ranged_path):
+                    ranged_sprite = pygame.image.load(ranged_path)
+                    sprites[f"weapon_{ranged_name}"] = pygame.transform.scale(ranged_sprite, (TILE_SIZE, TILE_SIZE))
+                    print(f"  Loaded: ranged/{ranged_name} (original crawl sprite)")
+                    loaded = True
+                    break
+            
+            if not loaded:
+                print(f"  Warning: ranged/{ranged_name} not found, using fallback")
+                fallback_sprite = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                fallback_sprite.fill((120, 100, 80))  # Brown fallback for ranged
+                sprites[f"weapon_{ranged_name}"] = fallback_sprite
         except pygame.error as e:
-            print(f"  Error loading weapon sprite {weapon_file}: {e}")
+            print(f"  Error loading ranged weapon sprite {ranged_name}: {e}")
     
-    for ranged_file in ranged_sprites:
-        try:
-            ranged_sprite_path = os.path.join(ranged_path, ranged_file)
-            if os.path.exists(ranged_sprite_path):
-                sprite_key = f"weapon_{ranged_file.replace('.png', '')}"
-                sprites[sprite_key] = pygame.image.load(ranged_sprite_path)
-                sprites[sprite_key] = pygame.transform.scale(sprites[sprite_key], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: ranged/{ranged_file}")
-            else:
-                print(f"  Warning: Ranged weapon sprite not found: {ranged_file}")
-        except pygame.error as e:
-            print(f"  Error loading ranged weapon sprite {ranged_file}: {e}")
-    
-    # Load armor sprites
-    print("Loading armor sprites...")
-    armor_path = os.path.join(item_base_path, "armour")
+    # Load armor sprites from original Crawl tiles  
+    print("Loading original armor sprites...")
     armor_sprites = [
-        "leather_armour1.png", "leather_armour2.png", "elven_leather_armor.png", "troll_hide.png",
-        "ring_mail1.png", "scale_mail1.png", "chain_mail1.png", "banded_mail1.png",
-        "splint_mail1.png", "plate_mail1.png", "crystal_plate_mail.png"
+        "leather_armour1", "leather_armour2", "elven_leather_armor", "troll_hide",
+        "ring_mail1", "scale_mail1", "chain_mail1", "banded_mail1",
+        "splint_mail1", "plate_mail1", "crystal_plate_mail"
     ]
     
-    for armor_file in armor_sprites:
+    # Load from crawl-tiles armour folder
+    armour_folder = os.path.join("assets", "crawl-tiles Oct-5-2010", "item", "armour")
+    
+    for armor_name in armor_sprites:
         try:
-            armor_sprite_path = os.path.join(armor_path, armor_file)
-            if os.path.exists(armor_sprite_path):
-                sprite_key = f"armor_{armor_file.replace('.png', '')}"
-                sprites[sprite_key] = pygame.image.load(armor_sprite_path)
-                sprites[sprite_key] = pygame.transform.scale(sprites[sprite_key], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {armor_file}")
-            else:
-                print(f"  Warning: Armor sprite not found: {armor_file}")
+            # Try different possible names
+            possible_names = [armor_name, armor_name.replace("armour", "armor"), armor_name.replace("1", "")]
+            loaded = False
+            
+            for possible_name in possible_names:
+                armor_path = os.path.join(armour_folder, f"{possible_name}.png")
+                if os.path.exists(armor_path):
+                    armor_sprite = pygame.image.load(armor_path)
+                    sprites[f"armor_{armor_name}"] = pygame.transform.scale(armor_sprite, (TILE_SIZE, TILE_SIZE))
+                    print(f"  Loaded: {armor_name} (original crawl sprite)")
+                    loaded = True
+                    break
+            
+            if not loaded:
+                print(f"  Warning: {armor_name} not found, using fallback")
+                fallback_sprite = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                fallback_sprite.fill((150, 120, 100))  # Brown fallback for armor
+                sprites[f"armor_{armor_name}"] = fallback_sprite
         except pygame.error as e:
-            print(f"  Error loading armor sprite {armor_file}: {e}")
+            print(f"  Error loading armor sprite {armor_name}: {e}")
     
-    # Load treasure chest sprite from dungeon folder
-    print("Loading treasure chest sprites...")
-    dungeon_path = os.path.join("assets", "dungeon")
-    chest_files = ["chest.png", "chest2.png"]
+    # Load treasure chest sprites (create from ruins objects)
+    print("Loading Undertale treasure chest sprites...")
+    ruins_path = os.path.join("assets", "undertale", "Overworld", "Locations", "01 - Ruins")
     
-    for chest_file in chest_files:
+    # Use candy dish as chest
+    chest_files = ["spr_candydish_0.png", "spr_candydish2_0.png"]
+    for i, chest_file in enumerate(chest_files):
         try:
-            chest_sprite_path = os.path.join(dungeon_path, chest_file)
+            chest_sprite_path = os.path.join(ruins_path, chest_file)
             if os.path.exists(chest_sprite_path):
-                sprite_key = "chest_closed" if "chest.png" == chest_file else "chest_open"
+                sprite_key = "chest_closed" if i == 0 else "chest_open"
                 sprites[sprite_key] = pygame.image.load(chest_sprite_path)
                 sprites[sprite_key] = pygame.transform.scale(sprites[sprite_key], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {sprite_key} ({chest_file})")
-            else:
-                print(f"  Warning: Chest sprite not found: {chest_sprite_path}")
+                print(f"  Loaded: {sprite_key} (Undertale {chest_file})")
         except pygame.error as e:
-            print(f"  Error loading chest sprite {chest_file}: {e}")
+            print(f"  Error loading Undertale chest sprite {chest_file}: {e}")
     
-    # Also load from Dungeon Crawl Stone Soup Full for additional weapons
-    print("Loading additional weapon sprites from Dungeon Crawl Stone Soup Full...")
-    full_weapon_path = os.path.join("assets", "Dungeon Crawl Stone Soup Full", "item", "weapon")
-    
-    # Additional weapon sprites to load (using actual available files)
+    # Load additional weapon sprites from both crawl folders
+    print("Loading additional original weapon variants...")
     additional_weapons = [
-        "ancient_sword.png", "axe.png", "claymore.png", "cutlass_1.png", "golden_sword.png",
-        "halberd_1.png", "hammer_1_new.png", "katana.png", "mace_1_new.png", "rapier_1.png",
-        "scimitar_1_new.png", "scythe_1_new.png", "trident_1.png", "war_hammer.png"
+        "ancient_sword", "axe", "claymore", "cutlass_1", "golden_sword",
+        "halberd_1", "hammer_1_new", "katana", "mace_1_new", "rapier_1",
+        "scimitar_1_new", "scythe_1_new", "trident_1", "war_hammer"
     ]
     
-    for weapon_file in additional_weapons:
+    # Try both weapon folders
+    weapon_folders = [
+        weapon_folder,  # crawl-tiles weapon folder
+        os.path.join("assets", "Dungeon Crawl Stone Soup Full", "item", "weapon")  # DCSS weapon folder
+    ]
+    
+    for weapon_name in additional_weapons:
         try:
-            weapon_sprite_path = os.path.join(full_weapon_path, weapon_file)
-            if os.path.exists(weapon_sprite_path):
-                sprite_key = f"weapon_{weapon_file.replace('.png', '')}"
-                sprites[sprite_key] = pygame.image.load(weapon_sprite_path)
-                sprites[sprite_key] = pygame.transform.scale(sprites[sprite_key], (TILE_SIZE, TILE_SIZE))
-                print(f"  Loaded: {weapon_file}")
-            else:
-                print(f"  Warning: Additional weapon sprite not found: {weapon_file}")
+            # Try different possible names
+            possible_names = [weapon_name, weapon_name.replace("_1", ""), weapon_name.replace("_new", "")]
+            loaded = False
+            
+            for folder in weapon_folders:
+                if loaded:
+                    break
+                for possible_name in possible_names:
+                    weapon_path = os.path.join(folder, f"{possible_name}.png")
+                    if os.path.exists(weapon_path):
+                        weapon_sprite = pygame.image.load(weapon_path)
+                        sprites[f"weapon_{weapon_name}"] = pygame.transform.scale(weapon_sprite, (TILE_SIZE, TILE_SIZE))
+                        print(f"  Loaded: {weapon_name} (original crawl sprite)")
+                        loaded = True
+                        break
+            
+            if not loaded:
+                # Use a basic weapon sprite as fallback if we have one loaded
+                if "weapon_dagger" in sprites:
+                    sprites[f"weapon_{weapon_name}"] = sprites["weapon_dagger"].copy()
+                    print(f"  Loaded: {weapon_name} (dagger fallback)")
+                else:
+                    fallback_sprite = pygame.Surface((TILE_SIZE, TILE_SIZE))
+                    fallback_sprite.fill((100, 100, 100))
+                    sprites[f"weapon_{weapon_name}"] = fallback_sprite
+                    print(f"  Loaded: {weapon_name} (gray fallback)")
         except pygame.error as e:
-            print(f"  Error loading additional weapon sprite {weapon_file}: {e}")
+            print(f"  Error loading additional weapon sprite {weapon_name}: {e}")
     
-    print(f"Sprite loading complete. Loaded {len(sprites)} sprites.")
+    # Load Undertale shopkeeper sprites
+    print("Loading Undertale shopkeeper sprites...")
+    
+    # Load Gerson (turtle shopkeeper) from shop assets
+    gerson_path = os.path.join("assets", "undertale", "Shops-20250721T005643Z-1-001", "Shops", "Gerson")
+    try:
+        # Try to load Gerson's body as the main shopkeeper sprite
+        gerson_files = ["spr_shopkeeper2_body_0.png", "spr_shop2_bg_0.png"]
+        shopkeeper_loaded = False
+        
+        for gerson_file in gerson_files:
+            gerson_sprite_path = os.path.join(gerson_path, gerson_file)
+            if os.path.exists(gerson_sprite_path):
+                gerson_sprite = pygame.image.load(gerson_sprite_path)
+                sprites["shopkeeper_npc"] = pygame.transform.scale(gerson_sprite, (TILE_SIZE, TILE_SIZE))
+                sprites["portrait_shopkeeper"] = pygame.transform.scale(gerson_sprite, (128, 128))
+                print(f"  Loaded: shopkeeper (Undertale Gerson - {gerson_file}) with portrait")
+                shopkeeper_loaded = True
+                break
+        
+        if not shopkeeper_loaded:
+            # Fallback: use Papyrus as shopkeeper
+            papyrus_path = os.path.join("assets", "undertale", "Overworld", "Characters", "Papyrus")
+            papyrus_files = ["spr_papyrus_0.png", "spr_papyrusoverworld_0.png"]
+            for papyrus_file in papyrus_files:
+                papyrus_sprite_path = os.path.join(papyrus_path, papyrus_file)
+                if os.path.exists(papyrus_sprite_path):
+                    papyrus_sprite = pygame.image.load(papyrus_sprite_path)
+                    sprites["shopkeeper_npc"] = pygame.transform.scale(papyrus_sprite, (TILE_SIZE, TILE_SIZE))
+                    sprites["portrait_shopkeeper"] = pygame.transform.scale(papyrus_sprite, (128, 128))
+                    print(f"  Loaded: shopkeeper (Undertale Papyrus fallback - {papyrus_file}) with portrait")
+                    shopkeeper_loaded = True
+                    break
+        
+        if not shopkeeper_loaded:
+            print("  Warning: No Undertale shopkeeper sprite found")
+            
+    except pygame.error as e:
+        print(f"  Error loading Undertale shopkeeper sprite: {e}")
 
-    # Load skill spell icons
-    print("Loading skill spell icons...")
-    spell_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "spells")
-    effect_base_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "effect")
+    print(f"Undertale sprite loading complete. Loaded {len(sprites)} sprites.")
+
+    # Load Undertale-style skill spell icons
+    print("Loading Undertale skill spell icons...")
     
-    # Load warrior skill icon (Power Strike)
-    power_strike_path = os.path.join(spell_base_path, "enchantment", "berserker_rage.png")
+    # Use UI elements for skill icons
+    ui_config_path = os.path.join("assets", "undertale", "UI-20250721T005822Z-1-001", "UI", "Config")
+    
+    # Load warrior skill icon (Power Strike) - use Z button
+    power_strike_path = os.path.join(ui_config_path, "spr_test_zbutton_0.png")
     if os.path.exists(power_strike_path):
         sprites["skill_power_strike"] = pygame.image.load(power_strike_path)
         sprites["skill_power_strike"] = pygame.transform.scale(sprites["skill_power_strike"], (TILE_SIZE, TILE_SIZE))
-        print("  Loaded: Power Strike skill icon")
-    else:
-        print("  Warning: Power Strike skill icon not found")
+        print("  Loaded: Power Strike skill icon (Undertale Z button)")
     
-    # Load mage skill icon (Fireball)
-    fireball_path = os.path.join(spell_base_path, "fire", "fireball.png")
+    # Load mage skill icon (Fireball) - use X button
+    fireball_path = os.path.join(ui_config_path, "spr_test_xbutton_0.png")
     if os.path.exists(fireball_path):
         sprites["skill_fireball"] = pygame.image.load(fireball_path)
         sprites["skill_fireball"] = pygame.transform.scale(sprites["skill_fireball"], (TILE_SIZE, TILE_SIZE))
-        print("  Loaded: Fireball skill icon")
-    else:
-        print("  Warning: Fireball skill icon not found")
+        print("  Loaded: Fireball skill icon (Undertale X button)")
     
-    # Load archer skill icon (Double Shot)
-    double_shot_path = os.path.join(effect_base_path, "arrow0.png")
+    # Load archer skill icon (Double Shot) - use C button
+    double_shot_path = os.path.join(ui_config_path, "spr_test_cbutton_0.png")
     if os.path.exists(double_shot_path):
         sprites["skill_double_shot"] = pygame.image.load(double_shot_path)
         sprites["skill_double_shot"] = pygame.transform.scale(sprites["skill_double_shot"], (TILE_SIZE, TILE_SIZE))
-        print("  Loaded: Double Shot skill icon")
-    else:
-        print("  Warning: Double Shot skill icon not found")
+        print("  Loaded: Double Shot skill icon (Undertale C button)")
     
-    print(f"Skill icon loading complete.")
+    print(f"Undertale skill icon loading complete.")
 
-    # Load UI elements
-    print("Loading UI elements...")
-    gui_path = os.path.join("assets", "crawl-tiles Oct-5-2010", "gui")
+    # Load Undertale UI elements
+    print("Loading Undertale UI elements...")
     
-    # Load individual UI elements
+    # Create UI elements from Undertale assets
     ui_files = {
-        "tab_selected": "tab_selected.png",
-        "tab_unselected": "tab_unselected.png", 
-        "tab_mouseover": "tab_mouseover.png",
-        "tab_item": "tab_label_item.png",
-        "tab_spell": "tab_label_spell.png",
-        "tab_monster": "tab_label_monster.png"
+        "tab_selected": "spr_test_zbutton_1.png",      # Selected state
+        "tab_unselected": "spr_test_zbutton_0.png",    # Normal state
+        "tab_mouseover": "spr_test_zbutton_2.png",     # Hover state
+        "tab_item": "spr_exc_0.png",                   # Item tab
+        "tab_spell": "spr_exc_f_0.png",                # Spell tab
+        "tab_monster": "spr_musblc_0.png"              # Monster tab
     }
     
     for ui_name, ui_file in ui_files.items():
         try:
-            ui_file_path = os.path.join(gui_path, ui_file)
+            ui_file_path = os.path.join(ui_config_path, ui_file)
+            if not os.path.exists(ui_file_path):
+                # Try in main UI folder
+                ui_file_path = os.path.join(ui_path, ui_file)
+            
             if os.path.exists(ui_file_path):
                 ui_elements[ui_name] = pygame.image.load(ui_file_path)
                 ui_elements[ui_name] = pygame.transform.scale(ui_elements[ui_name], (64, 32))  # Standard button size
-                print(f"  Loaded: {ui_name} ({ui_file})")
+                print(f"  Loaded: {ui_name} (Undertale {ui_file})")
             else:
-                print(f"  Warning: UI element not found: {ui_file_path}")
+                print(f"  Warning: Undertale UI element not found: {ui_file}")
         except pygame.error as e:
-            print(f"  Error loading UI element {ui_file}: {e}")
+            print(f"  Error loading Undertale UI element {ui_file}: {e}")
     
-    print(f"UI loading complete. Loaded {len(ui_elements)} UI elements.")
+    print(f"Undertale UI loading complete. Loaded {len(ui_elements)} UI elements.")
+    
+    # Create fallback portraits for any missing sprites
+    print("Creating fallback portraits...")
+    
+    # Ensure all character classes have portraits
+    for class_name in ["warrior", "mage", "archer", "rogue"]:
+        if f"portrait_{class_name}" not in sprites:
+            if f"player_{class_name}" in sprites:
+                # Create portrait from player sprite
+                base_sprite = sprites[f"player_{class_name}"]
+                sprites[f"portrait_{class_name}"] = pygame.transform.scale(base_sprite, (128, 128))
+                print(f"  Created fallback portrait for {class_name}")
+            else:
+                # Create colored fallback
+                fallback_surface = pygame.Surface((128, 128))
+                fallback_surface.fill((100, 100, 150))  # Purple-ish color
+                sprites[f"portrait_{class_name}"] = fallback_surface
+                print(f"  Created colored fallback portrait for {class_name}")
+    
+    # Ensure all monsters have portraits
+    for monster_name in ["goblin", "orc", "troll", "dragon"]:
+        if f"portrait_{monster_name}" not in sprites:
+            if f"monster_{monster_name}" in sprites:
+                # Create portrait from monster sprite
+                base_sprite = sprites[f"monster_{monster_name}"]
+                sprites[f"portrait_{monster_name}"] = pygame.transform.scale(base_sprite, (128, 128))
+                print(f"  Created fallback portrait for {monster_name}")
+            else:
+                # Create colored fallback
+                fallback_surface = pygame.Surface((128, 128))
+                fallback_surface.fill((150, 100, 100))  # Red-ish color for monsters
+                sprites[f"portrait_{monster_name}"] = fallback_surface
+                print(f"  Created colored fallback portrait for {monster_name}")
+    
+    # Ensure shopkeeper has portrait
+    if "portrait_shopkeeper" not in sprites:
+        if "shopkeeper_npc" in sprites:
+            base_sprite = sprites["shopkeeper_npc"]
+            sprites["portrait_shopkeeper"] = pygame.transform.scale(base_sprite, (128, 128))
+            print("  Created fallback portrait for shopkeeper")
+        else:
+            fallback_surface = pygame.Surface((128, 128))
+            fallback_surface.fill((100, 150, 100))  # Green-ish color for shopkeeper
+            sprites["portrait_shopkeeper"] = fallback_surface
+            print("  Created colored fallback portrait for shopkeeper")
+    
+    print("=== Undertale sprite conversion complete! ===")
+
+def set_dungeon_level_tileset(level):
+    """Change the tileset based on current dungeon level."""
+    global sprites
+    
+    if "level_sprites" in sprites and level in sprites["level_sprites"]:
+        level_data = sprites["level_sprites"][level]
+        
+        # Update all wall variants to use the new level's wall tile
+        wall_variants = [
+            "wall_stone_brick1.png", "wall_stone_dark0.png", "wall_brick_brown0.png", 
+            "wall_marble_wall1.png", "wall_sandstone_wall0.png", "wall_metal_wall_brown.png"
+        ]
+        
+        for wall_variant in wall_variants:
+            sprites[wall_variant] = level_data["wall"].copy()
+        
+        # Update all floor variants to use the new level's floor tile
+        floor_variants = [
+            "floor_sandstone_floor0.png", "floor_dirt0.png", "floor_pebble_brown0.png", 
+            "floor_marble_floor1.png", "floor_stone_floor0.png", "floor_wooden_floor.png"
+        ]
+        
+        for floor_variant in floor_variants:
+            sprites[floor_variant] = level_data["floor"].copy()
+        
+        # Store corner tiles for use in dungeon rendering
+        if "corners" in level_data:
+            for corner_name, corner_tile in level_data["corners"].items():
+                sprites[f"corner_{corner_name}"] = corner_tile.copy()
+        
+        print(f"Switched to Level {level} tileset: {level_data['tileset_name']}")
+        return True
+    else:
+        print(f"Warning: No tileset available for level {level}")
+        return False
 
 # Load sprites
 load_sprites()
@@ -390,6 +1160,67 @@ def draw_text_with_shadow(surface, text, x, y, color, font_obj=None, shadow_offs
     text_surface = font_obj.render(text, True, color)
     surface.blit(text_surface, (x, y))
     return text_surface.get_rect(x=x, y=y)
+
+def draw_portrait(surface, entity, x, y, size=128, border_color=WHITE, border_width=3):
+    """Draw a character/monster/shopkeeper portrait with a frame."""
+    # Determine which portrait to use
+    portrait_key = None
+    
+    if hasattr(entity, 'char_class'):
+        # Player character
+        direction = getattr(entity, 'direction', 'down')
+        portrait_key = f"portrait_{entity.char_class}_{direction}"
+        if portrait_key not in sprites:
+            portrait_key = f"portrait_{entity.char_class}"
+    elif hasattr(entity, 'enemy_type'):
+        # Enemy/monster
+        portrait_key = f"portrait_{entity.enemy_type}"
+    elif hasattr(entity, 'name') and entity.name == "Merchant":
+        # Shopkeeper
+        portrait_key = "portrait_shopkeeper"
+    
+    # Draw portrait if available
+    if portrait_key and portrait_key in sprites:
+        portrait = sprites[portrait_key]
+        # Scale to requested size if different
+        if portrait.get_width() != size or portrait.get_height() != size:
+            portrait = pygame.transform.scale(portrait, (size, size))
+        
+        # Draw border/frame
+        border_rect = pygame.Rect(x - border_width, y - border_width, 
+                                size + 2 * border_width, size + 2 * border_width)
+        pygame.draw.rect(surface, border_color, border_rect, border_width)
+        
+        # Draw portrait
+        surface.blit(portrait, (x, y))
+    else:
+        # Fallback: draw a colored square with the entity's icon
+        fallback_rect = pygame.Rect(x, y, size, size)
+        
+        # Choose appropriate background color based on entity type
+        if hasattr(entity, 'char_class'):
+            bg_color = (60, 90, 140)  # Blue for players
+        elif hasattr(entity, 'enemy_type'):
+            bg_color = (140, 60, 60)  # Red for enemies  
+        elif hasattr(entity, 'name') and entity.name == "Merchant":
+            bg_color = (60, 140, 60)  # Green for shopkeeper
+        else:
+            bg_color = DARK_GRAY
+        
+        pygame.draw.rect(surface, bg_color, fallback_rect)
+        pygame.draw.rect(surface, border_color, fallback_rect, border_width)
+        
+        # Draw icon text in center
+        icon_text = getattr(entity, 'icon', '?')
+        try:
+            # Use a smaller font for better fit
+            icon_font = pygame.font.Font(None, max(24, size // 4))
+            icon_surface = icon_font.render(icon_text, True, WHITE)
+            icon_rect = icon_surface.get_rect(center=fallback_rect.center)
+            surface.blit(icon_surface, icon_rect)
+        except:
+            # If font rendering fails, just draw a simple shape
+            pygame.draw.circle(surface, WHITE, fallback_rect.center, size // 6)
 
 def draw_gradient_rect(surface, rect, color1, color2, vertical=True):
     """Draw a rectangle with a gradient fill."""
@@ -1022,6 +1853,7 @@ class Player(Entity):
         self.xp = 0
         self.level = 1
         self.gold = 100  # Starting gold for shopping
+        self.direction = "down"  # Track which direction the player is facing
         
         # Class-specific starting weapon
         if char_class == "warrior":
@@ -1042,6 +1874,21 @@ class Player(Entity):
         self.max_weapons = 3
         self.max_armor = 2
         self.max_potions = 5
+    
+    def update_direction(self, dx, dy):
+        """Update the player's facing direction based on movement."""
+        if dx > 0:
+            self.direction = "right"
+        elif dx < 0:
+            self.direction = "left"
+        elif dy > 0:
+            self.direction = "down"
+        elif dy < 0:
+            self.direction = "up"
+    
+    def get_current_sprite_key(self):
+        """Get the sprite key for the player's current direction."""
+        return f"player_{self.char_class}_{self.direction}"
 
     def get_inventory_by_type(self, item_type):
         """Get items of a specific type from inventory."""
@@ -1950,17 +2797,17 @@ class Game:
             if game_settings['use_emojis']:
                 status = f'{player.icon} {player.name} (Lv.{player.level})'
             else:
-                class_sprite_key = f"player_{player.char_class}"
-                if class_sprite_key in sprites:
-                    screen.blit(sprites[class_sprite_key], (player_section_x, y_pos))
+                # Draw player portrait instead of small sprite
+                draw_portrait(screen, player, player_section_x, y_pos, size=64, 
+                            border_color=ENHANCED_COLORS['accent_gold'] if is_current else WHITE)
                 status = f'{player.name} (Lv.{player.level}, {player.char_class.title()})'
             
             text_color = ENHANCED_COLORS['accent_gold'] if is_current else ENHANCED_COLORS['text_primary']
-            draw_text_with_shadow(screen, status, player_section_x + 60, y_pos, text_color)
+            draw_text_with_shadow(screen, status, player_section_x + 80, y_pos, text_color)
             
             # Enhanced health bar
             hp_bar_y = y_pos + 30
-            draw_health_bar_fancy(screen, player_section_x + 60, hp_bar_y, 200, 25, 
+            draw_health_bar_fancy(screen, player_section_x + 80, hp_bar_y, 200, 25, 
                                 player.hp, player.max_hp)
             
             # Mana bar for mages
@@ -1969,13 +2816,13 @@ class Game:
                 mana_percentage = player.mana / player.max_mana if player.max_mana > 0 else 0
                 
                 # Mana bar background
-                mana_bg_rect = pygame.Rect(player_section_x + 60, mana_bar_y, 200, 20)
+                mana_bg_rect = pygame.Rect(player_section_x + 80, mana_bar_y, 200, 20)
                 pygame.draw.rect(screen, DARK_GRAY, mana_bg_rect)
                 
                 # Mana bar fill with gradient
                 if mana_percentage > 0:
                     mana_width = int(200 * mana_percentage)
-                    mana_rect = pygame.Rect(player_section_x + 60, mana_bar_y, mana_width, 20)
+                    mana_rect = pygame.Rect(player_section_x + 80, mana_bar_y, mana_width, 20)
                     draw_gradient_rect(screen, mana_rect, BLUE, (0, 150, 255), vertical=False)
                 
                 pygame.draw.rect(screen, WHITE, mana_bg_rect, width=2)
@@ -1983,7 +2830,7 @@ class Game:
                 # Mana text
                 mana_text = f"Mana: {player.mana}/{player.max_mana}"
                 mana_surface = small_font.render(mana_text, True, ENHANCED_COLORS['text_primary'])
-                mana_text_rect = mana_surface.get_rect(center=(player_section_x + 160, mana_bar_y + 10))
+                mana_text_rect = mana_surface.get_rect(center=(player_section_x + 180, mana_bar_y + 10))
                 screen.blit(mana_surface, mana_text_rect)
             
             # Enhanced skill icon and status
@@ -2056,23 +2903,23 @@ class Game:
             if game_settings['use_emojis']:
                 status = f'{enemy.icon} {enemy.name} (Lv.{self.dungeon_level})'
             else:
-                enemy_sprite_key = f"monster_{enemy.enemy_type}"
-                if enemy_sprite_key in sprites:
-                    screen.blit(sprites[enemy_sprite_key], (enemy_section_x, y_pos))
+                # Draw enemy portrait
+                draw_portrait(screen, enemy, enemy_section_x, y_pos, size=64, 
+                            border_color=ENHANCED_COLORS['danger_red'] if is_current else WHITE)
                 status = f'{enemy.name} (Level {self.dungeon_level})'
             
             text_color = ENHANCED_COLORS['danger_red'] if is_current else ENHANCED_COLORS['text_primary']
-            draw_text_with_shadow(screen, status, enemy_section_x + 60, y_pos, text_color)
+            draw_text_with_shadow(screen, status, enemy_section_x + 80, y_pos, text_color)
             
             # Enhanced enemy health bar
             hp_bar_y = y_pos + 30
-            draw_health_bar_fancy(screen, enemy_section_x + 60, hp_bar_y, 200, 25, 
+            draw_health_bar_fancy(screen, enemy_section_x + 80, hp_bar_y, 200, 25, 
                                 enemy.hp, enemy.max_hp, bar_color=RED)
             
             # Enemy stats display
             stats_text = f"ATK: {enemy.attack} | DEF: {enemy.defense}"
             stats_surface = small_font.render(stats_text, True, ENHANCED_COLORS['text_secondary'])
-            screen.blit(stats_surface, (enemy_section_x + 60, y_pos + 60))
+            screen.blit(stats_surface, (enemy_section_x + 80, y_pos + 60))
 
         # Draw action buttons at the bottom with simple UI
         current_entity = self.turn_order[self.combat_turn_idx]
@@ -2376,21 +3223,20 @@ class Game:
                 pygame.draw.rect(screen, ENHANCED_COLORS['text_disabled'], tab_rect, width=2, border_radius=8)
                 text_color = ENHANCED_COLORS['text_secondary']
             
-            # Player character sprite
+            # Player character portrait in tab
             if not game_settings['use_emojis']:
-                class_sprite_key = f"player_{player.char_class}"
-                if class_sprite_key in sprites:
-                    sprite_rect = sprites[class_sprite_key].get_rect(center=(tab_x + 30, tab_y + 25))
-                    screen.blit(sprites[class_sprite_key], sprite_rect)
+                # Draw smaller portrait for tab
+                draw_portrait(screen, player, tab_x + 10, tab_y + 10, size=32, 
+                            border_color=ENHANCED_COLORS['accent_gold'] if is_selected else WHITE, 
+                            border_width=2)
             
             # Player info
             player_text = f"{player.icon if game_settings['use_emojis'] else ''} {player.name}"
             class_text = f"Lv.{player.level} {player.char_class.title()}"
             
-            draw_text_with_shadow(screen, player_text, tab_x + (50 if not game_settings['use_emojis'] else 20), 
-                                tab_y + 8, text_color, font, 1)
-            draw_text_with_shadow(screen, class_text, tab_x + (50 if not game_settings['use_emojis'] else 20), 
-                                tab_y + 28, text_color, small_font, 1)
+            text_start_x = tab_x + (50 if not game_settings['use_emojis'] else 20)
+            draw_text_with_shadow(screen, player_text, text_start_x, tab_y + 8, text_color, font, 1)
+            draw_text_with_shadow(screen, class_text, text_start_x, tab_y + 28, text_color, small_font, 1)
         
         # Current player's inventory panel
         current_player = self.players[self.selected_player_idx]
@@ -2399,21 +3245,30 @@ class Game:
         pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], inventory_panel_rect, width=3, border_radius=10)
         
         # Player detailed stats panel
-        stats_panel_rect = pygame.Rect(120, 420, 300, 120)
+        stats_panel_rect = pygame.Rect(120, 420, 380, 120)
         draw_gradient_rect(screen, stats_panel_rect, ENHANCED_COLORS['primary_dark'], ENHANCED_COLORS['primary_light'])
         pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], stats_panel_rect, width=2, border_radius=6)
         
-        draw_text_with_shadow(screen, f"{current_player.name}", 140, 435, ENHANCED_COLORS['accent_gold'], font, 1)
+        # Draw player portrait in stats panel
+        if not game_settings['use_emojis']:
+            draw_portrait(screen, current_player, 130, 430, size=80, 
+                        border_color=ENHANCED_COLORS['accent_gold'], border_width=3)
+            text_start_x = 220
+        else:
+            text_start_x = 140
+        
+        draw_text_with_shadow(screen, f"{current_player.name}", text_start_x, 435, 
+                            ENHANCED_COLORS['accent_gold'], font, 1)
         draw_text_with_shadow(screen, f"Level {current_player.level} {current_player.char_class.title()}", 
-                            140, 460, ENHANCED_COLORS['text_primary'], small_font, 1)
+                            text_start_x, 460, ENHANCED_COLORS['text_primary'], small_font, 1)
         draw_text_with_shadow(screen, f"HP: {current_player.hp}/{current_player.max_hp}", 
-                            140, 480, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
+                            text_start_x, 480, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
         draw_text_with_shadow(screen, f"ATK: {current_player.attack} | DEF: {current_player.defense}", 
-                            140, 500, ENHANCED_COLORS['text_secondary'], small_font, 1)
+                            text_start_x, 500, ENHANCED_COLORS['text_secondary'], small_font, 1)
         
         # Gold display
         draw_text_with_shadow(screen, f"💰 Gold: {current_player.gold}", 
-                            140, 520, ENHANCED_COLORS['accent_gold'], small_font, 1)
+                            text_start_x, 520, ENHANCED_COLORS['accent_gold'], small_font, 1)
         
         if current_player.char_class == "mage":
             draw_text_with_shadow(screen, f"Mana: {current_player.mana}/{current_player.max_mana}", 
@@ -2649,17 +3504,47 @@ class Game:
         
         # Current player info (adjusted position)
         current_player = self.players[self.selected_player_idx]
-        player_panel_rect = pygame.Rect(500, 200, 300, 150)
+        player_panel_rect = pygame.Rect(500, 200, 380, 150)
         draw_gradient_rect(screen, player_panel_rect, ENHANCED_COLORS['primary_dark'], ENHANCED_COLORS['primary_light'])
         pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], player_panel_rect, width=2, border_radius=6)
         
-        draw_text_with_shadow(screen, f"{current_player.name}", 520, 215, ENHANCED_COLORS['accent_gold'], font, 1)
+        # Draw player portrait in shop
+        if not game_settings['use_emojis']:
+            draw_portrait(screen, current_player, 510, 210, size=80, 
+                        border_color=ENHANCED_COLORS['success_green'], border_width=3)
+            text_start_x = 600
+        else:
+            text_start_x = 520
+        
+        draw_text_with_shadow(screen, f"{current_player.name}", text_start_x, 215, 
+                            ENHANCED_COLORS['accent_gold'], font, 1)
         draw_text_with_shadow(screen, f"Level {current_player.level} {current_player.char_class.title()}", 
-                            520, 240, ENHANCED_COLORS['text_primary'], small_font, 1)
-        draw_text_with_shadow(screen, f"Gold: {current_player.gold}", 520, 265, 
+                            text_start_x, 240, ENHANCED_COLORS['text_primary'], small_font, 1)
+        draw_text_with_shadow(screen, f"Gold: {current_player.gold}", text_start_x, 265, 
                             (255, 215, 0), font, 1)  # Gold color for gold amount
         draw_text_with_shadow(screen, f"HP: {current_player.hp}/{current_player.max_hp}", 
-                            520, 290, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
+                            text_start_x, 290, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
+        
+        # Shopkeeper info panel
+        shopkeeper_panel_rect = pygame.Rect(900, 200, 300, 150)
+        draw_gradient_rect(screen, shopkeeper_panel_rect, ENHANCED_COLORS['secondary_dark'], ENHANCED_COLORS['secondary_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], shopkeeper_panel_rect, width=2, border_radius=6)
+        
+        # Draw shopkeeper portrait
+        if not game_settings['use_emojis'] and self.current_shopkeeper:
+            draw_portrait(screen, self.current_shopkeeper, 910, 210, size=80, 
+                        border_color=ENHANCED_COLORS['accent_blue'], border_width=3)
+            shop_text_start_x = 1000
+        else:
+            shop_text_start_x = 920
+        
+        if self.current_shopkeeper:
+            draw_text_with_shadow(screen, f"{self.current_shopkeeper.name}", shop_text_start_x, 215, 
+                                ENHANCED_COLORS['accent_blue'], font, 1)
+            draw_text_with_shadow(screen, "Merchant", shop_text_start_x, 240, 
+                                ENHANCED_COLORS['text_primary'], small_font, 1)
+            draw_text_with_shadow(screen, f"Items: {len(self.current_shopkeeper.inventory)}", 
+                                shop_text_start_x, 265, ENHANCED_COLORS['text_secondary'], small_font, 1)
         
         # Main shop panel
         shop_panel_rect = pygame.Rect(100, 350, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 400)
@@ -2976,6 +3861,9 @@ class Game:
             self.current_player_idx = save_data["current_player_idx"]
             self.camera_x = save_data.get("camera_x", 0)
             self.camera_y = save_data.get("camera_y", 0)
+            
+            # Switch to the appropriate tileset for the loaded dungeon level
+            set_dungeon_level_tileset(self.dungeon_level)
             
             # Restore obtained items for single player
             if "obtained_items" in save_data:
@@ -3525,6 +4413,10 @@ class Game:
         for player in self.players:
             player.x, player.y = start_room.center()
         self.update_camera()  # Initialize camera and fog of war
+        
+        # Switch to the appropriate tileset for this dungeon level
+        set_dungeon_level_tileset(self.dungeon_level)
+        
         self.add_message(f"You have entered dungeon level {self.dungeon_level}.")
 
     def main_loop(self):
@@ -3903,6 +4795,9 @@ class Game:
         if direction == 'a': dx = -1
         if direction == 'd': dx = 1
 
+        # Update player direction based on movement
+        player.update_direction(dx, dy)
+
         new_x, new_y = player.x + dx, player.y + dy
 
         if not (0 <= new_x < self.dungeon.width and 0 <= new_y < self.dungeon.height):
@@ -3917,6 +4812,8 @@ class Game:
             animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_gold'], 20)
             
             self.dungeon_level += 1
+            # Switch to the new level's tileset
+            set_dungeon_level_tileset(self.dungeon_level)
             self.new_level()
             play_sound("door_open", 0.8)
             return
@@ -3987,6 +4884,52 @@ class Game:
         else:
             self.draw_main_game()
     
+    def get_corner_type(self, x, y):
+        """Detect if a floor tile should use a corner piece to create rounded room corners."""
+        if not self.dungeon:
+            return None
+        
+        # Check if this is a floor tile - we want to put corners on floor tiles, not walls
+        if self.dungeon.grid[y][x] != UI["floor"]:
+            return None
+        
+        # Get adjacent tiles (up, down, left, right)
+        up = self.get_tile_at(x, y-1)
+        down = self.get_tile_at(x, y+1) 
+        left = self.get_tile_at(x-1, y)
+        right = self.get_tile_at(x+1, y)
+        
+        # Detect room corners - where floor meets walls in corner patterns
+        # These create the curved/rounded appearance in room corners
+        
+        # Top-left room corner: walls above and left, floor elsewhere
+        if (up == UI["wall"] and left == UI["wall"] and 
+            down == UI["floor"] and right == UI["floor"]):
+            return "inner_top_left"
+        
+        # Top-right room corner: walls above and right, floor elsewhere  
+        if (up == UI["wall"] and right == UI["wall"] and 
+            down == UI["floor"] and left == UI["floor"]):
+            return "inner_top_right"
+        
+        # Bottom-left room corner: walls below and left, floor elsewhere
+        if (down == UI["wall"] and left == UI["wall"] and 
+            up == UI["floor"] and right == UI["floor"]):
+            return "inner_bottom_left"
+        
+        # Bottom-right room corner: walls below and right, floor elsewhere
+        if (down == UI["wall"] and right == UI["wall"] and 
+            up == UI["floor"] and left == UI["floor"]):
+            return "inner_bottom_right"
+        
+        return None
+    
+    def get_tile_at(self, x, y):
+        """Safely get the tile type at a position, returning wall for out-of-bounds."""
+        if (x < 0 or y < 0 or x >= self.dungeon.width or y >= self.dungeon.height):
+            return UI["wall"]  # Treat out-of-bounds as walls
+        return self.dungeon.grid[y][x]
+
     def draw_main_game(self):
         screen.fill(BLACK)
         
@@ -4025,21 +4968,76 @@ class Game:
                         # Use sprites with fallback
                         sprite_drawn = False
                         if tile_type == UI["wall"]:
-                            sprite_key = f"wall_{game_settings['wall_sprite']}"
-                            if sprite_key in sprites:
-                                sprite = sprites[sprite_key].copy()
-                                if not is_visible:
-                                    sprite.set_alpha(128)  # Make dimmer if not visible
-                                screen.blit(sprite, (screen_x, screen_y))
-                                sprite_drawn = True
+                            # Check if this wall position is a corner and use corner tile if available
+                            corner_type = self.get_corner_type(world_x, world_y)
+                            corner_sprite_used = False
+                            
+                            if corner_type:
+                                # Try the full corner type first (e.g., "inner_top_left")
+                                corner_sprite_key = f"corner_{corner_type}"
+                                if corner_sprite_key in sprites:
+                                    sprite = sprites[corner_sprite_key].copy()
+                                    if not is_visible:
+                                        sprite.set_alpha(128)
+                                    screen.blit(sprite, (screen_x, screen_y))
+                                    corner_sprite_used = True
+                                    sprite_drawn = True
+                                    # Debug: show corner usage in first room area  
+                                    if world_x < 15 and world_y < 15:
+                                        print(f"DEBUG: Corner {corner_type} at ({world_x}, {world_y}) on level {current_level}")
+                                else:
+                                    # Fallback: try simplified corner type (e.g., "top_left")
+                                    simplified_type = corner_type.replace("inner_", "").replace("outer_", "")
+                                    fallback_key = f"corner_{simplified_type}"
+                                    if fallback_key in sprites:
+                                        sprite = sprites[fallback_key].copy()
+                                        if not is_visible:
+                                            sprite.set_alpha(128)
+                                        screen.blit(sprite, (screen_x, screen_y))
+                                        corner_sprite_used = True
+                                        sprite_drawn = True
+                                        # Debug: show fallback corner usage
+                                        if world_x < 15 and world_y < 15:
+                                            print(f"DEBUG: Using fallback corner {simplified_type} at ({world_x}, {world_y})")
+                            
+                            # If no corner sprite was used, draw regular wall
+                            if not corner_sprite_used:
+                                sprite_key = f"wall_{game_settings['wall_sprite']}"
+                                if sprite_key in sprites:
+                                    sprite = sprites[sprite_key].copy()
+                                    if not is_visible:
+                                        sprite.set_alpha(128)
+                                    screen.blit(sprite, (screen_x, screen_y))
+                                    sprite_drawn = True
                         elif tile_type == UI["floor"]:
-                            sprite_key = f"floor_{game_settings['floor_sprite']}"
-                            if sprite_key in sprites:
-                                sprite = sprites[sprite_key].copy()
-                                if not is_visible:
-                                    sprite.set_alpha(128)  # Make dimmer if not visible
-                                screen.blit(sprite, (screen_x, screen_y))
-                                sprite_drawn = True
+                            # Check if this floor position is a corner and use corner tile if available
+                            corner_type = self.get_corner_type(world_x, world_y)
+                            corner_sprite_used = False
+                            
+                            if corner_type:
+                                # Try to get corner from current level's tileset
+                                if ("level_sprites" in sprites and 
+                                    self.dungeon_level in sprites["level_sprites"] and
+                                    "corners" in sprites["level_sprites"][self.dungeon_level] and
+                                    corner_type in sprites["level_sprites"][self.dungeon_level]["corners"]):
+                                    
+                                    corner_tile = sprites["level_sprites"][self.dungeon_level]["corners"][corner_type]
+                                    sprite = corner_tile.copy()
+                                    if not is_visible:
+                                        sprite.set_alpha(128)
+                                    screen.blit(sprite, (screen_x, screen_y))
+                                    corner_sprite_used = True
+                                    sprite_drawn = True
+                            
+                            # If no corner sprite was used, draw regular floor
+                            if not corner_sprite_used:
+                                sprite_key = f"floor_{game_settings['floor_sprite']}"
+                                if sprite_key in sprites:
+                                    sprite = sprites[sprite_key].copy()
+                                    if not is_visible:
+                                        sprite.set_alpha(128)  # Make dimmer if not visible
+                                    screen.blit(sprite, (screen_x, screen_y))
+                                    sprite_drawn = True
                         elif tile_type == UI["stairs"]:
                             if "stairs" in sprites:
                                 sprite = sprites["stairs"].copy()
@@ -4191,12 +5189,12 @@ class Game:
                     text = font.render(shopkeeper.icon, True, (255, 215, 0))  # Gold color
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # For sprite mode, use a simple colored rectangle or merchant sprite if available
-                    sprite_key = "npc_merchant"
+                    # Use Undertale shopkeeper sprite
+                    sprite_key = "shopkeeper_npc"
                     if sprite_key in sprites:
                         screen.blit(sprites[sprite_key], (screen_x, screen_y))
                     else:
-                        # Gold-colored rectangle for merchant
+                        # Fallback: Gold-colored rectangle for merchant
                         pygame.draw.rect(screen, (255, 215, 0), (screen_x + 4, screen_y + 4, TILE_SIZE - 8, TILE_SIZE - 8))
 
         # Draw players
@@ -4211,14 +5209,20 @@ class Game:
                     text = font.render(player.icon, True, GREEN)
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # Use static sprites
+                    # Use directional sprites
                     sprite_drawn = False
                     
-                    # Use static player sprites
-                    sprite_key = f"player_{player.char_class}"
-                    if sprite_key in sprites:
-                        screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                    # Try to use directional sprite first
+                    directional_sprite_key = player.get_current_sprite_key()
+                    if directional_sprite_key in sprites:
+                        screen.blit(sprites[directional_sprite_key], (screen_x, screen_y))
                         sprite_drawn = True
+                    else:
+                        # Fallback to static sprite
+                        sprite_key = f"player_{player.char_class}"
+                        if sprite_key in sprites:
+                            screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                            sprite_drawn = True
                     
                     # Final fallback to colored rectangle
                     if not sprite_drawn:

@@ -1,29 +1,40 @@
-# Python RPG Adventure - Pygame Version (v1.20)
+# Python RPG Adventure - Pygame Version (v1.21 - Undertale Edition)
 
-A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and shop system. Created with the help of large language models by **LukesScammell**.
+A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and shop system. Now featuring complete **Undertale-themed sprites** while maintaining the original battle system. Created with the help of large language models by **LukesScammell**.
 
 ## Features
 
+*   **Undertale Visual Theme:** Complete sprite replacement with beloved Undertale characters and aesthetics
+    *   **Character Classes with Undertale Heroes:**
+        - **Warrior:** Frisk with full directional sprites (up/down/left/right)
+        - **Mage:** Sans with his iconic appearance
+        - **Archer:** Monster Kid and Papyrus sprites
+        - **Rogue:** Chara with distinctive design
+    *   **Directional Movement System:** Characters face the direction they're moving with dynamic sprite updates
+    *   **Undertale UI Elements:** Menu sprites, battle interface, and inventory screens themed to match Undertale
+    *   **Undertale Monsters:** Classic enemies replaced with Undertale characters (Dummy, Flowey, Papyrus, Sans)
+    *   **Undertale NPCs:** Shopkeeper now uses Gerson sprite from Undertale
+    *   **Undertale Environments:** Ruins-themed tilesets and background elements
 *   **Enhanced Visual Experience:** Modern UI with advanced visual effects and professional design
     *   **Comprehensive Visual Overhaul:** Professional color palette, gradient backgrounds, and shadow text rendering
     *   **Advanced Animation System:** Particle effects, smooth transitions, and coordinated visual timing
     *   **Enhanced Combat Interface:** Fixed UI overlapping issues, professional health/mana bars with gradients
     *   **Enhanced Inventory System:** Visual item sprites displayed alongside text, categorized display, rarity color coding, and interactive feedback
 *   **Dynamic Shop System:** Trade with merchant NPCs for weapons, armor, and potions
-    *   **Shop Rooms:** Merchant rooms (15% spawn chance) with peaceful trading environments
+    *   **Shop Rooms:** Merchant rooms (15% spawn chance) with peaceful trading environments featuring Gerson
     *   **Buy & Sell Interface:** Professional shop UI with separate buy/sell modes and item pricing
     *   **Gold Economy:** Complete currency system with starting gold and item-based pricing
     *   **Smart Pricing:** Dynamic pricing based on item rarity and type with 50% sell-back value
 *   **Dynamic Audio System:** Context-aware background music with 6+ tracks and 26+ professional sound effects
-*   **Full-Screen Gaming Experience:** 1920x1080 optimized display with 64+ professional sprites and 48px tile system
-*   **Dual Display Modes:** Toggle between emoji-based graphics and detailed pixel art sprites with visual previews
+*   **Full-Screen Gaming Experience:** 1920x1080 optimized display with 64+ Undertale-themed sprites and 48px tile system
+*   **Dual Display Modes:** Toggle between emoji-based graphics and detailed Undertale pixel art sprites with visual previews
 *   **Customizable Environments:** Choose from multiple wall and floor styles with real-time visual selection
-*   **Strategic Combat System:** Enhanced turn-based battles with visual effects, turn indicators, and skill management
+*   **Strategic Combat System:** Enhanced turn-based battles with visual effects, turn indicators, and skill management (original battle system preserved)
 *   **Complete Inventory Management:** Full item system with use/equip/drop functionality across multiple characters
 *   **Progressive Equipment System:** Extensive weapon/armor progression from basic to epic tier with visual rarity indicators
 *   **Exploration & Discovery:** Treasure chests, fog of war system, dynamic camera following, and rare room generation
-*   **Multi-Character Parties:** Create up to 3 heroes with unique classes and individual inventories
-*   **Professional Asset Integration:** Multiple sprite sources including Crawl tiles and Dungeon Crawl Stone Soup Full
+*   **Multi-Character Parties:** Create up to 3 Undertale heroes with unique classes and individual inventories
+*   **Professional Asset Integration:** Undertale sprite assets with fallback system for comprehensive coverage
 *   **Persistent Game State:** Comprehensive save/load system with settings preservation and auto-save functionality
 *   **Cross-Platform Compatibility:** Windows/Linux/Mac support with optimized font and audio handling
 
