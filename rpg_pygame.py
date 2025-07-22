@@ -749,15 +749,105 @@ def load_sprites():
 # Load sprites
 load_sprites()
 
-# --- Font Setup ---
-# Use a font that supports emojis, with a fallback to the default font
-try:
-    font = pygame.font.Font("C:/Windows/Fonts/seguiemj.ttf", 28)
-except FileNotFoundError:
-    print("Warning: Segoe UI Emoji font not found. Using default font. Emojis may not render correctly.")
-    font = pygame.font.Font(None, 32)
+# --- Undertale Font System ---
+class UndertaleFontRenderer:
+    def __init__(self):
+        # Load pre-rendered text sprites for special cases
+        self.special_text_sprites = {}
+        self.load_special_text_sprites()
+        
+        # Main font setup - use a monospace font that resembles Undertale's style
+        self.setup_fonts()
+    
+    def load_special_text_sprites(self):
+        """Load special pre-rendered text sprites from assets"""
+        special_texts = [
+            "congratulations", "missionfailed", "restart", 
+            "restaurant", "shot"
+        ]
+        
+        for text_name in special_texts:
+            try:
+                sprite_path = f"assets/sprites/spr_text_{text_name}_0.png"
+                if os.path.exists(sprite_path):
+                    self.special_text_sprites[text_name] = pygame.image.load(sprite_path).convert_alpha()
+                    print(f"Loaded special text sprite: {text_name}")
+            except Exception as e:
+                print(f"Could not load special text sprite {text_name}: {e}")
+    
+    def setup_fonts(self):
+        """Setup fonts that match Undertale's pixelated style"""
+        # Try to find a suitable monospace/pixel font
+        font_candidates = [
+            "C:/Windows/Fonts/cour.ttf",      # Courier New - monospace
+            "C:/Windows/Fonts/courbd.ttf",    # Courier New Bold
+            "C:/Windows/Fonts/consola.ttf",   # Consolas - monospace coding font
+            None  # Fallback to default
+        ]
+        
+        self.font = None
+        self.small_font = None
+        
+        # Try each font candidate
+        for font_path in font_candidates:
+            try:
+                if font_path:
+                    self.font = pygame.font.Font(font_path, 28)
+                    self.small_font = pygame.font.Font(font_path, 20)
+                    print(f"Using font: {font_path}")
+                    break
+                else:
+                    # Fallback to default
+                    self.font = pygame.font.Font(None, 32)
+                    self.small_font = pygame.font.Font(None, 24)
+                    print("Using default system font")
+                    break
+            except (FileNotFoundError, OSError):
+                continue
+        
+        # If no font was set, use default
+        if not self.font:
+            self.font = pygame.font.Font(None, 32)
+            self.small_font = pygame.font.Font(None, 24)
+    
+    def render_text(self, text, font_size="normal", color=WHITE, antialias=False):
+        """Render text with Undertale-style appearance"""
+        # Check if we have a special sprite for this text
+        text_lower = text.lower().replace(" ", "")
+        if text_lower in self.special_text_sprites:
+            # Return the special sprite, scaled appropriately
+            sprite = self.special_text_sprites[text_lower]
+            scale_factor = 3 if font_size == "normal" else 2
+            return pygame.transform.scale(sprite, 
+                                        (sprite.get_width() * scale_factor, 
+                                         sprite.get_height() * scale_factor))
+        
+        # Use regular font rendering with pixelated style
+        selected_font = self.small_font if font_size == "small" else self.font
+        
+        # Render without antialiasing for pixel-perfect look
+        text_surface = selected_font.render(text, antialias, color)
+        
+        # Scale up slightly to make it more pixelated
+        if font_size != "small":
+            # Scale up by 1.5x for a slightly more blocky appearance
+            new_width = int(text_surface.get_width() * 1.2)
+            new_height = int(text_surface.get_height() * 1.2)
+            text_surface = pygame.transform.scale(text_surface, (new_width, new_height))
+        
+        return text_surface
+    
+    def get_text_size(self, text, font_size="normal"):
+        """Get the size that rendered text would occupy"""
+        text_surface = self.render_text(text, font_size, WHITE)
+        return text_surface.get_size()
 
-small_font = pygame.font.Font(None, 24)
+# Initialize the Undertale font system
+undertale_font = UndertaleFontRenderer()
+
+# Create global font references for backwards compatibility
+font = undertale_font.font
+small_font = undertale_font.small_font
 
 # --- Enhanced UI Functions and Visual Effects ---
 def lerp(a, b, t):
@@ -772,16 +862,96 @@ def smooth_color_transition(color1, color2, progress):
     return (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
 
 def draw_text_with_shadow(surface, text, x, y, color, font_obj=None, shadow_offset=2):
-    """Draw text with a subtle shadow for better readability."""
+    """Draw text with a subtle shadow for better readability using Undertale font system."""
     if font_obj is None:
-        font_obj = font
+        # Use the Undertale font system
+        text_surface = undertale_font.render_text(text, "normal", color)
+        shadow_surface = undertale_font.render_text(text, "normal", (0, 0, 0))
+    else:
+        # Use the provided font object (for backwards compatibility)
+        shadow_surface = font_obj.render(text, True, (0, 0, 0))
+        text_surface = font_obj.render(text, True, color)
     
     # Draw shadow
-    shadow_surface = font_obj.render(text, True, (0, 0, 0))
     surface.blit(shadow_surface, (x + shadow_offset, y + shadow_offset))
     
     # Draw main text
-    text_surface = font_obj.render(text, True, color)
+    surface.blit(text_surface, (x, y))
+    return text_surface.get_rect(x=x, y=y)
+
+def wrap_text(text, max_width, font_obj=None, font_size="normal"):
+    """Wrap text to fit within a maximum width."""
+    if font_obj is None:
+        # Use Undertale font system for size calculation
+        def get_text_width(text_str):
+            return undertale_font.get_text_size(text_str, font_size)[0]
+    else:
+        # Use provided font object
+        def get_text_width(text_str):
+            return font_obj.size(text_str)[0]
+    
+    # If the entire text fits, return it as is
+    if get_text_width(text) <= max_width:
+        return [text]
+    
+    words = text.split(' ')
+    lines = []
+    current_line = ""
+    
+    for word in words:
+        # Check if adding this word would exceed the width
+        test_line = current_line + (" " if current_line else "") + word
+        
+        if get_text_width(test_line) <= max_width:
+            current_line = test_line
+        else:
+            # If current line has content, add it to lines
+            if current_line:
+                lines.append(current_line)
+                current_line = word
+            else:
+                # Word itself is too long, truncate it
+                if get_text_width(word) > max_width:
+                    # Truncate the word and add "..."
+                    truncated = word
+                    while get_text_width(truncated + "...") > max_width and len(truncated) > 0:
+                        truncated = truncated[:-1]
+                    lines.append(truncated + "...")
+                    current_line = ""
+                else:
+                    current_line = word
+    
+    # Add the last line if it has content
+    if current_line:
+        lines.append(current_line)
+    
+    return lines
+
+def draw_wrapped_text_with_shadow(surface, text, x, y, max_width, color, font_obj=None, shadow_offset=2, line_spacing=5):
+    """Draw wrapped text with shadow that fits within max_width."""
+    lines = wrap_text(text, max_width, font_obj)
+    current_y = y
+    
+    for line in lines:
+        draw_text_with_shadow(surface, line, x, current_y, color, font_obj, shadow_offset)
+        # Calculate line height
+        if font_obj is None:
+            line_height = undertale_font.get_text_size(line, "normal")[1]
+        else:
+            line_height = font_obj.get_height()
+        current_y += line_height + line_spacing
+    
+    return current_y  # Return the Y position after all lines
+
+def draw_undertale_text(surface, text, x, y, color=WHITE, font_size="normal", shadow=True, shadow_offset=2):
+    """Draw text using the Undertale font system with optional shadow."""
+    if shadow:
+        # Draw shadow
+        shadow_surface = undertale_font.render_text(text, font_size, (0, 0, 0))
+        surface.blit(shadow_surface, (x + shadow_offset, y + shadow_offset))
+    
+    # Draw main text
+    text_surface = undertale_font.render_text(text, font_size, color)
     surface.blit(text_surface, (x, y))
     return text_surface.get_rect(x=x, y=y)
 
@@ -878,11 +1048,11 @@ def draw_health_bar_fancy(surface, x, y, width, height, current_hp, max_hp,
     
     # Health text
     health_text = f"{current_hp}/{max_hp}"
-    text_surface = small_font.render(health_text, True, WHITE)
+    text_surface = undertale_font.render_text(health_text, "small", WHITE)
     text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
     
     # Text shadow
-    shadow_surface = small_font.render(health_text, True, BLACK)
+    shadow_surface = undertale_font.render_text(health_text, "small", BLACK)
     surface.blit(shadow_surface, (text_rect.x + 1, text_rect.y + 1))
     surface.blit(text_surface, text_rect)
 
@@ -2433,7 +2603,7 @@ class Game:
         # Combat turn indicator
         current_entity = self.turn_order[self.combat_turn_idx]
         turn_text = f"Turn: {current_entity.name}"
-        turn_surface = small_font.render(turn_text, True, ENHANCED_COLORS['text_primary'])
+        turn_surface = undertale_font.render_text(turn_text, "small", ENHANCED_COLORS['text_primary'])
         turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, title_y + 70))
         screen.blit(turn_surface, turn_rect)
         
@@ -2441,9 +2611,9 @@ class Game:
         player_section_x = 50
         player_section_y = 150
         
-        # Player panel background
-        player_panel_rect = pygame.Rect(player_section_x - 20, player_section_y - 30, 600, 
-                                       len(self.players) * 120 + 80)  # Extra space for title
+        # Player panel background - increased width for skill panels
+        player_panel_rect = pygame.Rect(player_section_x - 20, player_section_y - 30, 620, 
+                                       len(self.players) * 120 + 80)  # Extra space for title and skills
         draw_gradient_rect(screen, player_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
         pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], player_panel_rect, width=2, border_radius=10)
         
@@ -2458,11 +2628,13 @@ class Game:
             is_current = player == current_entity
             
             if is_current:
-                glow_rect = pygame.Rect(player_section_x - 10, y_pos - 10, 580, 110)
+                glow_rect = pygame.Rect(player_section_x - 10, y_pos - 10, 600, 110)  # Increased width for skills
                 draw_gradient_rect(screen, glow_rect, (255, 255, 0, 50), (255, 215, 0, 30))
                 pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], glow_rect, width=3, border_radius=8)
             
-            # Player name and class with animated portraits and icons
+            # Player name and class with animated portraits and icons - with text wrapping
+            player_text_max_width = 480  # Max width for player text display
+            
             if game_settings['use_emojis']:
                 status = f'{player.icon} {player.name} (Lv.{player.level})'
                 # Draw static sprite as fallback
@@ -2486,7 +2658,15 @@ class Game:
                 status = f'{player.name} (Lv.{player.level}, {player.char_class.title()})'
             
             text_color = ENHANCED_COLORS['accent_gold'] if is_current else ENHANCED_COLORS['text_primary']
-            draw_text_with_shadow(screen, status, player_section_x + 60, y_pos, text_color)
+            
+            # Use text wrapping to handle long player status text
+            max_text_width = player_text_max_width
+            if undertale_font.get_text_size(status, "normal")[0] > max_text_width:
+                wrapped_status = wrap_text(status, max_text_width, font)
+                draw_wrapped_text_with_shadow(screen, wrapped_status, player_section_x + 60, y_pos, 
+                                             max_text_width, text_color, font, 1, 5)
+            else:
+                draw_text_with_shadow(screen, status, player_section_x + 60, y_pos, text_color, font, 1)
             
             # Enhanced health bar
             hp_bar_y = y_pos + 30
@@ -2512,16 +2692,17 @@ class Game:
                 
                 # Mana text
                 mana_text = f"Mana: {player.mana}/{player.max_mana}"
-                mana_surface = small_font.render(mana_text, True, ENHANCED_COLORS['text_primary'])
+                mana_surface = undertale_font.render_text(mana_text, "small", ENHANCED_COLORS['text_primary'])
                 mana_text_rect = mana_surface.get_rect(center=(player_section_x + 160, mana_bar_y + 10))
                 screen.blit(mana_surface, mana_text_rect)
             
-            # Enhanced skill icon and status
+            # Enhanced skill icon and status with proper text wrapping
             skill_icon_x = player_section_x + 280
             skill_icon_y = y_pos + 25
+            skill_panel_width = 300  # Increased width for better text display
             
             # Skill background panel
-            skill_bg_rect = pygame.Rect(skill_icon_x - 5, skill_icon_y - 5, 280, 58)
+            skill_bg_rect = pygame.Rect(skill_icon_x - 5, skill_icon_y - 5, skill_panel_width, 58)
             draw_gradient_rect(screen, skill_bg_rect, (30, 30, 40), (50, 50, 60))
             pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], skill_bg_rect, width=1, border_radius=5)
             
@@ -2533,12 +2714,19 @@ class Game:
             elif player.char_class == "archer" and "skill_double_shot" in sprites:
                 screen.blit(sprites["skill_double_shot"], (skill_icon_x, skill_icon_y))
             
-            # Skill status text
+            # Skill status text with wrapping
             skill_text_x = skill_icon_x + 55
+            skill_text_max_width = skill_panel_width - 70  # Account for icon and padding
+            
             if hasattr(player, 'skill_cooldown') and player.skill_cooldown > 0:
                 cooldown_text = f"Cooldown: {player.skill_cooldown}"
-                draw_text_with_shadow(screen, cooldown_text, skill_text_x, skill_icon_y + 5, 
-                                    ENHANCED_COLORS['danger_red'], small_font, 1)
+                if undertale_font.get_text_size(cooldown_text, "small")[0] > skill_text_max_width:
+                    wrapped_cooldown = wrap_text(cooldown_text, skill_text_max_width, small_font)
+                    draw_wrapped_text_with_shadow(screen, wrapped_cooldown, skill_text_x, skill_icon_y + 5, 
+                                                 skill_text_max_width, ENHANCED_COLORS['danger_red'], small_font, 1, 5)
+                else:
+                    draw_text_with_shadow(screen, cooldown_text, skill_text_x, skill_icon_y + 5, 
+                                        ENHANCED_COLORS['danger_red'], small_font, 1)
             else:
                 skill_name = ""
                 if player.char_class == "warrior":
@@ -2549,20 +2737,31 @@ class Game:
                     skill_name = "Double Shot"
                 
                 if skill_name and self.is_skill_available(player):
-                    draw_text_with_shadow(screen, skill_name + " ✓", skill_text_x, skill_icon_y + 5, 
-                                        ENHANCED_COLORS['success_green'], small_font, 1)
+                    skill_text = skill_name + " ✓"
+                    if undertale_font.get_text_size(skill_text, "small")[0] > skill_text_max_width:
+                        wrapped_skill = wrap_text(skill_text, skill_text_max_width, small_font)
+                        draw_wrapped_text_with_shadow(screen, wrapped_skill, skill_text_x, skill_icon_y + 5, 
+                                                     skill_text_max_width, ENHANCED_COLORS['success_green'], small_font, 1, 5)
+                    else:
+                        draw_text_with_shadow(screen, skill_text, skill_text_x, skill_icon_y + 5, 
+                                            ENHANCED_COLORS['success_green'], small_font, 1)
                 elif skill_name:
                     level_req = 2 if player.char_class in ["warrior", "archer"] else 3
                     req_text = f"{skill_name} (Lv{level_req})"
-                    draw_text_with_shadow(screen, req_text, skill_text_x, skill_icon_y + 5, 
-                                        ENHANCED_COLORS['text_disabled'], small_font, 1)
+                    if undertale_font.get_text_size(req_text, "small")[0] > skill_text_max_width:
+                        wrapped_req = wrap_text(req_text, skill_text_max_width, small_font)
+                        draw_wrapped_text_with_shadow(screen, wrapped_req, skill_text_x, skill_icon_y + 5, 
+                                                     skill_text_max_width, ENHANCED_COLORS['text_disabled'], small_font, 1, 5)
+                    else:
+                        draw_text_with_shadow(screen, req_text, skill_text_x, skill_icon_y + 5, 
+                                            ENHANCED_COLORS['text_disabled'], small_font, 1)
 
-        # Enhanced enemies section
-        enemy_section_x = SCREEN_WIDTH - 550
+        # Enhanced enemies section - adjusted positioning for wider skill panels
+        enemy_section_x = SCREEN_WIDTH - 570  # Moved left to accommodate wider skill panels
         enemy_section_y = 150
         
-        # Enemy panel background
-        enemy_panel_rect = pygame.Rect(enemy_section_x - 20, enemy_section_y - 30, 520, 
+        # Enemy panel background - increased width to match
+        enemy_panel_rect = pygame.Rect(enemy_section_x - 20, enemy_section_y - 30, 540, 
                                       len(self.combat_enemies) * 100 + 60)
         draw_gradient_rect(screen, enemy_panel_rect, ENHANCED_COLORS['panel_dark'], (60, 40, 40))
         pygame.draw.rect(screen, ENHANCED_COLORS['danger_red'], enemy_panel_rect, width=2, border_radius=10)
@@ -2578,11 +2777,13 @@ class Game:
             is_current = enemy == current_entity
             
             if is_current:
-                glow_rect = pygame.Rect(enemy_section_x - 10, y_pos - 10, 500, 90)
+                glow_rect = pygame.Rect(enemy_section_x - 10, y_pos - 10, 520, 90)  # Increased width
                 draw_gradient_rect(screen, glow_rect, (255, 0, 0, 50), (255, 100, 100, 30))
                 pygame.draw.rect(screen, ENHANCED_COLORS['danger_red'], glow_rect, width=3, border_radius=8)
             
-            # Enemy sprite and name with animated portraits
+            # Enemy sprite and name with animated portraits - with text wrapping
+            enemy_text_max_width = 420  # Max width for enemy text display
+            
             if game_settings['use_emojis']:
                 status = f'{enemy.icon} {enemy.name} (Lv.{self.dungeon_level})'
                 # Draw static sprite as fallback
@@ -2606,7 +2807,15 @@ class Game:
                 status = f'{enemy.name} (Level {self.dungeon_level})'
             
             text_color = ENHANCED_COLORS['danger_red'] if is_current else ENHANCED_COLORS['text_primary']
-            draw_text_with_shadow(screen, status, enemy_section_x + 60, y_pos, text_color)
+            
+            # Use text wrapping to handle long enemy status text
+            max_text_width = enemy_text_max_width
+            if undertale_font.get_text_size(status, "normal")[0] > max_text_width:
+                wrapped_status = wrap_text(status, max_text_width, font)
+                draw_wrapped_text_with_shadow(screen, wrapped_status, enemy_section_x + 60, y_pos, 
+                                             max_text_width, text_color, font, 1, 5)
+            else:
+                draw_text_with_shadow(screen, status, enemy_section_x + 60, y_pos, text_color, font, 1)
             
             # Enhanced enemy health bar
             hp_bar_y = y_pos + 30
@@ -2658,19 +2867,51 @@ class Game:
                 text_rect = button_surface.get_rect(center=button_rect.center)
                 screen.blit(button_surface, text_rect)
             
-            # Current player turn indicator
+            # Current player turn indicator with text wrapping for long names
             turn_text = f"{current_entity.name}'s Turn"
-            turn_surface = font.render(turn_text, True, YELLOW)
-            turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 200))
-            screen.blit(turn_surface, turn_rect)
+            max_turn_text_width = SCREEN_WIDTH - 200  # Leave margin on both sides
+            
+            if undertale_font.get_text_size(turn_text, "normal")[0] > max_turn_text_width:
+                wrapped_turn = wrap_text(turn_text, max_turn_text_width, font)
+                
+                # Calculate centered x position for wrapped text
+                if len(wrapped_turn) > 0:
+                    first_line_width = font.get_width(wrapped_turn[0]) if hasattr(font, 'get_width') else len(wrapped_turn[0]) * 10
+                    centered_x = (SCREEN_WIDTH - first_line_width) // 2
+                else:
+                    centered_x = SCREEN_WIDTH // 2
+                
+                draw_wrapped_text_with_shadow(screen, wrapped_turn, centered_x, SCREEN_HEIGHT - 200, 
+                                             max_turn_text_width, YELLOW, font, 2, 5)
+            else:
+                # Draw single line centered
+                turn_surface = font.render(turn_text, True, YELLOW)
+                turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 200))
+                screen.blit(turn_surface, turn_rect)
         else:
-            # Enemy turn
+            # Enemy turn with text wrapping for long names  
             turn_text = f"{current_entity.name} is attacking..."
-            turn_surface = font.render(turn_text, True, RED)
-            turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 120))
-            screen.blit(turn_surface, turn_rect)
+            max_turn_text_width = SCREEN_WIDTH - 200  # Leave margin on both sides
+            
+            if undertale_font.get_text_size(turn_text, "normal")[0] > max_turn_text_width:
+                wrapped_turn = wrap_text(turn_text, max_turn_text_width, font)
+                
+                # Calculate centered x position for wrapped text
+                if len(wrapped_turn) > 0:
+                    first_line_width = font.get_width(wrapped_turn[0]) if hasattr(font, 'get_width') else len(wrapped_turn[0]) * 10
+                    centered_x = (SCREEN_WIDTH - first_line_width) // 2
+                else:
+                    centered_x = SCREEN_WIDTH // 2
+                    
+                draw_wrapped_text_with_shadow(screen, wrapped_turn, centered_x, SCREEN_HEIGHT - 120, 
+                                             max_turn_text_width, RED, font, 2, 5)
+            else:
+                # Draw single line centered
+                turn_surface = font.render(turn_text, True, RED)
+                turn_rect = turn_surface.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 120))
+                screen.blit(turn_surface, turn_rect)
 
-        # Draw messages
+        # Draw messages with text wrapping
         if self.messages:
             msg_y = SCREEN_HEIGHT - 250
             msg_surface = pygame.Surface((SCREEN_WIDTH, 80))
@@ -2678,9 +2919,26 @@ class Game:
             msg_surface.fill(BLACK)
             screen.blit(msg_surface, (0, msg_y))
             
-            for i, msg in enumerate(self.messages):
-                if i < 3:  # Show only last 3 messages in combat
-                    self.draw_text(msg, 50, msg_y + 10 + i * 25, WHITE)
+            current_y = msg_y + 10
+            msg_width = SCREEN_WIDTH - 100  # 50px margin on each side
+            messages_shown = 0
+            
+            for msg in list(self.messages)[:3]:  # Show only last 3 messages in combat
+                if messages_shown >= 3 or current_y > msg_y + 70:
+                    break
+                    
+                # Wrap long messages to fit within the screen
+                wrapped_lines = wrap_text(msg, msg_width, font_size="normal")
+                
+                for line in wrapped_lines:
+                    if current_y > msg_y + 70:
+                        break  # Stop if we're running out of space
+                    
+                    self.draw_text(line, 50, current_y, WHITE)
+                    current_y += 20  # Line spacing
+                
+                messages_shown += 1
+                current_y += 5  # Extra spacing between messages
                     
         pygame.display.flip()
     
@@ -3031,12 +3289,24 @@ class Game:
             draw_text_with_shadow(screen, potion_count_text, items_start_x, current_y, ENHANCED_COLORS['text_disabled'], small_font, 1)
             current_y += 45
         
-        # Show inventory management instructions
+        # Show inventory management instructions with wrapping
         if current_y < SCREEN_HEIGHT - 100:
-            draw_text_with_shadow(screen, "Inventory Limits: Weapons/Armor have limited slots", 
-                                140, current_y + 20, ENHANCED_COLORS['text_secondary'], small_font, 1)
-            draw_text_with_shadow(screen, "Better items will auto-replace when looting chests", 
-                                140, current_y + 40, ENHANCED_COLORS['text_secondary'], small_font, 1)
+            instruction_width = SCREEN_WIDTH - 280  # Account for margins
+            
+            instruction1 = "Inventory Limits: Weapons/Armor have limited slots"
+            instruction2 = "Better items will auto-replace when looting chests"
+            
+            # Wrap instructions if needed
+            wrapped1 = wrap_text(instruction1, instruction_width, font_size="small")
+            wrapped2 = wrap_text(instruction2, instruction_width, font_size="small")
+            
+            for line in wrapped1:
+                draw_text_with_shadow(screen, line, 140, current_y + 20, ENHANCED_COLORS['text_secondary'], small_font, 1)
+                current_y += 20
+                
+            for line in wrapped2:
+                draw_text_with_shadow(screen, line, 140, current_y + 20, ENHANCED_COLORS['text_secondary'], small_font, 1)
+                current_y += 20
         
         pygame.display.flip()
     
@@ -3123,7 +3393,17 @@ class Game:
         elif isinstance(item, Potion):
             item_text += f" (Heals {item.hp_gain} HP)"
         
-        draw_text_with_shadow(screen, item_text, text_x, y_pos, item_color, small_font, 1)
+        # Calculate available width for text to prevent overflow
+        available_width = SCREEN_WIDTH - text_x - 50  # 50px margin from right edge
+        
+        # Use text wrapping for long item names/descriptions
+        if undertale_font.get_text_size(item_text, "small")[0] > available_width:
+            # Wrap the text if it's too long
+            wrapped_lines = wrap_text(item_text, available_width, font_size="small")
+            for i, line in enumerate(wrapped_lines[:2]):  # Show maximum 2 lines
+                draw_text_with_shadow(screen, line, text_x, y_pos + i * 12, item_color, small_font, 1)
+        else:
+            draw_text_with_shadow(screen, item_text, text_x, y_pos, item_color, small_font, 1)
 
     def add_message(self, text):
         self.messages.appendleft(text)
@@ -3282,7 +3562,16 @@ class Game:
             else:
                 text_color = ENHANCED_COLORS['text_primary']
             
-            draw_text_with_shadow(screen, item_text, text_x, y_pos, text_color, small_font, 1)
+            # Calculate available width and wrap text if needed
+            available_width = panel_rect.width - 70  # Account for margins and sprites
+            
+            if undertale_font.get_text_size(item_text, "small")[0] > available_width:
+                # Wrap the text if it's too long
+                wrapped_lines = wrap_text(item_text, available_width, font_size="small")
+                for line_idx, line in enumerate(wrapped_lines[:2]):  # Show maximum 2 lines
+                    draw_text_with_shadow(screen, line, text_x, y_pos + line_idx * 12, text_color, small_font, 1)
+            else:
+                draw_text_with_shadow(screen, item_text, text_x, y_pos, text_color, small_font, 1)
     
     def draw_shop_sell_items(self, panel_rect):
         """Draw player items available for sale."""
@@ -4641,12 +4930,147 @@ class Game:
         
         self.update_camera()
         
+        # Handle continuous key input for movement
+        keys_pressed = pygame.key.get_pressed()
+        self.handle_continuous_input(keys_pressed)
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game_over = True
             if event.type == pygame.KEYDOWN:
                 self.handle_input(event.key)
         self.draw_game()
+
+    def handle_continuous_input(self, keys_pressed):
+        """Handle continuous movement input for smooth diagonal movement"""
+        if self.shop_state == "open" or self.inventory_state == "open":
+            return
+            
+        # Safety check to prevent index out of range
+        if not self.players or self.current_player_idx >= len(self.players):
+            return
+            
+        player = self.players[self.current_player_idx]
+        
+        # Check for movement keys
+        dx, dy = 0, 0
+        
+        if keys_pressed[pygame.K_w] or keys_pressed[pygame.K_UP]:
+            dy = -1
+        if keys_pressed[pygame.K_s] or keys_pressed[pygame.K_DOWN]:
+            dy = 1
+        if keys_pressed[pygame.K_a] or keys_pressed[pygame.K_LEFT]:
+            dx = -1
+        if keys_pressed[pygame.K_d] or keys_pressed[pygame.K_RIGHT]:
+            dx = 1
+        
+        # Only move if there's actual input and enough time has passed
+        current_time = pygame.time.get_ticks()
+        if not hasattr(self, 'last_movement_time'):
+            self.last_movement_time = 0
+        
+        # Movement speed control (150ms between movements for smoother feel)
+        if (dx != 0 or dy != 0) and (current_time - self.last_movement_time > 150):
+            self.last_movement_time = current_time
+            
+            # Handle diagonal movement by trying both directions
+            moved = False
+            
+            # Try horizontal movement first
+            if dx != 0:
+                new_x = player.x + dx
+                if self.can_move_to(new_x, player.y):
+                    player.x = new_x
+                    if dx > 0:
+                        player.direction = "right"
+                    else:
+                        player.direction = "left"
+                    moved = True
+                    
+            # Try vertical movement
+            if dy != 0:
+                new_y = player.y + dy
+                if self.can_move_to(player.x, new_y):
+                    player.y = new_y
+                    if dy > 0:
+                        player.direction = "down"
+                    else:
+                        player.direction = "up"
+                    moved = True
+            
+            # If we moved, handle all the movement consequences
+            if moved:
+                player.start_movement_animation()
+                self.update_camera()
+                
+                # Check for stairs
+                if self.dungeon.grid[player.y][player.x] == UI["stairs"]:
+                    screen_x = GAME_OFFSET_X + (player.x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                    screen_y = GAME_OFFSET_Y + (player.y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                    animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_gold'], 20)
+                    
+                    self.dungeon_level += 1
+                    self.new_level()
+                    play_sound("door_open", 0.8)
+                    return
+                
+                # Check for enemies
+                enemies_in_pos = [e for e in self.dungeon.enemies if e.x == player.x and e.y == player.y]
+                if enemies_in_pos:
+                    screen_x = GAME_OFFSET_X + (player.x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                    screen_y = GAME_OFFSET_Y + (player.y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                    animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['danger_red'], 15)
+                    self.start_combat(enemies_in_pos)
+                    return
+                
+                # Check for item pickup
+                self.check_item_pickup(player)
+
+    def can_move_to(self, x, y):
+        """Check if a position is valid for movement"""
+        if not (0 <= x < self.dungeon.width and 0 <= y < self.dungeon.height):
+            return False
+        return self.dungeon.grid[y][x] in [UI["floor"], UI["stairs"]]
+    
+    def check_item_pickup(self, player):
+        """Check for and handle item pickup at player position"""
+        for item in list(self.dungeon.items):
+            if item.x == player.x and item.y == player.y:
+                success, message = player.try_add_item(item, auto_replace=True)
+                if success:
+                    # Add pickup particle effect
+                    screen_x = GAME_OFFSET_X + (player.x - self.camera_x) * TILE_SIZE + TILE_SIZE // 2
+                    screen_y = GAME_OFFSET_Y + (player.y - self.camera_y) * TILE_SIZE + TILE_SIZE // 2
+                    
+                    # Different particles for different item types
+                    if isinstance(item, Weapon):
+                        animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_silver'], 8)
+                        play_sound("pickup_metal", 0.7)
+                    elif isinstance(item, Armor):
+                        animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_blue'], 8)
+                        play_sound("pickup_armor", 0.7)
+                    elif isinstance(item, Potion):
+                        animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['success_green'], 8)
+                        play_sound("pickup_bottle", 0.7)
+                    else:
+                        animation_manager.add_particles(screen_x, screen_y, ENHANCED_COLORS['accent_gold'], 8)
+                        play_sound("pickup_coin", 0.7)
+                    
+                    self.dungeon.items.remove(item)
+                    self.add_message(f"{player.name} picked up {item.name}.")
+                    
+                    # Mark item as obtained for single player
+                    if hasattr(self, 'obtained_items') and len(self.players) == 1:
+                        self.obtained_items.add(item.name)
+                        self.dungeon.mark_item_obtained(item.name)
+                else:
+                    # Show why pickup failed and offer replacement option
+                    self.add_message(message)
+                    if player.should_replace_item(item):
+                        worst_item = player.get_worst_item(type(item))
+                        self.add_message(f"Press R to replace {worst_item.name} with {item.name}")
+                        self.pending_replacement = {'item': item, 'player': player}
+                break
 
     def handle_input(self, key):
         if self.shop_state == "open":
@@ -4659,15 +5083,9 @@ class Game:
                 return
             
             player = self.players[self.current_player_idx]
-            if key == pygame.K_w:
-                self.move_player(player, 'w')
-            elif key == pygame.K_s:
-                self.move_player(player, 's')
-            elif key == pygame.K_a:
-                self.move_player(player, 'a')
-            elif key == pygame.K_d:
-                self.move_player(player, 'd')
-            elif key == pygame.K_e:  # Interact
+            
+            # Non-movement keys only (movement is handled in handle_continuous_input)
+            if key == pygame.K_e:  # Interact
                 self.handle_interaction(player)
             elif key == pygame.K_i:  # Open inventory
                 self.inventory_state = "open"
@@ -4682,9 +5100,9 @@ class Game:
                 self.save_game()
             elif key == pygame.K_r:  # Replace item
                 self.handle_item_replacement()
-            # Only cycle through players if there are any
-            if len(self.players) > 0:
-                self.current_player_idx = (self.current_player_idx + 1) % len(self.players)
+            elif key == pygame.K_TAB:  # Cycle through players
+                if len(self.players) > 0:
+                    self.current_player_idx = (self.current_player_idx + 1) % len(self.players)
 
     def handle_interaction(self, player):
         """Handle player interaction with objects."""
@@ -5322,8 +5740,8 @@ class Game:
 
     def draw_minimap(self):
         """Draw a small overview map in the top right corner."""
-        # Position minimap to align with the right panel
-        minimap_x = SCREEN_WIDTH - 240 - 5  # Align with right panel
+        # Position minimap to align with the expanded right panel (320px wide + 10px margin)
+        minimap_x = SCREEN_WIDTH - 320 - 10 + 10  # Align with right panel, small indent
         minimap_y = 15  # Small offset from top
         
         # Draw minimap background
@@ -5388,12 +5806,29 @@ class Game:
         screen.blit(minimap_text, (minimap_x, minimap_y - 20))
 
     def draw_ui(self):
-        # Remove the top black bar - now we'll use floating text with padding
+        # Enhanced UI with better alignment and spacing
         
-        # Player status in top-left corner with padding
-        status_y = 15
-        status_x = 25
+        # Player status in top-left corner with improved styling
+        status_y = 20
+        status_x = 30
+        
+        # Background panel for player status
+        if self.players:
+            max_text_width = 650  # Increased width to handle longer text
+            status_panel_height = len(self.players) * 60 + 20  # Increased height for wrapped text
+            status_panel_rect = pygame.Rect(status_x - 15, status_y - 10, max_text_width, status_panel_height)
+            status_panel_surface = pygame.Surface((max_text_width, status_panel_height))
+            status_panel_surface.set_alpha(180)
+            status_panel_surface.fill((0, 0, 0))
+            screen.blit(status_panel_surface, (status_x - 15, status_y - 10))
+            
+            # Border for status panel
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], status_panel_rect, width=2, border_radius=8)
+        
         for i, p in enumerate(self.players):
+            # Highlight current player
+            text_color = ENHANCED_COLORS['accent_gold'] if i == self.current_player_idx else WHITE
+            
             if game_settings['use_emojis']:
                 status_text = f'{p.icon} {p.name} ({p.char_class}) | {UI["level"]} {p.level} | {UI["hp"]} {p.hp}/{p.max_hp}'
             else:
@@ -5405,62 +5840,184 @@ class Game:
                     status_text += f' | {UI["mana"]} {p.mana}/{p.max_mana}'
                 else:
                     status_text += f' | MP {p.mana}/{p.max_mana}'
-                    
-            self.draw_text(status_text, status_x, status_y, WHITE, padding=8)
-            status_y += 45  # Increased spacing between player status lines
+            
+            # Check if text is too long and wrap if needed
+            status_width = max_text_width - 40  # Account for padding
+            if undertale_font.get_text_size(status_text, "normal")[0] > status_width:
+                # Wrap long status text
+                wrapped_lines = wrap_text(status_text, status_width, font_size="normal")
+                for line_idx, line in enumerate(wrapped_lines[:2]):  # Maximum 2 lines per player
+                    draw_text_with_shadow(screen, line, status_x, status_y + line_idx * 20, text_color)
+                status_y += max(40, len(wrapped_lines[:2]) * 20 + 10)  # Adjust spacing based on wrapped lines
+            else:
+                draw_text_with_shadow(screen, status_text, status_x, status_y, text_color)
+                status_y += 50  # Better spacing between player status lines
         
-        # Bottom message area - only when there are messages, with padding
+        # Enhanced message area with background panel
         if self.messages:
-            msg_y = SCREEN_HEIGHT - 60
-            for i, msg in enumerate(self.messages):
-                if i < 3:  # Show only last 3 messages
-                    self.draw_text(msg, 25, msg_y - i * 25, WHITE, padding=6)
+            msg_panel_width = 800
+            msg_panel_height = 100
+            msg_panel_x = (SCREEN_WIDTH - msg_panel_width) // 2
+            msg_panel_y = SCREEN_HEIGHT - msg_panel_height - 10
+            
+            # Message background panel
+            msg_panel_rect = pygame.Rect(msg_panel_x, msg_panel_y, msg_panel_width, msg_panel_height)
+            msg_panel_surface = pygame.Surface((msg_panel_width, msg_panel_height))
+            msg_panel_surface.set_alpha(190)
+            msg_panel_surface.fill((0, 0, 0))
+            screen.blit(msg_panel_surface, (msg_panel_x, msg_panel_y))
+            
+            # Border for message panel
+            pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], msg_panel_rect, width=2, border_radius=8)
+            
+            msg_y = msg_panel_y + 15
+            msg_text_width = msg_panel_width - 40  # 20px padding on each side
+            
+            # Display up to 3 messages with text wrapping
+            current_y = msg_y
+            messages_shown = 0
+            
+            for msg in list(self.messages)[:3]:  # Show only last 3 messages
+                if messages_shown >= 3 or current_y > msg_panel_y + msg_panel_height - 25:
+                    break
+                
+                # Wrap long messages to fit within the panel
+                wrapped_lines = wrap_text(msg, msg_text_width, font_size="small")
+                
+                for line in wrapped_lines:
+                    if current_y > msg_panel_y + msg_panel_height - 25:
+                        break  # Stop if we're running out of space
+                    
+                    draw_text_with_shadow(screen, line, msg_panel_x + 20, current_y, WHITE, small_font, 1)
+                    current_y += 20  # Line spacing
+                
+                messages_shown += 1
+                current_y += 5  # Extra spacing between messages
         
-        # Right panel for minimap and info (keep the panel but make it smaller)
-        right_panel_width = 240
-        right_panel_x = SCREEN_WIDTH - right_panel_width - 10
+        # Enhanced right panel with better alignment
+        right_panel_width = 320  # Increased width to prevent text cutoff
+        right_panel_x = SCREEN_WIDTH - right_panel_width - 10  # Adjusted margin
         
-        # Smaller semi-transparent background for right panel (starts after minimap area)
-        panel_start_y = MINIMAP_SIZE + 50
-        panel_height = SCREEN_HEIGHT - panel_start_y - 20
+        # Right panel background (starts after minimap area)
+        panel_start_y = MINIMAP_SIZE + 60
+        panel_height = SCREEN_HEIGHT - panel_start_y - 40
+        right_panel_rect = pygame.Rect(right_panel_x, panel_start_y, right_panel_width, panel_height)
         right_panel_surface = pygame.Surface((right_panel_width, panel_height))
-        right_panel_surface.set_alpha(160)
+        right_panel_surface.set_alpha(180)
         right_panel_surface.fill((0, 0, 0))
-        screen.blit(right_panel_surface, (right_panel_x, panel_start_y))
+        screen.blit(right_panel_surface, right_panel_rect)
         
-        # Info text in right panel with padding
+        # Border for right panel
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], right_panel_rect, width=2, border_radius=8)
+        
+        # Info text in right panel with better spacing and wrapping
         info_x = right_panel_x + 15
-        info_start_y = panel_start_y + 15
+        info_start_y = panel_start_y + 20
+        text_width = right_panel_width - 30  # Available text width with margins
         
-        # Dungeon level
-        level_text = f"Dungeon Level: {self.dungeon_level}"
-        self.draw_text(level_text, info_x, info_start_y, LIGHT_GRAY, padding=4)
-        
-        # Inventory status for current player
+        # Current player indicator (removed duplicate dungeon level)
         if self.players:
             current_player = self.players[self.current_player_idx]
+            player_text = f"👤 Active: {current_player.name}"
+            # Check if text is too long and wrap if needed
+            if undertale_font.get_text_size(player_text, "normal")[0] > text_width:
+                wrapped_lines = wrap_text(player_text, text_width, font_size="normal")
+                current_y = info_start_y
+                for line in wrapped_lines[:2]:  # Max 2 lines
+                    draw_text_with_shadow(screen, line, info_x, current_y, ENHANCED_COLORS['accent_blue'])
+                    current_y += 20
+                info_y_offset = current_y - info_start_y + 15
+            else:
+                draw_text_with_shadow(screen, player_text, info_x, info_start_y, ENHANCED_COLORS['accent_blue'])
+                info_y_offset = 35
+        
+        # Inventory status for current player with text wrapping
+        if self.players:
             weapons = len(current_player.get_inventory_by_type(Weapon))
             armor = len(current_player.get_inventory_by_type(Armor))
             potions = len(current_player.get_inventory_by_type(Potion))
             
-            inv_text = f"Inventory:"
-            self.draw_text(inv_text, info_x, info_start_y + 35, LIGHT_GRAY, padding=4)
+            inv_title = f"📦 Inventory:"
+            draw_text_with_shadow(screen, inv_title, info_x, info_start_y + info_y_offset, ENHANCED_COLORS['accent_silver'])
             
-            weapon_text = f"⚔️ {weapons}/{current_player.max_weapons}"
-            armor_text = f"🛡️ {armor}/{current_player.max_armor}" 
-            potion_text = f"🧪 {potions}/{current_player.max_potions}"
+            # Weapons with text wrapping
+            weapon_text = f"⚔️  {weapons}/{current_player.max_weapons} Weapons"
+            if undertale_font.get_text_size(weapon_text, "normal")[0] > text_width:
+                wrapped_lines = wrap_text(weapon_text, text_width, font_size="normal")
+                current_y = info_start_y + info_y_offset + 30
+                for line in wrapped_lines:
+                    draw_text_with_shadow(screen, line, info_x, current_y, WHITE)
+                    current_y += 18
+                weapons_end_y = current_y
+            else:
+                draw_text_with_shadow(screen, weapon_text, info_x, info_start_y + info_y_offset + 30, WHITE)
+                weapons_end_y = info_start_y + info_y_offset + 50
             
-            self.draw_text(weapon_text, info_x, info_start_y + 65, WHITE, padding=3)
-            self.draw_text(armor_text, info_x, info_start_y + 95, WHITE, padding=3)
-            self.draw_text(potion_text, info_x, info_start_y + 125, WHITE, padding=3)
+            # Armor with text wrapping  
+            armor_text = f"🛡️  {armor}/{current_player.max_armor} Armor"
+            if undertale_font.get_text_size(armor_text, "normal")[0] > text_width:
+                wrapped_lines = wrap_text(armor_text, text_width, font_size="normal")
+                current_y = weapons_end_y + 5
+                for line in wrapped_lines:
+                    draw_text_with_shadow(screen, line, info_x, current_y, WHITE)
+                    current_y += 18
+                armor_end_y = current_y
+            else:
+                draw_text_with_shadow(screen, armor_text, info_x, weapons_end_y + 5, WHITE)
+                armor_end_y = weapons_end_y + 25
+            
+            # Potions with text wrapping
+            potion_text = f"🧪 {potions}/{current_player.max_potions} Potions"
+            if undertale_font.get_text_size(potion_text, "normal")[0] > text_width:
+                wrapped_lines = wrap_text(potion_text, text_width, font_size="normal")
+                current_y = armor_end_y + 5
+                for line in wrapped_lines:
+                    draw_text_with_shadow(screen, line, info_x, current_y, WHITE)
+                    current_y += 18
+                inventory_end_y = current_y
+            else:
+                draw_text_with_shadow(screen, potion_text, info_x, armor_end_y + 5, WHITE)
+                inventory_end_y = armor_end_y + 25
         
-        # Controls at bottom of right panel with padding
-        controls_y = SCREEN_HEIGHT - 140
-        self.draw_text("Controls:", info_x, controls_y, GRAY, padding=4)
-        self.draw_text("WASD - Move", info_x, controls_y + 25, GRAY, padding=3)
-        self.draw_text("E - Interact", info_x, controls_y + 50, GRAY, padding=3)
-        self.draw_text("I - Inventory", info_x, controls_y + 75, GRAY, padding=3)
-        self.draw_text("Q - Menu", info_x, controls_y + 100, GRAY, padding=3)
+        # Enhanced controls section with text wrapping - positioned closer to inventory
+        controls_y = inventory_end_y + 20  # Position controls right after inventory with small gap
+        controls_title = "🎮 Controls:"
+        draw_text_with_shadow(screen, controls_title, info_x, controls_y, ENHANCED_COLORS['accent_gold'])
+        
+        # Controls list with wrapping support
+        controls = [
+            ("WASD/Arrows - Move", GRAY),
+            ("(Hold multiple for diagonal)", ENHANCED_COLORS['text_disabled']),
+            ("E - Interact", GRAY),
+            ("I - Inventory", GRAY),
+            ("TAB - Switch Player", GRAY),
+            ("Q - Main Menu", GRAY)
+        ]
+        
+        current_control_y = controls_y + 30
+        for i, (control_text, color) in enumerate(controls):
+            # Check if text fits, wrap if needed
+            if undertale_font.get_text_size(control_text, "small" if i == 1 else "normal")[0] > text_width:
+                wrapped_lines = wrap_text(control_text, text_width, 
+                                        font_size="small" if i == 1 else "normal")
+                for line in wrapped_lines:
+                    if current_control_y < right_panel_rect.bottom - 20:  # Stay within panel bounds
+                        if i == 1:  # Diagonal instruction is indented
+                            draw_text_with_shadow(screen, line, info_x + 20, current_control_y, 
+                                                color, small_font)
+                        else:
+                            draw_text_with_shadow(screen, line, info_x, current_control_y, color, 
+                                                small_font if i == 1 else font)
+                        current_control_y += 18
+            else:
+                if current_control_y < right_panel_rect.bottom - 20:  # Stay within panel bounds
+                    if i == 1:  # Diagonal instruction is indented and smaller
+                        draw_text_with_shadow(screen, control_text, info_x + 20, current_control_y, 
+                                            color, small_font)
+                        current_control_y += 20
+                    else:
+                        draw_text_with_shadow(screen, control_text, info_x, current_control_y, color)
+                        current_control_y += 25
 
 
     def start_combat(self, enemies):
@@ -5741,22 +6298,43 @@ class Game:
         # Victory title with gold color
         GOLD = (255, 215, 0)
         self.draw_text("VICTORY!", SCREEN_WIDTH // 2 - 70, title_y, GOLD)
-        self.draw_text("You have defeated the dragon and conquered the dungeon!", 
-                      SCREEN_WIDTH // 2 - 300, title_y + 50, WHITE)
+        
+        # Wrap victory message to prevent overflow
+        victory_message = "You have defeated the dragon and conquered the dungeon!"
+        victory_lines = wrap_text(victory_message, SCREEN_WIDTH - 100, font_size="normal")
+        
+        current_y = title_y + 50
+        for line in victory_lines:
+            text_width = undertale_font.get_text_size(line, "normal")[0]
+            x_pos = (SCREEN_WIDTH - text_width) // 2
+            self.draw_text(line, x_pos, current_y, WHITE)
+            current_y += 30
         
         # Show final stats
         if self.players:
             highest_level = max(p.level for p in self.players)
-            self.draw_text(f"Final level reached: {highest_level}", SCREEN_WIDTH // 2 - 120, title_y + 100, GREEN)
-            self.draw_text(f"Dungeon fully conquered: {self.dungeon_level}/5", SCREEN_WIDTH // 2 - 140, title_y + 125, GREEN)
+            self.draw_text(f"Final level reached: {highest_level}", SCREEN_WIDTH // 2 - 120, current_y + 50, GREEN)
+            self.draw_text(f"Dungeon fully conquered: {self.dungeon_level}/5", SCREEN_WIDTH // 2 - 140, current_y + 75, GREEN)
             
             # Show some additional victory stats
             player = self.players[0]  # Main player
-            self.draw_text(f"Final HP: {player.hp}/{player.max_hp}", SCREEN_WIDTH // 2 - 80, title_y + 150, GRAY)
+            self.draw_text(f"Final HP: {player.hp}/{player.max_hp}", SCREEN_WIDTH // 2 - 80, current_y + 100, GRAY)
             if hasattr(player, 'weapon') and player.weapon:
-                self.draw_text(f"Weapon: {player.weapon.name}", SCREEN_WIDTH // 2 - 100, title_y + 175, GRAY)
+                weapon_text = f"Weapon: {player.weapon.name}"
+                # Wrap weapon name if it's too long
+                if undertale_font.get_text_size(weapon_text, "normal")[0] > SCREEN_WIDTH - 100:
+                    weapon_lines = wrap_text(weapon_text, SCREEN_WIDTH - 200, font_size="normal")
+                    weapon_y = current_y + 125
+                    for line in weapon_lines:
+                        text_width = undertale_font.get_text_size(line, "normal")[0]
+                        x_pos = (SCREEN_WIDTH - text_width) // 2
+                        self.draw_text(line, x_pos, weapon_y, GRAY)
+                        weapon_y += 25
+                    current_y = weapon_y - 25  # Adjust current_y for next elements
+                else:
+                    self.draw_text(weapon_text, SCREEN_WIDTH // 2 - 100, current_y + 125, GRAY)
         
-        self.draw_text("Congratulations, Hero!", SCREEN_WIDTH // 2 - 150, title_y + 200, GOLD)
+        self.draw_text("Congratulations, Hero!", SCREEN_WIDTH // 2 - 150, current_y + 150, GOLD)
         
         # Victory screen options
         self.draw_text("Press N for new game (deletes current save)", SCREEN_WIDTH // 2 - 200, title_y + 240, WHITE)
