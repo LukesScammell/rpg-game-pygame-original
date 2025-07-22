@@ -214,115 +214,96 @@ def load_sprites():
     except pygame.error as e:
         print(f"  Error loading stairs sprite: {e}")
     
-    # Load Undertale player sprites with directional movement
-    print("Loading Undertale player sprites...")
+    # Load player sprites from the new sprites folder
+    print("Loading player sprites from sprites folder...")
+    sprite_folder_path = os.path.join("assets", "sprites")
     
-    # Warrior = Frisk (main character with full directional sprites)
-    frisk_path = os.path.join("assets", "undertale", "Characters", "Frisk")
-    frisk_directions = {
+    # Warrior = Main character (spr_mainchara)
+    warrior_directions = {
         "down": ["spr_maincharad_0.png", "spr_maincharad_1.png", "spr_maincharad_2.png", "spr_maincharad_3.png"],
         "left": ["spr_maincharal_0.png", "spr_maincharal_1.png"],
         "right": ["spr_maincharar_0.png", "spr_maincharar_1.png"],
         "up": ["spr_maincharau_0.png", "spr_maincharau_1.png", "spr_maincharau_2.png", "spr_maincharau_3.png"]
     }
     
-    for direction, sprite_files in frisk_directions.items():
+    for direction, sprite_files in warrior_directions.items():
         frames = []
         for sprite_file in sprite_files:
-            sprite_path = os.path.join(frisk_path, sprite_file)
+            sprite_path = os.path.join(sprite_folder_path, sprite_file)
             if os.path.exists(sprite_path):
                 try:
                     frame = pygame.image.load(sprite_path)
                     frames.append(pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE)))
-                except pygame.error:
+                except pygame.error as e:
+                    print(f"  Error loading {sprite_file}: {e}")
                     continue
         
         if frames:
             sprites[f"player_warrior_{direction}"] = frames[0]  # First frame for static display
-            portrait_animations[f"warrior_{direction}"] = PortraitAnimation(frames, 300)
-            print(f"  Loaded: warrior (Frisk) {direction} - {len(frames)} frames")
+            portrait_animations[f"warrior_{direction}"] = PortraitAnimation(frames, 150)  # Faster animation
+            print(f"  Loaded: warrior {direction} - {len(frames)} frames")
     
     # Set default warrior sprite
     if "player_warrior_down" in sprites:
         sprites["player_warrior"] = sprites["player_warrior_down"]
     
-    # Mage = Asriel (has directional sprites)
-    asriel_path = os.path.join("assets", "undertale", "Characters", "Asriel")
-    asriel_directions = {
-        "down": ["spr_asriel_d_0.png"],
-        "left": ["spr_asriel_l_0.png", "spr_asriel_l_1.png"],
-        "right": ["spr_asriel_r_0.png", "spr_asriel_r_1.png"],
-        "up": ["spr_asriel_u_0.png", "spr_asriel_u_1.png", "spr_asriel_u_2.png", "spr_asriel_u_3.png"]
+    # Mage = Sans (spr_sans_[direction])
+    sans_directions = {
+        "down": ["spr_sans_d_0.png", "spr_sans_d_1.png", "spr_sans_d_2.png", "spr_sans_d_3.png"],
+        "left": ["spr_sans_l_0.png", "spr_sans_l_1.png", "spr_sans_l_2.png", "spr_sans_l_3.png"],
+        "right": ["spr_sans_r_0.png", "spr_sans_r_1.png", "spr_sans_r_2.png", "spr_sans_r_3.png"],
+        "up": ["spr_sans_u_0.png", "spr_sans_u_1.png", "spr_sans_u_2.png", "spr_sans_u_3.png"]
     }
     
-    asriel_loaded = False
-    for direction, sprite_files in asriel_directions.items():
+    for direction, sprite_files in sans_directions.items():
         frames = []
         for sprite_file in sprite_files:
-            sprite_path = os.path.join(asriel_path, sprite_file)
+            sprite_path = os.path.join(sprite_folder_path, sprite_file)
             if os.path.exists(sprite_path):
                 try:
                     frame = pygame.image.load(sprite_path)
                     frames.append(pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE)))
-                    asriel_loaded = True
-                except pygame.error:
+                except pygame.error as e:
+                    print(f"  Error loading {sprite_file}: {e}")
                     continue
         
         if frames:
             sprites[f"player_mage_{direction}"] = frames[0]  # First frame for static display
-            portrait_animations[f"mage_{direction}"] = PortraitAnimation(frames, 300)
-            print(f"  Loaded: mage (Asriel) {direction} - {len(frames)} frames")
+            portrait_animations[f"mage_{direction}"] = PortraitAnimation(frames, 150)
+            print(f"  Loaded: mage (Sans) {direction} - {len(frames)} frames")
     
     # Set default mage sprite
     if "player_mage_down" in sprites:
         sprites["player_mage"] = sprites["player_mage_down"]
-        print("  Loaded: mage (Asriel)")
     
-    if not asriel_loaded:
-        # Fallback: Use Frisk for mage too
-        if "player_warrior" in sprites:
-            sprites["player_mage"] = sprites["player_warrior"]
-            for direction in ["down", "left", "right", "up"]:
-                if f"player_warrior_{direction}" in sprites:
-                    sprites[f"player_mage_{direction}"] = sprites[f"player_warrior_{direction}"]
-                    if f"warrior_{direction}" in portrait_animations:
-                        portrait_animations[f"mage_{direction}"] = portrait_animations[f"warrior_{direction}"]
-            print("  Loaded: mage (Frisk fallback)")
-    
-    # Archer = Monster Kid (has full directional sprites)
-    monster_kid_path = os.path.join("assets", "undertale", "Characters", "Monster Kid")
-    mk_directions = {
-        "down": ["spr_mkid_d_0.png", "spr_mkid_d_1.png", "spr_mkid_d_2.png"],
-        "left": ["spr_mkid_l_0.png", "spr_mkid_l_1.png", "spr_mkid_l_2.png"],
-        "right": ["spr_mkid_r_0.png", "spr_mkid_r_1.png", "spr_mkid_r_2.png"],
-        "up": ["spr_mkid_u_0.png", "spr_mkid_u_1.png", "spr_mkid_u_2.png"]
+    # Archer = Papyrus (spr_papyrus_[direction])
+    papyrus_directions = {
+        "down": ["spr_papyrus_d_0.png", "spr_papyrus_d_1.png", "spr_papyrus_d_2.png", "spr_papyrus_d_3.png"],
+        "left": ["spr_papyrus_l_0.png", "spr_papyrus_l_1.png", "spr_papyrus_l_2.png", "spr_papyrus_l_3.png"],
+        "right": ["spr_papyrus_r_0.png", "spr_papyrus_r_1.png", "spr_papyrus_r_2.png", "spr_papyrus_r_3.png"],
+        "up": ["spr_papyrus_u_0.png", "spr_papyrus_u_1.png", "spr_papyrus_u_2.png", "spr_papyrus_u_3.png"]
     }
     
-    mk_loaded = False
-    for direction, sprite_files in mk_directions.items():
+    for direction, sprite_files in papyrus_directions.items():
         frames = []
         for sprite_file in sprite_files:
-            sprite_path = os.path.join(monster_kid_path, sprite_file)
+            sprite_path = os.path.join(sprite_folder_path, sprite_file)
             if os.path.exists(sprite_path):
                 try:
                     frame = pygame.image.load(sprite_path)
                     frames.append(pygame.transform.scale(frame, (TILE_SIZE, TILE_SIZE)))
-                    mk_loaded = True
-                except pygame.error:
+                except pygame.error as e:
+                    print(f"  Error loading {sprite_file}: {e}")
                     continue
         
         if frames:
             sprites[f"player_archer_{direction}"] = frames[0]  # First frame for static display
-            portrait_animations[f"archer_{direction}"] = PortraitAnimation(frames, 300)
-            print(f"  Loaded: archer (Monster Kid) {direction} - {len(frames)} frames")
+            portrait_animations[f"archer_{direction}"] = PortraitAnimation(frames, 150)
+            print(f"  Loaded: archer (Papyrus) {direction} - {len(frames)} frames")
     
     # Set default archer sprite
     if "player_archer_down" in sprites:
         sprites["player_archer"] = sprites["player_archer_down"]
-        print("  Loaded: archer (Monster Kid)")
-    
-    if not mk_loaded:
-        print("  Warning: Monster Kid directional sprites not found for archer")
     
     # Load Undertale enemy sprites with animated portraits
     print("Loading Undertale enemy sprites...")
@@ -1495,6 +1476,13 @@ class Player(Entity):
         self.level = 1
         self.gold = 100  # Starting gold for shopping
         
+        # Animation properties
+        self.is_moving = False
+        self.animation_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 200  # milliseconds per frame
+        self.last_move_time = 0
+        
         # Class-specific starting weapon
         if char_class == "warrior":
             starting_weapon = Weapon("Iron Sword", 5, ["warrior"], "common", "long_sword1")
@@ -1610,6 +1598,61 @@ class Player(Entity):
                     return True, f"Replaced {worst_item.name} with {item.name}."
         
         return False, f"Inventory full. Cannot carry more {item_type.__name__.lower()}s."
+
+    def start_movement_animation(self):
+        """Start movement animation when player begins moving"""
+        self.is_moving = True
+        self.last_move_time = pygame.time.get_ticks()
+        self.animation_timer = 0
+
+    def stop_movement_animation(self):
+        """Stop movement animation when player stops moving"""
+        self.is_moving = False
+        self.animation_frame = 0
+
+    def update_animation(self):
+        """Update movement animation frames"""
+        current_time = pygame.time.get_ticks()
+        
+        # If moving, cycle through animation frames
+        if self.is_moving:
+            if current_time - self.animation_timer > self.animation_speed:
+                self.animation_timer = current_time
+                # Get the number of available frames for this character and direction
+                animation_key = f"{self.char_class}_{self.direction}"
+                if animation_key in portrait_animations:
+                    max_frames = len(portrait_animations[animation_key].frames)
+                    self.animation_frame = (self.animation_frame + 1) % max_frames
+                else:
+                    # Default to 4 frames if no specific animation found
+                    self.animation_frame = (self.animation_frame + 1) % 4
+        
+        # Stop movement animation if we haven't moved recently
+        if current_time - self.last_move_time > 100:  # Stop animation 100ms after last movement
+            self.stop_movement_animation()
+
+    def get_current_sprite_key(self):
+        """Get the current animated sprite key based on direction and animation frame"""
+        return f"player_{self.char_class}_{self.direction}"
+    
+    def get_current_animated_frame(self):
+        """Get the current animated frame surface for the player"""
+        if self.is_moving:
+            animation_key = f"{self.char_class}_{self.direction}"
+            if animation_key in portrait_animations:
+                return portrait_animations[animation_key].get_current_frame()
+        
+        # Return static frame if not moving or no animation available
+        static_key = f"player_{self.char_class}_{self.direction}"
+        if static_key in sprites:
+            return sprites[static_key]
+        
+        # Final fallback
+        fallback_key = f"player_{self.char_class}"
+        if fallback_key in sprites:
+            return sprites[fallback_key]
+        
+        return None
 
     def gain_xp(self, xp):
         self.xp += xp
@@ -4587,6 +4630,15 @@ class Game:
     def run_game(self):
         # Update animations and camera
         animation_manager.update()
+        
+        # Update portrait animations
+        for animation in portrait_animations.values():
+            animation.update()
+        
+        # Update player animations
+        for player in self.players:
+            player.update_animation()
+        
         self.update_camera()
         
         for event in pygame.event.get():
@@ -4602,6 +4654,10 @@ class Game:
         elif self.inventory_state == "open":
             self.handle_inventory_input(key)
         else:
+            # Safety check to prevent index out of range
+            if not self.players or self.current_player_idx >= len(self.players):
+                return
+            
             player = self.players[self.current_player_idx]
             if key == pygame.K_w:
                 self.move_player(player, 'w')
@@ -4957,6 +5013,7 @@ class Game:
             else:
                 # Move player successfully
                 player.x, player.y = new_x, new_y
+                player.start_movement_animation()  # Start animation when moving
                 self.update_camera()  # Update camera after movement
                 
                 # Check for item pickup with visual feedback
@@ -5239,17 +5296,13 @@ class Game:
                     text = font.render(player.icon, True, GREEN)
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # Use directional sprites for better Undertale character movement
+                    # Use directional sprites with animation
                     sprite_drawn = False
                     
-                    # Try directional sprite first
-                    directional_sprite_key = f"player_{player.char_class}_{player.direction}"
-                    if directional_sprite_key in sprites:
-                        screen.blit(sprites[directional_sprite_key], (screen_x, screen_y))
-                        sprite_drawn = True
-                    # Fallback to static sprite
-                    elif f"player_{player.char_class}" in sprites:
-                        screen.blit(sprites[f"player_{player.char_class}"], (screen_x, screen_y))
+                    # Get the animated frame directly
+                    current_frame = player.get_current_animated_frame()
+                    if current_frame:
+                        screen.blit(current_frame, (screen_x, screen_y))
                         sprite_drawn = True
                     
                     # Final fallback to colored rectangle
