@@ -766,7 +766,8 @@ def load_sprites():
     temmie_sprites = [
         "spr_5_tembody_0.png", "spr_temhat_0.png", "spr_5_eyes1_0.png", "spr_5_eyes2_0.png",
         "spr_5_eyes3_0.png", "spr_5_eyes4_0.png", "spr_5_eyes5_0.png", "spr_5_eyes6_0.png",
-        "spr_5_mouth1_0.png", "spr_5_mouth2_0.png", "spr_5_mouth3_0.png", "spr_5_sellface_0.png"
+        "spr_5_mouth1_0.png", "spr_5_mouth2_0.png", "spr_5_mouth3_0.png", "spr_5_sellface_0.png",
+        "spr_5_tembox_0.png"  # Add the tembox sprite
     ]
     
     for temmie_sprite in temmie_sprites:
@@ -3988,6 +3989,42 @@ class Game:
             mouth_x = center_x - scaled_mouth.get_width() // 2
             mouth_y = center_y - scaled_mouth.get_height() // 2 + int(10 * scale)
             screen.blit(scaled_mouth, (mouth_x, mouth_y))
+        
+        # Draw Temmie's animated shop counter/box in front with gentle bobbing motion
+        tembox_hover_offset = int(3 * scale * math.sin(current_time * 0.002))  # Gentle bobbing motion
+        
+        if "spr_tembox_0" in sprites:
+            box_sprite = sprites["spr_tembox_0"]
+            scaled_box = pygame.transform.scale(box_sprite, 
+                                              (int(box_sprite.get_width() * scale), 
+                                               int(box_sprite.get_height() * scale)))
+            box_x = center_x - scaled_box.get_width() // 2
+            box_y = center_y + int(20 * scale) + tembox_hover_offset  # Position with animation
+            screen.blit(scaled_box, (box_x, box_y))
+        elif "spr_5_tembox_0" in sprites:
+            # Alternative box sprite name
+            box_sprite = sprites["spr_5_tembox_0"]
+            scaled_box = pygame.transform.scale(box_sprite, 
+                                              (int(box_sprite.get_width() * scale), 
+                                               int(box_sprite.get_height() * scale)))
+            box_x = center_x - scaled_box.get_width() // 2
+            box_y = center_y + int(10 * scale) + tembox_hover_offset  # Position with animation
+            screen.blit(scaled_box, (box_x, box_y))
+        else:
+            # Draw a simple fallback counter if no sprite found with animation
+            counter_width = int(80 * scale)
+            counter_height = int(20 * scale)
+            counter_x = center_x - counter_width // 2
+            counter_y = center_y + int(30 * scale) + tembox_hover_offset
+            
+            # Draw wooden-looking counter
+            counter_color = (139, 69, 19)  # Brown color
+            pygame.draw.rect(screen, counter_color, (counter_x, counter_y, counter_width, counter_height))
+            pygame.draw.rect(screen, BLACK, (counter_x, counter_y, counter_width, counter_height), 2)
+            
+            # Add some simple details to make it look like a shop counter
+            pygame.draw.line(screen, (160, 82, 45), (counter_x, counter_y + 5), (counter_x + counter_width, counter_y + 5), 1)
+            pygame.draw.line(screen, (101, 67, 33), (counter_x, counter_y + counter_height - 3), (counter_x + counter_width, counter_y + counter_height - 3), 1)
     
     def draw_bratty_catty_portrait(self, center_x, center_y, scale):
         """Draw Bratty and Catty portrait with body sprites and simple mouth animations."""
@@ -4009,6 +4046,31 @@ class Game:
             bratty_body_x = bratty_x - scaled_bratty_body.get_width() // 2
             bratty_body_y = bratty_y - scaled_bratty_body.get_height() // 2
             screen.blit(scaled_bratty_body, (bratty_body_x, bratty_body_y))
+        
+        # Add hovering arms animation for Bratty using left and right arm sprites
+        bratty_hover_offset = int(5 * scale * math.sin(current_time * 0.003))  # Gentle hovering motion
+        
+        # Draw Bratty's left arm (positioned to align with left side of body)
+        if "spr_brattyarm_l_0" in sprites:
+            bratty_left_arm = sprites["spr_brattyarm_l_0"]
+            scaled_left_arm = pygame.transform.scale(bratty_left_arm,
+                                               (int(bratty_left_arm.get_width() * scale),
+                                                int(bratty_left_arm.get_height() * scale)))
+            # Align with left edge of body instead of arbitrary offset
+            left_arm_x = bratty_x - int(60 * scale)  # Move further left to align with body edge
+            left_arm_y = bratty_y + int(10 * scale) + bratty_hover_offset  # Slightly higher
+            screen.blit(scaled_left_arm, (left_arm_x, left_arm_y))
+        
+        # Draw Bratty's right arm (positioned to align with right side of body)
+        if "spr_brattyarm_r_0" in sprites:
+            bratty_right_arm = sprites["spr_brattyarm_r_0"]
+            scaled_right_arm = pygame.transform.scale(bratty_right_arm,
+                                                (int(bratty_right_arm.get_width() * scale),
+                                                 int(bratty_right_arm.get_height() * scale)))
+            # Align with right edge of body instead of arbitrary offset
+            right_arm_x = bratty_x + int(40 * scale) - scaled_right_arm.get_width()  # Move further right and account for arm width
+            right_arm_y = bratty_y + int(10 * scale) + bratty_hover_offset  # Slightly higher
+            screen.blit(scaled_right_arm, (right_arm_x, right_arm_y))
         
         # Position for Catty (right side)
         catty_x = center_x + int(80 * scale)
@@ -4039,6 +4101,23 @@ class Game:
             catty_face_x = catty_x - scaled_catty_face.get_width() // 2
             catty_face_y = catty_y - scaled_catty_face.get_height() // 2 - int(10 * scale)  # Offset up slightly
             screen.blit(scaled_catty_face, (catty_face_x, catty_face_y))
+        
+        # Add 3-frame arm animation for Catty using catarm sprites
+        arm_frame = (current_time // 800) % 3  # Cycle through 3 frames every 800ms
+        catty_arms_sprite_name = f"spr_catarm_{arm_frame}"
+        
+        if catty_arms_sprite_name in sprites:
+            catty_arms_sprite = sprites[catty_arms_sprite_name]
+            scaled_catty_arms = pygame.transform.scale(catty_arms_sprite, 
+                                                (int(catty_arms_sprite.get_width() * scale), 
+                                                 int(catty_arms_sprite.get_height() * scale)))
+            
+            # Create hovering motion - up and down movement (slightly different timing than Burgerpants)
+            catty_hover_offset = int(6 * scale * math.sin(current_time * 0.0035))  # Slower and smaller motion
+            # Position arms on the right side of Catty's body instead of center
+            catty_arms_x = catty_x + int(30 * scale)  # Move to right side of body
+            catty_arms_y = catty_y + int(20 * scale) + catty_hover_offset  # Position below face
+            screen.blit(scaled_catty_arms, (catty_arms_x, catty_arms_y))
     
     def draw_snowdin_shopkeeper_portrait(self, center_x, center_y, scale):
         """Draw Snowdin Shopkeeper portrait using layered components."""
@@ -4065,9 +4144,9 @@ class Game:
                 scaled_face = pygame.transform.scale(face_sprite, 
                                                     (int(face_sprite.get_width() * scale), 
                                                      int(face_sprite.get_height() * scale)))
-                # Position face on the shopkeeper body
-                face_x = sprite_x + (scaled_sprite.get_width() - scaled_face.get_width()) // 2
-                face_y = sprite_y + (scaled_sprite.get_height() - scaled_face.get_height()) // 3
+                # Position face on the shopkeeper body (moved up slightly)
+                face_x = sprite_x + (scaled_sprite.get_width() - scaled_face.get_width()) // 2 
+                face_y = sprite_y + (scaled_sprite.get_height() - scaled_face.get_height()) // 4
                 screen.blit(scaled_face, (face_x, face_y))
         
         elif "spr_shopkeeper2_body_0" in sprites:
@@ -4105,36 +4184,18 @@ class Game:
         burgerpants_drawn = False
         current_time = pygame.time.get_ticks()
         
-        # Try multiple face sprite naming patterns with animation
-        face_frame = (current_time // 700) % 8  # Cycle through face expressions
+        # Animate through all 7 face expressions (0-6)
+        face_frame = (current_time // 600) % 7  # Change every 600ms through all face expressions
+        face_sprite_name = f"spr_bpants_face_{face_frame}"
         
-        # Try different naming patterns for Burgerpants face sprites
-        face_sprite_patterns = [
-            f"spr_bpants_face_{face_frame}_0",
-            f"spr_bpants_face{face_frame}_0", 
-            f"spr_burgerpants_face_{face_frame}_0",
-            f"spr_burgerpants_face{face_frame}_0"
-        ]
-        
+        # Try to load the animated face sprite
         face_sprite = None
-        for pattern in face_sprite_patterns:
-            if pattern in sprites:
-                face_sprite = sprites[pattern]
-                break
+        if face_sprite_name in sprites:
+            face_sprite = sprites[face_sprite_name]
         
-        # If no animated sprite found, try basic static sprites
-        if not face_sprite:
-            static_patterns = [
-                "spr_bpants_face_0_0",
-                "spr_bpants_face0_0",
-                "spr_bpants_face_0",
-                "spr_burgerpants_face_0",
-                "spr_burgerpants_0"
-            ]
-            for pattern in static_patterns:
-                if pattern in sprites:
-                    face_sprite = sprites[pattern]
-                    break
+        # If no animated sprite found, try basic static sprite (frame 0)
+        if not face_sprite and "spr_bpants_face_0" in sprites:
+            face_sprite = sprites["spr_bpants_face_0"]
         
         if face_sprite:
             scaled_face = pygame.transform.scale(face_sprite, 
@@ -4145,26 +4206,17 @@ class Game:
             screen.blit(scaled_face, (face_x, face_y))
             burgerpants_drawn = True
             
-            # Add arms if available
-            arms_patterns = [
-                "spr_bpants_arms_0_0",
-                "spr_bpants_arms0_0", 
-                "spr_bpants_arms_0",
-                "spr_burgerpants_arms_0"
-            ]
-            
-            arms_sprite = None
-            for pattern in arms_patterns:
-                if pattern in sprites:
-                    arms_sprite = sprites[pattern]
-                    break
-            
-            if arms_sprite:
+            # Add animated arms if available (hovering up and down motion)
+            if "spr_bpants_arms_0" in sprites:
+                arms_sprite = sprites["spr_bpants_arms_0"]
                 scaled_arms = pygame.transform.scale(arms_sprite, 
                                                     (int(arms_sprite.get_width() * scale), 
                                                      int(arms_sprite.get_height() * scale)))
+                
+                # Create hovering motion - up and down movement
+                hover_offset = int(8 * scale * math.sin(current_time * 0.004))  # Smooth hover motion
                 arms_x = center_x - scaled_arms.get_width() // 2
-                arms_y = face_y + scaled_face.get_height() - int(10 * scale)
+                arms_y = face_y + scaled_face.get_height() - int(15 * scale) + hover_offset
                 screen.blit(scaled_arms, (arms_x, arms_y))
         
         # Fallback if no sprites found
