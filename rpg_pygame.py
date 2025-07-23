@@ -6,6 +6,7 @@ import json
 import pygame
 import math
 from collections import deque
+from datetime import datetime
 
 # --- Constants ---
 SCREEN_WIDTH = 1920  # Increased for larger display
@@ -28,7 +29,9 @@ MAX_ROOMS = 15
 MAX_DUNGEON_LEVEL = 5
 HIGHSCORE_FILE = "rpg_highscores.json"
 SETTINGS_FILE = "rpg_settings.json"
-SAVE_FILE = "rpg_save_game.json"
+SAVE_FILE = "rpg_save_game.json"  # Legacy single save file
+SAVE_FOLDER = "saves"
+MAX_SAVE_SLOTS = 5
 
 # --- Colors ---
 WHITE = (255, 255, 255)
@@ -2956,6 +2959,13 @@ class Game:
         self.selected_shop_item_idx = 0
         # Item replacement system
         self.pending_replacement = None
+        # Pause system
+        self.is_paused = False
+        self.previous_game_state = None
+        
+        # Multi-save system
+        self.selected_save_idx = 0
+        self.save_files = []
     def draw_combat_screen(self):
         """Draw the enhanced combat screen with improved visuals."""
         # Enhanced background with battle atmosphere
@@ -3339,13 +3349,13 @@ class Game:
         if key == pygame.K_ESCAPE or key == pygame.K_i:
             play_sound("menu_back", 0.5)
             self.inventory_state = "closed"
-        elif key == pygame.K_q:  # Quit to main menu from inventory
+        elif key == pygame.K_q:  # Pause menu from inventory
             play_sound("menu_confirm", 0.5)
             self.inventory_state = "closed"
-            self.save_game()
-            play_music("menu")  # Return to menu music
-            self.game_state = "main_menu"
-            self.reset_game_state()
+            # Pause the game instead of going directly to main menu
+            self.is_paused = True
+            self.previous_game_state = "playing"
+            self.game_state = "paused"
         elif key == pygame.K_LEFT and self.selected_player_idx > 0:
             play_sound("menu_select", 0.4)
             self.selected_player_idx -= 1
@@ -3508,7 +3518,7 @@ class Game:
             "↑ ↓ : Navigate Items", 
             "ENTER : Use/Equip Item",
             "X : Drop Item",
-            "Q : Quit to Menu",
+            "Q : Pause Menu",
             "I/ESC : Close Inventory"
         ]
         
@@ -4497,6 +4507,102 @@ class Game:
         """Log action for debugging or history purposes."""
         print(f"LOG: {text}")
     
+    def get_save_files(self):
+        """Get all available save files with their information."""
+        save_files = []
+        
+        # Create saves directory if it doesn't exist
+        if not os.path.exists(SAVE_FOLDER):
+            os.makedirs(SAVE_FOLDER)
+        
+        # Check for legacy save file
+        if os.path.exists(SAVE_FILE):
+            try:
+                with open(SAVE_FILE, 'r') as f:
+                    save_data = json.load(f)
+                
+                # Get creation time from file stats
+                creation_time = os.path.getctime(SAVE_FILE)
+                timestamp = datetime.fromtimestamp(creation_time).strftime("%Y-%m-%d %H:%M")
+                
+                if save_data.get("players"):
+                    player_name = save_data["players"][0].get("name", "Unknown")
+                    level = save_data["players"][0].get("level", 1)
+                    dungeon_level = save_data.get("dungeon_level", 1)
+                    
+                    save_files.append({
+                        "filename": SAVE_FILE,
+                        "display_name": f"{player_name} (Legacy Save)",
+                        "player_name": player_name,
+                        "level": level,
+                        "dungeon_level": dungeon_level,
+                        "timestamp": timestamp,
+                        "is_legacy": True
+                    })
+            except:
+                pass
+        
+        # Check for new save files in saves folder
+        for filename in os.listdir(SAVE_FOLDER):
+            if filename.endswith('.json'):
+                filepath = os.path.join(SAVE_FOLDER, filename)
+                try:
+                    with open(filepath, 'r') as f:
+                        save_data = json.load(f)
+                    
+                    if save_data.get("players"):
+                        player_name = save_data["players"][0].get("name", "Unknown")
+                        level = save_data["players"][0].get("level", 1)
+                        dungeon_level = save_data.get("dungeon_level", 1)
+                        timestamp = save_data.get("timestamp", "Unknown")
+                        
+                        save_files.append({
+                            "filename": filepath,
+                            "display_name": f"{player_name} - Lv.{level} (Floor {dungeon_level})",
+                            "player_name": player_name,
+                            "level": level,
+                            "dungeon_level": dungeon_level,
+                            "timestamp": timestamp,
+                            "is_legacy": False
+                        })
+                except:
+                    pass
+        
+        # Sort by timestamp (newest first)
+        save_files.sort(key=lambda x: x["timestamp"], reverse=True)
+        return save_files
+    
+    def get_next_save_filename(self):
+        """Get the next available save filename."""
+        if not os.path.exists(SAVE_FOLDER):
+            os.makedirs(SAVE_FOLDER)
+        
+        for i in range(1, MAX_SAVE_SLOTS + 1):
+            filename = os.path.join(SAVE_FOLDER, f"save_slot_{i:02d}.json")
+            if not os.path.exists(filename):
+                return filename
+        
+        # If all slots are full, overwrite the oldest
+        save_files = self.get_save_files()
+        if save_files:
+            # Find the oldest non-legacy save
+            non_legacy_saves = [sf for sf in save_files if not sf["is_legacy"]]
+            if non_legacy_saves:
+                return non_legacy_saves[-1]["filename"]
+        
+        # Fallback to slot 1
+        return os.path.join(SAVE_FOLDER, "save_slot_01.json")
+    
+    def delete_save_file_by_path(self, filepath):
+        """Delete a specific save file."""
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                return True
+        except Exception as e:
+            print(f"Error deleting save file: {e}")
+        return False
+
     def save_game(self):
         """Save the current game state including dungeon layout."""
         try:
@@ -4726,8 +4832,14 @@ class Game:
                 
                 save_data["players"].append(player_data)
             
+            # Add timestamp for save organization
+            save_data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Get next available save filename
+            save_filename = self.get_next_save_filename()
+            
             # Save to file
-            with open(SAVE_FILE, 'w') as f:
+            with open(save_filename, 'w') as f:
                 json.dump(save_data, f, indent=2)
             
             self.add_message("Game saved successfully!")
@@ -4738,13 +4850,16 @@ class Game:
             self.add_message("Error saving game!")
             return False
     
-    def load_game(self):
+    def load_game(self, save_filename=None):
         """Load a saved game state including dungeon layout."""
         try:
-            if not os.path.exists(SAVE_FILE):
+            # Use provided filename or default to legacy save file
+            filename = save_filename or SAVE_FILE
+            
+            if not os.path.exists(filename):
                 return False
             
-            with open(SAVE_FILE, 'r') as f:
+            with open(filename, 'r') as f:
                 save_data = json.load(f)
             
             # Clear current state
@@ -4950,7 +5065,9 @@ class Game:
                     item_data["sprite_name"]
                 )
             elif item_type == "Potion":
-                return Potion(name, item_data["hp_gain"], rarity)
+                # Handle both old and new potion data formats
+                healing_amount = item_data.get("hp_gain", item_data.get("healing", 30))
+                return Potion(name, healing_amount, rarity)
             
         except Exception as e:
             print(f"Error creating item from data: {e}")
@@ -4958,8 +5075,38 @@ class Game:
         return None
     
     def has_save_file(self):
-        """Check if a save file exists."""
-        return os.path.exists(SAVE_FILE)
+        """Check if any save files exist."""
+        # Check for legacy save file
+        if os.path.exists(SAVE_FILE):
+            return True
+        
+        # Check for new save files in saves folder
+        if os.path.exists(SAVE_FOLDER):
+            for filename in os.listdir(SAVE_FOLDER):
+                if filename.endswith('.json'):
+                    return True
+        
+        return False
+    
+    def get_save_info(self):
+        """Get basic information about the most recent saved game."""
+        try:
+            save_files = self.get_save_files()
+            if save_files:
+                # Get the most recent save (first in sorted list)
+                recent_save = save_files[0]
+                return {
+                    "player_name": recent_save["player_name"],
+                    "player_class": "Hero",  # Generic class since we have multiple save types
+                    "level": recent_save["level"],
+                    "dungeon_level": recent_save["dungeon_level"],
+                    "num_players": 1,  # Will be updated when save is loaded
+                    "filename": recent_save["filename"]
+                }
+        except Exception as e:
+            print(f"Error reading save info: {e}")
+        
+        return None
     
     def delete_save_file(self):
         """Delete the save file."""
@@ -4991,6 +5138,9 @@ class Game:
         self.selected_player_idx = 0
         self.selected_item_idx = 0
         self.pending_replacement = None
+        # Reset pause state
+        self.is_paused = False
+        self.previous_game_state = None
         # Reset obtained items for single player
         if hasattr(self, 'obtained_items'):
             self.obtained_items = set()
@@ -5081,13 +5231,30 @@ class Game:
         button_height = 50
         button_spacing = 60
         has_save = self.has_save_file()
+        save_info = self.get_save_info() if has_save else None
         
         buttons = []
         if has_save:
+            # Create continue button text with save info
+            if save_info:
+                # Check if there's a game in progress
+                if self.players and self.dungeon and not self.game_over:
+                    continue_text = f"Resume: {self.players[0].name} ({self.players[0].char_class.title()})"
+                else:
+                    # Check how many saves we have
+                    all_saves = self.get_save_files()
+                    if len(all_saves) > 1:
+                        continue_text = f"Select Save ({len(all_saves)} available)"
+                    else:
+                        continue_text = f"Continue: {save_info['player_name']}"
+                continue_key = "C"
+            else:
+                continue_text = "Continue Game"
+                continue_key = "C"
+                
             buttons = [
-                ("continue", "Continue Game", "C"),
+                ("continue", continue_text, continue_key),
                 ("new", "New Game", "N"),
-                ("delete", "Delete Save", "D"),
                 ("settings", "Settings", "S"),
                 ("quit", "Quit", "Q")
             ]
@@ -5135,8 +5302,50 @@ class Game:
                             base_color, hover_color, pressed_color, 
                             is_hovered=is_hovered, border_radius=12)
         
-        # Game info panel at bottom
-        info_panel_rect = pygame.Rect(50, SCREEN_HEIGHT - 120, SCREEN_WIDTH - 100, 70)
+        # Show save game details if available (position it above the game info panel)
+        if has_save and save_info:
+            info_panel_y = menu_start_y + len(buttons) * button_spacing + 10
+            info_panel_width = 350
+            info_panel_height = 100
+            info_panel_x = SCREEN_WIDTH // 2 - info_panel_width // 2
+            
+            info_panel_rect = pygame.Rect(info_panel_x, info_panel_y, info_panel_width, info_panel_height)
+            draw_gradient_rect(screen, info_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+            
+            # Different colors based on whether game is in progress
+            if self.players and self.dungeon and not self.game_over:
+                panel_color = ENHANCED_COLORS['accent_blue']  # Blue for current session
+                header_text = "🎮 Current Session"
+                player_info = self.players[0]
+                player_text = f"Hero: {player_info.name} (Lv.{player_info.level} {player_info.char_class.title()})"
+                location_text = f"Floor {self.dungeon_level} | Party: {len(self.players)} hero{'s' if len(self.players) > 1 else ''}"
+            else:
+                panel_color = ENHANCED_COLORS['success_green']  # Green for saved game
+                header_text = "💾 Save Game Details"
+                player_text = f"Hero: {save_info['player_name']} (Lv.{save_info['level']} {save_info['player_class']})"
+                location_text = f"Floor {save_info['dungeon_level']} | Party: {save_info['num_players']} hero{'s' if save_info['num_players'] > 1 else ''}"
+            
+            pygame.draw.rect(screen, panel_color, info_panel_rect, width=2, border_radius=8)
+            
+            # Game details
+            detail_y = info_panel_y + 10
+            draw_text_with_shadow(screen, header_text, info_panel_x + 15, detail_y, 
+                                panel_color, small_font, 1)
+            
+            # Player info
+            draw_text_with_shadow(screen, player_text, info_panel_x + 15, detail_y + 25, 
+                                ENHANCED_COLORS['text_primary'], small_font, 1)
+            
+            # Location and party info
+            draw_text_with_shadow(screen, location_text, info_panel_x + 15, detail_y + 45, 
+                                ENHANCED_COLORS['text_secondary'], small_font, 1)
+        
+        # Game info panel at bottom (adjust position if save info is shown)
+        bottom_panel_y = SCREEN_HEIGHT - 120
+        if has_save and save_info:
+            bottom_panel_y = SCREEN_HEIGHT - 90  # Make it smaller when save info is shown
+        
+        info_panel_rect = pygame.Rect(50, bottom_panel_y, SCREEN_WIDTH - 100, 70)
         draw_gradient_rect(screen, info_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
         pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], info_panel_rect, width=2, border_radius=8)
         
@@ -5168,24 +5377,290 @@ class Game:
                     self.game_state = "setup_num_players"
                 elif event.key == pygame.K_n:
                     animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing, ENHANCED_COLORS['accent_blue'], 15)
-                    self.reset_game_state()
+                    self.reset_game_state()  # Ensure clean state for new game
                     self.game_state = "setup_num_players"
                 elif event.key == pygame.K_c and has_save:
                     animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y, ENHANCED_COLORS['success_green'], 15)
-                    if self.load_game():
+                    
+                    # Check if there's already a game in progress (from pause menu)
+                    if self.players and self.dungeon and not self.game_over:
+                        # Resume the current game session
                         self.game_state = "playing"
+                        self.add_message(f"Resumed game with {self.players[0].name}")
+                        play_sound("menu_back", 0.5)
                     else:
-                        self.add_message("Failed to load save file!")
-                        play_sound("error", 0.7)
-                elif event.key == pygame.K_d and has_save:
-                    if self.delete_save_file():
-                        animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing * 2, ENHANCED_COLORS['danger_red'], 10)
-                        self.add_message("Save file deleted!")
-                        play_sound("success", 0.5)
+                        # Show save selection menu to choose which save to load
+                        self.selected_save_idx = 0  # Always reset to top when entering save selection
+                        self.save_files = []  # Clear cached save files to force refresh
+                        self.game_state = "save_selection"
                 elif event.key == pygame.K_s:
-                    animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing * (3 if has_save else 1), ENHANCED_COLORS['accent_gold'], 12)
+                    animation_manager.add_particles(SCREEN_WIDTH // 2, menu_start_y + button_spacing * (2 if has_save else 1), ENHANCED_COLORS['accent_gold'], 12)
                     self.game_state = "settings_menu"
                 elif event.key == pygame.K_q:
+                    play_sound("menu_back", 0.5)
+                    self.game_over = True
+
+    def save_selection_menu(self):
+        """Display save selection menu with options to load or delete saves."""
+        # Enhanced background with gradient
+        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
+        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['primary_dark'])
+        
+        # Update animations
+        animation_manager.update()
+        
+        # Get mouse position for hover effects
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # Animated title with shadow
+        title_y = SCREEN_HEIGHT // 2 - 300
+        title_x = SCREEN_WIDTH // 2 - 120
+        
+        # Title background panel
+        title_bg_rect = pygame.Rect(title_x - 40, title_y - 20, 280, 80)
+        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        
+        # Main title with enhanced text
+        draw_text_with_shadow(screen, "Select Save File", title_x, title_y, ENHANCED_COLORS['accent_gold'], font, 1)
+        
+        # Get available save files (refresh each time to ensure up-to-date list)
+        if not hasattr(self, 'save_files') or not self.save_files:
+            self.save_files = self.get_save_files()
+        
+        # Ensure selected index is within bounds
+        if self.save_files:
+            self.selected_save_idx = max(0, min(self.selected_save_idx, len(self.save_files) - 1))
+        else:
+            self.selected_save_idx = 0
+        
+        # Save files panel
+        panel_y = title_y + 100
+        panel_width = SCREEN_WIDTH - 200
+        panel_height = 400
+        panel_x = (SCREEN_WIDTH - panel_width) // 2
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        draw_gradient_rect(screen, panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], panel_rect, width=2, border_radius=8)
+        
+        # Display save files
+        if self.save_files:
+            saves_x = panel_x + 30
+            start_y = panel_y + 30
+            line_height = 60
+            
+            for i, save_info in enumerate(self.save_files[:6]):  # Show max 6 saves
+                save_y = start_y + i * line_height
+                
+                # Create save item background
+                save_rect = pygame.Rect(saves_x - 15, save_y - 10, panel_width - 60, 50)
+                
+                # Highlight selected save
+                if i == self.selected_save_idx:
+                    draw_gradient_rect(screen, save_rect, ENHANCED_COLORS['accent_gold'], (255, 235, 59))
+                    border_color = ENHANCED_COLORS['accent_gold']
+                    text_color = ENHANCED_COLORS['background_dark']
+                else:
+                    draw_gradient_rect(screen, save_rect, ENHANCED_COLORS['button_normal'], ENHANCED_COLORS['button_hover'])
+                    border_color = ENHANCED_COLORS['accent_silver']
+                    text_color = ENHANCED_COLORS['text_primary']
+                
+                pygame.draw.rect(screen, border_color, save_rect, width=2, border_radius=8)
+                
+                # Save file number
+                number_text = f"{i + 1}."
+                draw_text_with_shadow(screen, number_text, saves_x, save_y, ENHANCED_COLORS['accent_gold'], font, 1)
+                
+                # Save file info - better formatted
+                info_text = save_info["display_name"]
+                draw_text_with_shadow(screen, info_text, saves_x + 40, save_y, text_color, font, 1)
+                
+                # Timestamp - smaller font and better positioned
+                timestamp_text = f"Saved: {save_info['timestamp']}"
+                draw_text_with_shadow(screen, timestamp_text, saves_x + 40, save_y + 25, ENHANCED_COLORS['text_secondary'], small_font, 1)
+                
+                # Legacy indicator - better positioning
+                if save_info.get("is_legacy", False):
+                    draw_text_with_shadow(screen, "(Legacy Save)", saves_x + panel_width - 250, save_y + 25, ENHANCED_COLORS['accent_gold'], small_font, 1)
+        else:
+            # No saves found - better formatted message
+            no_saves_text = "No save files found"
+            draw_text_with_shadow(screen, no_saves_text, SCREEN_WIDTH // 2 - 100, panel_y + panel_height // 2, ENHANCED_COLORS['text_secondary'], font, 1)
+        
+        # Instructions panel at bottom
+        instructions_y = panel_y + panel_height + 20
+        instructions_width = panel_width
+        instructions_height = 120
+        instructions_rect = pygame.Rect(panel_x, instructions_y, instructions_width, instructions_height)
+        draw_gradient_rect(screen, instructions_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], instructions_rect, width=2, border_radius=8)
+        
+        # Enhanced instructions
+        inst_x = instructions_rect.x + 30
+        inst_y = instructions_y + 20
+        
+        instructions = [
+            "↑↓ Arrow Keys: Navigate save files",
+            "ENTER: Load selected save file",
+            "DELETE: Delete selected save file",
+            "ESC: Return to main menu"
+        ]
+        
+        for i, instruction in enumerate(instructions):
+            draw_text_with_shadow(screen, instruction, inst_x, inst_y + i * 25, ENHANCED_COLORS['text_secondary'], small_font, 1)
+        
+        # Draw particles if any
+        animation_manager.draw_particles(screen)
+        
+        pygame.display.flip()
+        
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            elif event.type == pygame.KEYDOWN:
+                play_sound("menu_select", 0.5)
+                
+                if event.key == pygame.K_UP:
+                    if self.save_files and len(self.save_files) > 0:
+                        self.selected_save_idx = (self.selected_save_idx - 1) % len(self.save_files)
+                elif event.key == pygame.K_DOWN:
+                    if self.save_files and len(self.save_files) > 0:
+                        self.selected_save_idx = (self.selected_save_idx + 1) % len(self.save_files)
+                elif event.key == pygame.K_RETURN:
+                    if self.save_files and self.selected_save_idx < len(self.save_files):
+                        selected_save = self.save_files[self.selected_save_idx]
+                        if self.load_game(selected_save["filename"]):
+                            self.game_state = "playing"
+                            play_music("gameplay")  # Fixed: use "gameplay" instead of "dungeon"
+                            self.add_message(f"Game loaded: {selected_save['player_name']}")
+                            play_sound("success", 0.5)
+                        else:
+                            self.add_message("Failed to load save file!")
+                            play_sound("error", 0.7)
+                elif event.key == pygame.K_DELETE:
+                    if self.save_files and self.selected_save_idx < len(self.save_files):
+                        selected_save = self.save_files[self.selected_save_idx]
+                        if self.delete_save_file_by_path(selected_save["filename"]):
+                            self.add_message(f"Deleted save: {selected_save['player_name']}")
+                            play_sound("success", 0.5)
+                            # Refresh save files list immediately
+                            self.save_files = self.get_save_files()
+                            # Adjust selected index if needed
+                            if self.selected_save_idx >= len(self.save_files) and self.save_files:
+                                self.selected_save_idx = len(self.save_files) - 1
+                            elif not self.save_files:
+                                self.selected_save_idx = 0
+                        else:
+                            self.add_message("Failed to delete save file!")
+                            play_sound("error", 0.7)
+                elif event.key == pygame.K_ESCAPE:
+                    play_sound("menu_back", 0.5)
+                    # Reset save selection state when going back to main menu
+                    self.selected_save_idx = 0
+                    self.save_files = []
+                    self.game_state = "main_menu"
+
+    def pause_menu(self):
+        """Display the pause menu with options to resume, save, or quit."""
+        # Semi-transparent overlay to darken the game screen underneath
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(150)  # Semi-transparent
+        overlay.fill(BLACK)
+        screen.blit(overlay, (0, 0))
+        
+        # Enhanced pause menu panel
+        menu_width = 400
+        menu_height = 300
+        menu_x = (SCREEN_WIDTH - menu_width) // 2
+        menu_y = (SCREEN_HEIGHT - menu_height) // 2
+        
+        menu_rect = pygame.Rect(menu_x, menu_y, menu_width, menu_height)
+        draw_gradient_rect(screen, menu_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
+        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], menu_rect, width=3, border_radius=15)
+        
+        # Title
+        title_y = menu_y + 30
+        draw_text_with_shadow(screen, "⏸️ GAME PAUSED", menu_x + menu_width // 2 - 100, title_y, 
+                            ENHANCED_COLORS['accent_gold'], font)
+        
+        # Menu options
+        button_width = 250
+        button_height = 45
+        button_spacing = 55
+        menu_start_y = title_y + 80
+        
+        buttons = [
+            ("resume", "Resume Game", "Q"),
+            ("save", "Save Game", "S"),
+            ("main_menu", "Main Menu", "M"),
+            ("quit", "Quit Game", "ESC")
+        ]
+        
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for i, (button_id, text, key) in enumerate(buttons):
+            button_y = menu_start_y + i * button_spacing
+            button_rect = pygame.Rect(menu_x + (menu_width - button_width) // 2, button_y, button_width, button_height)
+            
+            # Button colors
+            if button_id == "resume":
+                base_color = ENHANCED_COLORS['success_green']
+                hover_color = (50, 205, 50)
+                pressed_color = (34, 139, 34)
+            elif button_id == "save":
+                base_color = ENHANCED_COLORS['accent_blue']
+                hover_color = (70, 130, 180)
+                pressed_color = (25, 25, 112)
+            elif button_id == "main_menu":
+                base_color = ENHANCED_COLORS['accent_gold']
+                hover_color = (255, 235, 20)
+                pressed_color = (235, 195, 0)
+            else:  # quit
+                base_color = ENHANCED_COLORS['danger_red']
+                hover_color = (231, 67, 67)
+                pressed_color = (191, 27, 27)
+            
+            # Check hover state
+            is_hovered = update_button_hover(button_id, button_rect, mouse_pos)
+            
+            # Draw fancy button
+            button_text = f"{text} ({key})"
+            draw_fancy_button(screen, button_rect, button_text, font, 
+                            base_color, hover_color, pressed_color, 
+                            is_hovered=is_hovered, border_radius=10)
+        
+        pygame.display.flip()
+        
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.game_over = True
+            elif event.type == pygame.KEYDOWN:
+                play_sound("menu_select", 0.5)
+                
+                if event.key == pygame.K_q:  # Resume
+                    self.is_paused = False
+                    if self.previous_game_state:
+                        self.game_state = self.previous_game_state
+                        self.previous_game_state = None
+                    play_sound("menu_back", 0.5)
+                elif event.key == pygame.K_s:  # Save
+                    if self.save_game():
+                        self.add_message("Game saved successfully!")
+                        play_sound("success", 0.5)
+                    else:
+                        self.add_message("Failed to save game!")
+                        play_sound("error", 0.7)
+                elif event.key == pygame.K_m:  # Main Menu
+                    self.save_game()  # Auto-save before going to main menu
+                    play_music("menu")
+                    self.game_state = "main_menu"
+                    self.is_paused = False
+                    # Don't reset game state - preserve it for continue functionality
+                    play_sound("menu_confirm", 0.5)
+                elif event.key == pygame.K_ESCAPE:  # Quit Game
+                    self.save_game()  # Auto-save before quitting
                     play_sound("menu_back", 0.5)
                     self.game_over = True
 
@@ -5753,6 +6228,11 @@ class Game:
                 if current_music_state != "menu":
                     play_music("menu")
                 self.settings_menu()
+            elif self.game_state == "save_selection":
+                # Keep menu music playing
+                if current_music_state != "menu":
+                    play_music("menu")
+                self.save_selection_menu()
             elif self.game_state == "wall_selection":
                 self.wall_selection()
             elif self.game_state == "floor_selection":
@@ -5770,6 +6250,9 @@ class Game:
                 if current_music_state != "gameplay":
                     play_music("gameplay")
                 self.run_game()
+            elif self.game_state == "paused":
+                # Keep current music playing (don't change)
+                self.pause_menu()
             elif self.game_state == "combat":
                 # Combat music is handled in start_combat method
                 self.run_combat()
@@ -5953,11 +6436,20 @@ class Game:
                 self.inventory_state = "open"
                 self.selected_player_idx = 0
                 self.selected_item_idx = 0
-            elif key == pygame.K_q:  # Quit to main menu
-                self.save_game()
-                play_music("menu")  # Return to menu music
-                self.game_state = "main_menu"
-                self.reset_game_state()
+            elif key == pygame.K_q:  # Pause/Resume toggle
+                if self.is_paused:
+                    # Resume the game
+                    self.is_paused = False
+                    if self.previous_game_state:
+                        self.game_state = self.previous_game_state
+                        self.previous_game_state = None
+                    play_sound("menu_back", 0.5)
+                else:
+                    # Pause the game
+                    self.is_paused = True
+                    self.previous_game_state = self.game_state
+                    self.game_state = "paused"
+                    play_sound("menu_select", 0.5)
             elif key == pygame.K_F5:  # Quick save
                 self.save_game()
             elif key == pygame.K_r:  # Replace item
@@ -6955,10 +7447,11 @@ class Game:
                         self.show_inventory(entity)
                     elif event.key == pygame.K_4:
                         self.try_flee()
-                    elif event.key == pygame.K_q:  # Quit to main menu during combat
-                        self.save_game()
-                        self.game_state = "main_menu"
-                        self.reset_game_state()
+                    elif event.key == pygame.K_q:  # Pause during combat
+                        self.is_paused = True
+                        self.previous_game_state = "combat"
+                        self.game_state = "paused"
+                        play_sound("menu_select", 0.5)
         else:
             # Enemy turn
             pygame.time.wait(500)  # Pause for half a second to show enemy turn

@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run RPG Game to Test Pause Feature",
+			"type": "shell",
+			"command": "python rpg_pygame.py",
+			"group": "test",
+			"isBackground": true,
+			"problemMatcher": [
+				"$python"
+			]
+		}
+	]
+}
