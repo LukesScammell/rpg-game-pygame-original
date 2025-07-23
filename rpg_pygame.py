@@ -746,6 +746,149 @@ def load_sprites():
     
     print(f"UI loading complete. Loaded {len(ui_elements)} UI elements.")
 
+    # Load Temmie shop sprites
+    print("Loading Temmie shop sprites...")
+    temmie_shop_path = os.path.join("assets", "undertale", "Shops-20250721T005643Z-1-001", "Shops", "Temmie")
+    temmie_bg_path = os.path.join(temmie_shop_path, "Backgrounds")
+    
+    # Load Temmie shop background
+    try:
+        bg_shop_path = os.path.join(temmie_bg_path, "bg_temshop.png")
+        if os.path.exists(bg_shop_path):
+            sprites["bg_temshop"] = pygame.image.load(bg_shop_path)
+            print("  Loaded: Temmie shop background")
+        else:
+            print("  Warning: Temmie shop background not found")
+    except pygame.error as e:
+        print(f"  Error loading Temmie shop background: {e}")
+    
+    # Load Temmie character sprites
+    temmie_sprites = [
+        "spr_5_tembody_0.png", "spr_temhat_0.png", "spr_5_eyes1_0.png", "spr_5_eyes2_0.png",
+        "spr_5_eyes3_0.png", "spr_5_eyes4_0.png", "spr_5_eyes5_0.png", "spr_5_eyes6_0.png",
+        "spr_5_mouth1_0.png", "spr_5_mouth2_0.png", "spr_5_mouth3_0.png", "spr_5_sellface_0.png"
+    ]
+    
+    for temmie_sprite in temmie_sprites:
+        try:
+            temmie_sprite_path = os.path.join(temmie_shop_path, temmie_sprite)
+            if os.path.exists(temmie_sprite_path):
+                sprite_key = temmie_sprite.replace('.png', '')
+                sprites[sprite_key] = pygame.image.load(temmie_sprite_path)
+                print(f"  Loaded: {temmie_sprite}")
+            else:
+                print(f"  Warning: Temmie sprite not found: {temmie_sprite}")
+        except pygame.error as e:
+            print(f"  Error loading Temmie sprite {temmie_sprite}: {e}")
+    
+    # Load Bratty & Catty shop sprites
+    print("Loading Bratty & Catty shop sprites...")
+    bratty_catty_shop_path = os.path.join("assets", "undertale", "Shops-20250721T005643Z-1-001", "Shops", "Catty & Bratty")
+    bratty_catty_bg_path = os.path.join(bratty_catty_shop_path, "Backgrounds")
+    
+    # Load Bratty & Catty shop background
+    try:
+        bg_bratty_path = os.path.join(bratty_catty_bg_path, "bg_brattybg.png")
+        if os.path.exists(bg_bratty_path):
+            sprites["bg_brattybg"] = pygame.image.load(bg_bratty_path)
+            print("  Loaded: Bratty & Catty shop background")
+        else:
+            print("  Warning: Bratty & Catty shop background not found")
+    except pygame.error as e:
+        print(f"  Error loading Bratty & Catty shop background: {e}")
+    
+    # Load Bratty & Catty character sprites
+    merchant_sprites = [
+        # Bratty sprites
+        "spr_brattybody_0.png", "spr_brattybody_1.png",
+        "spr_brattyface_0.png", "spr_brattyface_1.png", "spr_brattyface_2.png", "spr_brattyface_3.png",
+        "spr_brattyface_4.png", "spr_brattyface_5.png", "spr_brattyarm_l_0.png", "spr_brattyarm_r_0.png",
+        
+        # Catty sprites  
+        "spr_cattybody_0.png", "spr_cattybody_1.png",
+        "spr_cattyface_0.png", "spr_cattyface_1.png", "spr_cattyface_2.png", "spr_cattyface_3.png",
+        "spr_cattyface_4.png", "spr_cattyface_5.png", "spr_cattyface_6.png", "spr_cattyface_7.png",
+        "spr_catarm_0.png", "spr_catarm_1.png", "spr_catarm_2.png"
+    ]
+    
+    for merchant_sprite in merchant_sprites:
+        try:
+            merchant_sprite_path = os.path.join(bratty_catty_shop_path, merchant_sprite)
+            if os.path.exists(merchant_sprite_path):
+                sprite_key = merchant_sprite.replace('.png', '')
+                sprites[sprite_key] = pygame.image.load(merchant_sprite_path)
+                print(f"  Loaded: {merchant_sprite}")
+            else:
+                print(f"  Note: Merchant sprite not found: {merchant_sprite}")
+        except pygame.error as e:
+            print(f"  Error loading merchant sprite {merchant_sprite}: {e}")
+    
+    print(f"Bratty & Catty sprites loading complete.")
+    
+    # Load Snowdin shopkeeper sprites (if available)
+    print("Loading Snowdin shopkeeper sprites...")
+    snowdin_shop_path = os.path.join("assets", "undertale", "Shops-20250721T005643Z-1-001", "Shops")
+    
+    # Try to find shopkeeper sprites in various possible locations
+    shopkeeper_sprite_locations = [
+        os.path.join(snowdin_shop_path, "Snowdin"),
+        os.path.join("assets", "sprites"),
+        os.path.join("assets", "undertale", "Characters")
+    ]
+    
+    shopkeeper_sprites = [
+        "spr_shopkeeper1_0.png", "spr_shopkeeper1_face0_0.png", "spr_shopkeeper1_face1_0.png",
+        "spr_shopkeeper1_face2_0.png", "spr_shopkeeper1_face3_0.png", "spr_shopkeeper1_face4_0.png",
+        "spr_shopkeeper1_face5_0.png", "spr_shopkeeper1_face6_0.png", "spr_shopkeeper1eyes_0.png",
+        "spr_shopkeeper1eyes_1.png", "spr_shopkeeper1eyes_2.png", "spr_shopkeeper1eyes_3.png",
+        "spr_shopkeeper1mouth_0.png", "spr_shopkeeper1mouth_1.png",
+        "spr_shopkeeper2_body_0.png", "spr_shopkeeper2_arm_0.png", "spr_shopkeeper2_eyes_0.png"
+    ]
+    
+    for shopkeeper_sprite in shopkeeper_sprites:
+        sprite_loaded = False
+        for location in shopkeeper_sprite_locations:
+            try:
+                shopkeeper_sprite_path = os.path.join(location, shopkeeper_sprite)
+                if os.path.exists(shopkeeper_sprite_path):
+                    sprite_key = shopkeeper_sprite.replace('.png', '')
+                    sprites[sprite_key] = pygame.image.load(shopkeeper_sprite_path)
+                    print(f"  Loaded: {shopkeeper_sprite} from {location}")
+                    sprite_loaded = True
+                    break
+            except pygame.error as e:
+                continue
+        
+        if not sprite_loaded:
+            print(f"  Note: Shopkeeper sprite not found: {shopkeeper_sprite}")
+    
+    print(f"Snowdin shopkeeper sprites loading complete.")
+    
+    # Load Burgerpants shop sprites
+    print("Loading Burgerpants shop sprites...")
+    burgerpants_shop_path = os.path.join("assets", "undertale", "Shops-20250721T005643Z-1-001", "Shops", "Burgerpants")
+    
+    # Load Burgerpants sprites if folder exists
+    if os.path.exists(burgerpants_shop_path):
+        burgerpants_sprites = [
+            "spr_bpants_face_0.png", "spr_bpants_face_1.png", "spr_bpants_face_2.png", "spr_bpants_face_3.png",
+            "spr_bpants_face_4.png", "spr_bpants_face_5.png", "spr_bpants_face_6.png", "spr_bpants_arms_0.png",
+        ]
+        
+        for bp_sprite in burgerpants_sprites:
+            try:
+                bp_sprite_path = os.path.join(burgerpants_shop_path, bp_sprite)
+                if os.path.exists(bp_sprite_path):
+                    sprite_key = bp_sprite.replace('.png', '')
+                    sprites[sprite_key] = pygame.image.load(bp_sprite_path)
+                    print(f"  Loaded: {bp_sprite}")
+                else:
+                    print(f"  Note: Burgerpants sprite not found: {bp_sprite}")
+            except pygame.error as e:
+                print(f"  Error loading Burgerpants sprite {bp_sprite}: {e}")
+    
+    print(f"Burgerpants sprites loading complete.")
+
 # Load sprites
 load_sprites()
 
@@ -881,6 +1024,12 @@ def draw_text_with_shadow(surface, text, x, y, color, font_obj=None, shadow_offs
 
 def wrap_text(text, max_width, font_obj=None, font_size="normal"):
     """Wrap text to fit within a maximum width."""
+    # Safety check: ensure text is a string
+    if not isinstance(text, str):
+        if isinstance(text, list):
+            return text  # Already wrapped
+        text = str(text)  # Convert to string
+    
     if font_obj is None:
         # Use Undertale font system for size calculation
         def get_text_width(text_str):
@@ -1860,39 +2009,116 @@ class Enemy(Entity):
         # Scale XP based on level as well
         base_xp = ENEMIES[enemy_type]["xp"]
         self.xp = int(base_xp * level_multiplier)
+        
+        # Initialize gold based on enemy type and level
+        base_gold = max(5, base_xp // 2)  # Base gold is roughly half the XP value, minimum 5
+        self.gold = int(base_gold * level_multiplier)
+        
         self.weapon_drops = []  # List of possible weapon drops
+        
+        # Door guardian properties
+        self.is_door_guardian = False
+        self.special_drops = []  # Special items for door guardians
 
 class Shopkeeper:
-    def __init__(self, x, y):
+    def __init__(self, x, y, merchant_type="temmie"):
         self.x = x
         self.y = y
-        self.name = "Temmie"
-        self.icon = "temmie"  # Use temmie sprite instead of emoji
+        self.merchant_type = merchant_type
+        
+        # Configure merchant based on type
+        if merchant_type == "temmie":
+            self.name = "Temmie"
+            self.icon = "temmie"
+            self.specialization = "weapons"
+            self.dialogue = ["* hOI!", "* welcom to...", "* da TEM SHOP!!!", "* tEM sell u WEAPONS!"]
+        elif merchant_type == "bratty_catty":
+            self.name = "Bratty & Catty"
+            self.icon = "bratty_catty" 
+            self.specialization = "armor"
+            self.dialogue = ["* Like, OMG, hi!", "* We're like, totally selling armor!", "* It's like, super cute AND protective!", "* You should like, totally buy some!"]
+        elif merchant_type == "snowdin_shopkeeper":
+            self.name = "Snowdin Shopkeeper"
+            self.icon = "snowdin_shopkeeper"
+            self.specialization = "potions"
+            self.dialogue = ["* Welcome to Snowdin Shop!", "* I've got the best potions in the Underground!", "* They'll keep you warm and healthy!", "* Perfect for your journey!"]
+        elif merchant_type == "burgerpants":
+            self.name = "Burgerpants"
+            self.icon = "burgerpants"
+            self.specialization = "mixed"  # Sells everything but less variety
+            self.dialogue = ["* Ugh... welcome to the shop.", "* I guess you want items?", "* These'll keep you alive...", "* ...probably."]
+        else:
+            # Default fallback
+            self.name = "Shopkeeper"
+            self.icon = "temmie"
+            self.specialization = "mixed"
+            self.dialogue = ["* Welcome to my shop!", "* Take a look around!", "* I have items for sale!", "* Come back anytime!"]
+        
         self.inventory = []  # Shop's inventory
         self.generate_shop_inventory()
     
     def generate_shop_inventory(self):
-        """Generate random items for the shop."""
+        """Generate items for the shop based on merchant specialization."""
         self.inventory = []
         
-        # Generate 4-6 items for sale
-        num_items = random.randint(4, 6)
-        
-        for _ in range(num_items):
-            item_type = random.choice(["weapon", "armor", "potion"])
+        if self.specialization == "weapons":
+            # Temmie sells weapons (4-6 weapons)
+            num_items = random.randint(4, 6)
+            available_weapons = ALL_WEAPONS
             
-            if item_type == "weapon":
-                weapon = self.generate_random_weapon()
-                if weapon:
-                    self.inventory.append(weapon)
-            elif item_type == "armor":
-                armor = self.generate_random_armor()
-                if armor:
-                    self.inventory.append(armor)
-            else:  # potion
+            for _ in range(num_items):
+                if available_weapons:
+                    chosen_weapon = random.choice(available_weapons)
+                    weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                                       chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                                       chosen_weapon.sprite_name)
+                    self.inventory.append(weapon_copy)
+        
+        elif self.specialization == "armor":
+            # Bratty & Catty sell armor (4-6 pieces)
+            num_items = random.randint(4, 6)
+            available_armor = ALL_ARMOR
+            
+            for _ in range(num_items):
+                if available_armor:
+                    chosen_armor = random.choice(available_armor)
+                    armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                     chosen_armor.allowed_classes, chosen_armor.rarity,
+                                     chosen_armor.sprite_name)
+                    self.inventory.append(armor_copy)
+        
+        elif self.specialization == "potions":
+            # Snowdin Shopkeeper sells potions (5-8 potions)
+            num_items = random.randint(5, 8)
+            
+            for _ in range(num_items):
                 chosen_potion = random.choice(ALL_POTIONS)
                 potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
                 self.inventory.append(potion_copy)
+        
+        else:  # mixed specialization
+            # Burgerpants sells everything but smaller selection
+            num_items = random.randint(3, 5)
+            
+            for _ in range(num_items):
+                item_type = random.choice(["weapon", "armor", "potion"])
+                
+                if item_type == "weapon":
+                    chosen_weapon = random.choice(ALL_WEAPONS)
+                    weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                                       chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                                       chosen_weapon.sprite_name)
+                    self.inventory.append(weapon_copy)
+                elif item_type == "armor":
+                    chosen_armor = random.choice(ALL_ARMOR)
+                    armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                     chosen_armor.allowed_classes, chosen_armor.rarity,
+                                     chosen_armor.sprite_name)
+                    self.inventory.append(armor_copy)
+                else:  # potion
+                    chosen_potion = random.choice(ALL_POTIONS)
+                    potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                    self.inventory.append(potion_copy)
     
     def generate_random_weapon(self):
         """Generate a random weapon for the shop inventory."""
@@ -1989,10 +2215,79 @@ class Dungeon:
     def create_h_tunnel(self, x1, x2, y):
         for x in range(min(x1, x2), max(x1, x2) + 1):
             self.grid[y][x] = UI["floor"]
+            
+        # Chance to place a door guardian enemy in the tunnel
+        if random.random() < 0.15:  # 15% chance for door guardian
+            guard_x = (min(x1, x2) + max(x1, x2)) // 2  # Place in middle of tunnel
+            guard_y = y
+            
+            # Check if position is valid and no existing enemy
+            if (self.is_valid_spawn_position(guard_x, guard_y) and 
+                not any(e.x == guard_x and e.y == guard_y for e in self.enemies)):
+                # Create a stronger enemy as door guardian
+                enemy_type = self.get_door_guardian_type()
+                guardian = Enemy(guard_x, guard_y, enemy_type, self.level)
+                guardian.is_door_guardian = True  # Mark as door guardian
+                
+                # Door guardians are stronger
+                guardian.max_hp = int(guardian.max_hp * 1.3)
+                guardian.hp = guardian.max_hp
+                guardian.base_attack = int(guardian.base_attack * 1.2)
+                guardian.base_defense = int(guardian.base_defense * 1.1)
+                
+                # Better loot for door guardians
+                guardian.gold = int(guardian.gold * 1.5)
+                if enemy_type == "temmie":
+                    # Temmie door guardian has special shop items
+                    guardian.special_drops = ["tem_flakes", "tem_armor"]
+                
+                self.enemies.append(guardian)
 
     def create_v_tunnel(self, y1, y2, x):
         for y in range(min(y1, y2), max(y1, y2) + 1):
             self.grid[y][x] = UI["floor"]
+            
+        # Chance to place a door guardian enemy in the tunnel
+        if random.random() < 0.15:  # 15% chance for door guardian
+            guard_x = x
+            guard_y = (min(y1, y2) + max(y1, y2)) // 2  # Place in middle of tunnel
+            
+            # Check if position is valid and no existing enemy
+            if (self.is_valid_spawn_position(guard_x, guard_y) and 
+                not any(e.x == guard_x and e.y == guard_y for e in self.enemies)):
+                # Create a stronger enemy as door guardian
+                enemy_type = self.get_door_guardian_type()
+                guardian = Enemy(guard_x, guard_y, enemy_type, self.level)
+                guardian.is_door_guardian = True  # Mark as door guardian
+                
+                # Door guardians are stronger
+                guardian.max_hp = int(guardian.max_hp * 1.3)
+                guardian.hp = guardian.max_hp
+                guardian.base_attack = int(guardian.base_attack * 1.2)
+                guardian.base_defense = int(guardian.base_defense * 1.1)
+                
+                # Better loot for door guardians
+                guardian.gold = int(guardian.gold * 1.5)
+                if enemy_type == "temmie":
+                    # Temmie door guardian has special shop items
+                    guardian.special_drops = ["tem_flakes", "tem_armor"]
+                
+                self.enemies.append(guardian)
+    
+    def get_door_guardian_type(self):
+        """Get appropriate enemy type for door guardians based on level."""
+        if self.level == 1:
+            # Early level door guardians
+            return random.choice(["froggit", "whimsun", "vegetoid"])
+        elif self.level == 2:
+            # Mid level door guardians  
+            return random.choice(["loox", "moldsmal", "temmie"])
+        elif self.level == 3:
+            # Higher level door guardians
+            return random.choice(["pyrope", "vulkin", "temmie"])
+        else:
+            # High level door guardians
+            return random.choice(["temmie", "lesser_dog", "greater_dog"])
 
     def generate(self):
         chest_room_placed = False
@@ -2060,10 +2355,10 @@ class Dungeon:
         if room_num == 0 or room_num >= MAX_ROOMS - 1:
             return "normal"
         
-        # Shop room (15% chance, max 1 per level) - increased for better gameplay
+        # Shop room (80% chance for testing, max 1 per level) - increased for animation testing
         if not hasattr(self, 'shop_room_placed'):
             self.shop_room_placed = False
-        if not self.shop_room_placed and random.random() < 0.15:
+        if not self.shop_room_placed and random.random() < 0.80:
             return "shop_room"
         
         # One guaranteed chest room per level but much rarer (3% chance on each applicable room)
@@ -2198,62 +2493,81 @@ class Dungeon:
         # Reduced enemy count for treasure rooms
         num_enemies = random.randint(0, 1)  # 0-1 instead of 0-3
         for _ in range(num_enemies):
-            x = random.randint(room.x1 + 1, room.x2 - 1)
-            y = random.randint(room.y1 + 1, room.y2 - 1)
-            if not any(e.x == x and e.y == y for e in self.enemies):
-                enemy_type = self.get_enemy_type_for_level()
-                enemy = Enemy(x, y, enemy_type, self.level)
+            attempts = 0
+            max_attempts = 50  # Prevent infinite loops
+            
+            while attempts < max_attempts:
+                x = random.randint(room.x1 + 1, room.x2 - 1)
+                y = random.randint(room.y1 + 1, room.y2 - 1)
                 
-                # Same weapon drops as normal rooms
-                if enemy_type in ["dummy", "froggit", "whimsun"]:
-                    enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]
-                elif enemy_type in ["vegetoid", "moldsmal", "loox"]:
-                    enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]
-                elif enemy_type in ["pyrope", "vulkin", "tsunderplane", "temmie"]:
-                    enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]
-                elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
-                    enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]
+                # Check if position is valid for spawning and no existing enemy
+                if (self.is_valid_spawn_position(x, y) and 
+                    not any(e.x == x and e.y == y for e in self.enemies)):
+                    enemy_type = self.get_enemy_type_for_level()
+                    enemy = Enemy(x, y, enemy_type, self.level)
+                    
+                    # Same weapon drops as normal rooms
+                    if enemy_type in ["dummy", "froggit", "whimsun"]:
+                        enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]
+                    elif enemy_type in ["vegetoid", "moldsmal", "loox"]:
+                        enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]
+                    elif enemy_type in ["pyrope", "vulkin", "tsunderplane", "temmie"]:
+                        enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]
+                    elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
+                        enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]
+                    
+                    self.enemies.append(enemy)
+                    break  # Successfully placed enemy
                 
-                self.enemies.append(enemy)
+                attempts += 1
         
         # Higher chance for treasure chests (60% instead of 25%)
         if random.random() < 0.60:
-            chest_x = random.randint(room.x1 + 1, room.x2 - 1)
-            chest_y = random.randint(room.y1 + 1, room.y2 - 1)
+            attempts = 0
+            max_attempts = 50
             
-            # Generate better chest contents for treasure rooms
-            chest_items = []
-            num_items = random.randint(2, 3)  # Slightly more items
-            
-            for _ in range(num_items):
-                item_type = random.random()
-                if item_type < 0.42:  # 42% chance for weapon
-                    available_weapons = self.get_available_weapons_for_players()
-                    if available_weapons:
-                        chosen_weapon = random.choice(available_weapons)
-                        weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
-                                           chosen_weapon.allowed_classes, chosen_weapon.rarity, 
-                                           chosen_weapon.sprite_name)
-                        chest_items.append(weapon_copy)
-                        # Mark as obtained for single player
-                        self.mark_item_obtained(chosen_weapon.name)
-                elif item_type < 0.72:  # 30% chance for armor
-                    available_armor = self.get_available_armor_for_players()
-                    if available_armor:
-                        chosen_armor = random.choice(available_armor)
-                        armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
-                                         chosen_armor.allowed_classes, chosen_armor.rarity,
-                                         chosen_armor.sprite_name)
-                        chest_items.append(armor_copy)
-                        # Mark as obtained for single player
-                        self.mark_item_obtained(chosen_armor.name)
-                else:  # 28% chance for potion
-                    chosen_potion = random.choice(ALL_POTIONS)
-                    potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
-                    chest_items.append(potion_copy)
-            
-            treasure = Treasure(chest_x, chest_y, chest_items)
-            self.treasures.append(treasure)
+            while attempts < max_attempts:
+                chest_x = random.randint(room.x1 + 1, room.x2 - 1)
+                chest_y = random.randint(room.y1 + 1, room.y2 - 1)
+                
+                # Check if position is valid for spawning
+                if self.is_valid_spawn_position(chest_x, chest_y):
+                    # Generate better chest contents for treasure rooms
+                    chest_items = []
+                    num_items = random.randint(2, 3)  # Slightly more items
+                    
+                    for _ in range(num_items):
+                        item_type = random.random()
+                        if item_type < 0.42:  # 42% chance for weapon
+                            available_weapons = self.get_available_weapons_for_players()
+                            if available_weapons:
+                                chosen_weapon = random.choice(available_weapons)
+                                weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                                                   chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                                                   chosen_weapon.sprite_name)
+                                chest_items.append(weapon_copy)
+                                # Mark as obtained for single player
+                                self.mark_item_obtained(chosen_weapon.name)
+                        elif item_type < 0.72:  # 30% chance for armor
+                            available_armor = self.get_available_armor_for_players()
+                            if available_armor:
+                                chosen_armor = random.choice(available_armor)
+                                armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                                 chosen_armor.allowed_classes, chosen_armor.rarity,
+                                                 chosen_armor.sprite_name)
+                                chest_items.append(armor_copy)
+                                # Mark as obtained for single player
+                                self.mark_item_obtained(chosen_armor.name)
+                        else:  # 28% chance for potion
+                            chosen_potion = random.choice(ALL_POTIONS)
+                            potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                            chest_items.append(potion_copy)
+                    
+                    treasure = Treasure(chest_x, chest_y, chest_items)
+                    self.treasures.append(treasure)
+                    break  # Successfully placed chest
+                
+                attempts += 1
         
         # Slightly increased ground loot for treasure rooms
         num_items = random.randint(0, 2)  # 0-2 instead of 0-1
@@ -2295,10 +2609,34 @@ class Dungeon:
                 self.items.append(item)
 
     def place_shop_room_content(self, room):
-        """Place content for a shop room - shopkeeper with no enemies."""
+        """Place content for a shop room - randomly choose merchant type."""
         # Place shopkeeper at the center of the room
         center_x, center_y = room.center()
-        shopkeeper = Shopkeeper(center_x, center_y)
+        
+        # Randomly choose merchant type based on level and chance
+        merchant_types = ["temmie", "bratty_catty", "snowdin_shopkeeper", "burgerpants"]
+        
+        # Weight the selection based on dungeon level for variety
+        if self.level == 1:
+            # Early level - mostly Temmie (weapons needed early)
+            merchant_type = random.choices(
+                merchant_types,
+                weights=[50, 20, 20, 10]  # Favor Temmie for weapons
+            )[0]
+        elif self.level == 2:
+            # Mid level - balanced mix
+            merchant_type = random.choices(
+                merchant_types,
+                weights=[30, 30, 25, 15]  # More balanced
+            )[0]
+        else:
+            # Higher levels - any merchant is equally useful
+            merchant_type = random.choices(
+                merchant_types,
+                weights=[25, 25, 25, 25]  # Equal chance
+            )[0]
+        
+        shopkeeper = Shopkeeper(center_x, center_y, merchant_type)
         self.shopkeepers.append(shopkeeper)
         
         # No enemies in shop rooms for peaceful trading
@@ -2330,62 +2668,81 @@ class Dungeon:
             num_enemies = random.randint(0, 3)  # Standard enemy count for higher levels
             
         for _ in range(num_enemies):
-            x = random.randint(room.x1 + 1, room.x2 - 1)
-            y = random.randint(room.y1 + 1, room.y2 - 1)
-            if not any(e.x == x and e.y == y for e in self.enemies):
-                enemy_type = self.get_enemy_type_for_level()
-                enemy = Enemy(x, y, enemy_type, self.level)
+            attempts = 0
+            max_attempts = 50  # Prevent infinite loops
+            
+            while attempts < max_attempts:
+                x = random.randint(room.x1 + 1, room.x2 - 1)
+                y = random.randint(room.y1 + 1, room.y2 - 1)
                 
-                # Add weapon drops based on enemy type
-                if enemy_type in ["dummy", "froggit", "whimsun"]:
-                    enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]  # Basic weapons
-                elif enemy_type in ["vegetoid", "moldsmal", "loox"]:
-                    enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]  # Intermediate weapons
-                elif enemy_type in ["pyrope", "vulkin", "tsunderplane", "temmie"]:
-                    enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]  # Advanced weapons and armor
-                elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
-                    enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]  # Epic weapons
+                # Check if position is valid for spawning and no existing enemy
+                if (self.is_valid_spawn_position(x, y) and 
+                    not any(e.x == x and e.y == y for e in self.enemies)):
+                    enemy_type = self.get_enemy_type_for_level()
+                    enemy = Enemy(x, y, enemy_type, self.level)
+                    
+                    # Add weapon drops based on enemy type
+                    if enemy_type in ["dummy", "froggit", "whimsun"]:
+                        enemy.weapon_drops = [WARRIOR_WEAPONS[0], ARCHER_WEAPONS[0]]  # Basic weapons
+                    elif enemy_type in ["vegetoid", "moldsmal", "loox"]:
+                        enemy.weapon_drops = WARRIOR_WEAPONS[1:3] + ARCHER_WEAPONS[1:2]  # Intermediate weapons
+                    elif enemy_type in ["pyrope", "vulkin", "tsunderplane", "temmie"]:
+                        enemy.weapon_drops = WARRIOR_WEAPONS[3:5] + ALL_ARMOR[2:5]  # Advanced weapons and armor
+                    elif enemy_type in ["mad_dummy", "lesser_dog", "greater_dog", "papyrus", "undyne", "mettaton", "asgore"]:
+                        enemy.weapon_drops = WARRIOR_WEAPONS[6:] + MAGE_WEAPONS[3:] + ARCHER_WEAPONS[3:]  # Epic weapons
+                    
+                    self.enemies.append(enemy)
+                    break  # Successfully placed enemy
                 
-                self.enemies.append(enemy)
+                attempts += 1
         
         # Balanced treasure chest placement (30% chance - increased from 25%)
         if random.random() < 0.30:
-            chest_x = random.randint(room.x1 + 1, room.x2 - 1)
-            chest_y = random.randint(room.y1 + 1, room.y2 - 1)
+            attempts = 0
+            max_attempts = 50
             
-            # Generate balanced treasure chest contents
-            chest_items = []
-            num_items = random.randint(1, 3)
-            
-            for _ in range(num_items):
-                item_type = random.random()
-                if item_type < 0.35:  # 35% chance for weapon (reduced from 40% for balance)
-                    available_weapons = self.get_available_weapons_for_players()
-                    if available_weapons:
-                        chosen_weapon = random.choice(available_weapons)
-                        weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
-                                           chosen_weapon.allowed_classes, chosen_weapon.rarity, 
-                                           chosen_weapon.sprite_name)
-                        chest_items.append(weapon_copy)
-                        # Mark as obtained for single player
-                        self.mark_item_obtained(chosen_weapon.name)
-                elif item_type < 0.65:  # 30% chance for armor (same)
-                    available_armor = self.get_available_armor_for_players()
-                    if available_armor:
-                        chosen_armor = random.choice(available_armor)
-                        armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
-                                         chosen_armor.allowed_classes, chosen_armor.rarity,
-                                         chosen_armor.sprite_name)
-                        chest_items.append(armor_copy)
-                        # Mark as obtained for single player
-                        self.mark_item_obtained(chosen_armor.name)
-                else:  # 35% chance for potion (increased from 30% to balance weapons)
-                    chosen_potion = random.choice(ALL_POTIONS)
-                    potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
-                    chest_items.append(potion_copy)
-            
-            treasure = Treasure(chest_x, chest_y, chest_items)
-            self.treasures.append(treasure)
+            while attempts < max_attempts:
+                chest_x = random.randint(room.x1 + 1, room.x2 - 1)
+                chest_y = random.randint(room.y1 + 1, room.y2 - 1)
+                
+                # Check if position is valid for spawning
+                if self.is_valid_spawn_position(chest_x, chest_y):
+                    # Generate balanced treasure chest contents
+                    chest_items = []
+                    num_items = random.randint(1, 3)
+                    
+                    for _ in range(num_items):
+                        item_type = random.random()
+                        if item_type < 0.35:  # 35% chance for weapon (reduced from 40% for balance)
+                            available_weapons = self.get_available_weapons_for_players()
+                            if available_weapons:
+                                chosen_weapon = random.choice(available_weapons)
+                                weapon_copy = Weapon(chosen_weapon.name, chosen_weapon.attack_bonus, 
+                                               chosen_weapon.allowed_classes, chosen_weapon.rarity, 
+                                               chosen_weapon.sprite_name)
+                                chest_items.append(weapon_copy)
+                                # Mark as obtained for single player
+                                self.mark_item_obtained(chosen_weapon.name)
+                        elif item_type < 0.65:  # 30% chance for armor (same)
+                            available_armor = self.get_available_armor_for_players()
+                            if available_armor:
+                                chosen_armor = random.choice(available_armor)
+                                armor_copy = Armor(chosen_armor.name, chosen_armor.defense_bonus,
+                                                 chosen_armor.allowed_classes, chosen_armor.rarity,
+                                                 chosen_armor.sprite_name)
+                                chest_items.append(armor_copy)
+                                # Mark as obtained for single player
+                                self.mark_item_obtained(chosen_armor.name)
+                        else:  # 35% chance for potion (increased from 30% to balance weapons)
+                            chosen_potion = random.choice(ALL_POTIONS)
+                            potion_copy = Potion(chosen_potion.name, chosen_potion.hp_gain, chosen_potion.rarity)
+                            chest_items.append(potion_copy)
+                    
+                    treasure = Treasure(chest_x, chest_y, chest_items)
+                    self.treasures.append(treasure)
+                    break  # Successfully placed chest
+                
+                attempts += 1
         
         # Adjusted ground item distribution (better balance)
         item_chance = random.random()
@@ -2546,6 +2903,22 @@ class Dungeon:
         if 0 <= x < self.width and 0 <= y < self.height:
             return self.explored[y][x]
         return False
+    
+    def is_valid_spawn_position(self, x, y):
+        """Check if a position is valid for spawning enemies or items.
+        Prevents spawning on stairs, doors, or impassable tiles."""
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return False
+        
+        # Check tile type
+        tile_type = self.grid[y][x]
+        
+        # Don't spawn on stairs/doors or walls
+        if tile_type in [UI["stairs"], UI["wall"]]:
+            return False
+        
+        # Only allow spawning on floor tiles
+        return tile_type == UI["floor"]
 
 # --- Game ---
 class Game:
@@ -2811,8 +3184,7 @@ class Game:
             # Use text wrapping to handle long enemy status text
             max_text_width = enemy_text_max_width
             if undertale_font.get_text_size(status, "normal")[0] > max_text_width:
-                wrapped_status = wrap_text(status, max_text_width, font)
-                draw_wrapped_text_with_shadow(screen, wrapped_status, enemy_section_x + 60, y_pos, 
+                draw_wrapped_text_with_shadow(screen, status, enemy_section_x + 60, y_pos, 
                                              max_text_width, text_color, font, 1, 5)
             else:
                 draw_text_with_shadow(screen, status, enemy_section_x + 60, y_pos, text_color, font, 1)
@@ -3409,229 +3781,665 @@ class Game:
         self.messages.appendleft(text)
     
     def draw_shop_screen(self):
-        """Draw the shop interface for buying and selling items."""
-        # Enhanced background
-        bg_rect = pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT)
-        draw_gradient_rect(screen, bg_rect, ENHANCED_COLORS['background_dark'], ENHANCED_COLORS['background_light'])
+        """Draw the Undertale-style shop interface with different merchant portraits."""
+        # Black background like Undertale
+        screen.fill(BLACK)
         
-        # Shop title
-        title_y = 20
-        title_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, title_y - 10, 300, 60)
-        draw_gradient_rect(screen, title_bg_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
-        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], title_bg_rect, width=3, border_radius=10)
+        # Get current shopkeeper type to determine background
+        merchant_type = self.current_shopkeeper.merchant_type if self.current_shopkeeper else "temmie"
         
-        draw_text_with_shadow(screen, "🏪 SHOP 🏪", SCREEN_WIDTH // 2 - 100, title_y, 
-                            ENHANCED_COLORS['accent_gold'])
+        # Draw appropriate shop background (LARGER SIZE)
+        bg_sprite = None
+        if merchant_type == "bratty_catty" and "bg_brattybg" in sprites:
+            bg_sprite = sprites["bg_brattybg"]
+        elif "bg_temshop" in sprites:
+            bg_sprite = sprites["bg_temshop"]  # Fallback to Temmie shop for others
         
-        # Shop mode tabs (Buy/Sell) - Enhanced visual indication
-        tab_y = 100
-        buy_tab_rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, tab_y, 140, 50)
-        sell_tab_rect = pygame.Rect(SCREEN_WIDTH // 2 - 10, tab_y, 140, 50)
-        
-        # Draw tabs with enhanced visual feedback
-        if self.shop_mode == "buy":
-            draw_gradient_rect(screen, buy_tab_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
-            pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], buy_tab_rect, width=3, border_radius=8)
-            draw_gradient_rect(screen, sell_tab_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
-            pygame.draw.rect(screen, ENHANCED_COLORS['text_disabled'], sell_tab_rect, width=2, border_radius=8)
+        if bg_sprite:
+            # Scale up the background to be much larger
+            bg_scale = 2.5  # Make background 2.5x bigger
+            scaled_bg = pygame.transform.scale(bg_sprite, 
+                                             (int(bg_sprite.get_width() * bg_scale), 
+                                              int(bg_sprite.get_height() * bg_scale)))
+            
+            # Center the larger background
+            bg_x = (SCREEN_WIDTH - scaled_bg.get_width()) // 2
+            bg_y = 30  # Position near top
+            screen.blit(scaled_bg, (bg_x, bg_y))
+            
+            # Position character sprite components on top of larger background
+            character_center_x = bg_x + scaled_bg.get_width() // 2
+            character_center_y = bg_y + scaled_bg.get_height() // 2
+            
         else:
-            draw_gradient_rect(screen, sell_tab_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
-            pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], sell_tab_rect, width=3, border_radius=8)
-            draw_gradient_rect(screen, buy_tab_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
-            pygame.draw.rect(screen, ENHANCED_COLORS['text_disabled'], buy_tab_rect, width=2, border_radius=8)
+            # Fallback positioning if no background
+            character_center_x = SCREEN_WIDTH // 2
+            character_center_y = 200
         
-        draw_text_with_shadow(screen, "BUY", SCREEN_WIDTH // 2 - 120, tab_y + 15, 
-                            ENHANCED_COLORS['text_primary'], font, 1)
-        draw_text_with_shadow(screen, "SELL", SCREEN_WIDTH // 2 + 20, tab_y + 15, 
-                            ENHANCED_COLORS['text_primary'], font, 1)
+        # Get current shopkeeper type and draw appropriate character
+        merchant_type = self.current_shopkeeper.merchant_type if self.current_shopkeeper else "temmie"
+        character_scale = 3.0  # Make characters 3x bigger to take up more screen
         
-        # TAB key instruction prominently displayed
-        tab_instruction_y = tab_y + 60
-        tab_bg_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, tab_instruction_y, 200, 30)
-        draw_gradient_rect(screen, tab_bg_rect, (50, 50, 80), (70, 70, 100))
-        pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], tab_bg_rect, width=2, border_radius=6)
-        draw_text_with_shadow(screen, "Press [TAB] to Switch", SCREEN_WIDTH // 2 - 85, tab_instruction_y + 5, 
-                            ENHANCED_COLORS['accent_gold'], small_font, 1)
+        if merchant_type == "temmie":
+            self.draw_temmie_portrait(character_center_x, character_center_y, character_scale)
+        elif merchant_type == "bratty_catty":
+            self.draw_bratty_catty_portrait(character_center_x, character_center_y, character_scale)
+        elif merchant_type == "snowdin_shopkeeper":
+            self.draw_snowdin_shopkeeper_portrait(character_center_x, character_center_y, character_scale)
+        elif merchant_type == "burgerpants":
+            self.draw_burgerpants_portrait(character_center_x, character_center_y, character_scale)
+        else:
+            # Fallback for unknown merchant types
+            self.draw_generic_merchant_sprite(character_center_x, character_center_y, character_scale, merchant_type)
         
-        # Instructions panel (moved down to accommodate TAB instruction)
-        instruction_panel_rect = pygame.Rect(50, 200, 400, 150)
-        draw_gradient_rect(screen, instruction_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
-        pygame.draw.rect(screen, ENHANCED_COLORS['accent_silver'], instruction_panel_rect, width=2, border_radius=8)
+        # Undertale-style dialogue box (left side)
+        dialogue_x = 50
+        dialogue_y = 400
+        dialogue_width = 600
+        dialogue_height = 150
         
-        draw_text_with_shadow(screen, "Controls:", 70, 215, ENHANCED_COLORS['accent_silver'], small_font, 1)
+        # Draw dialogue box background (white with black border)
+        dialogue_rect = pygame.Rect(dialogue_x, dialogue_y, dialogue_width, dialogue_height)
+        pygame.draw.rect(screen, WHITE, dialogue_rect)
+        pygame.draw.rect(screen, BLACK, dialogue_rect, 4)  # Black border
+        
+        # Get merchant-specific dialogue
+        dialogue_lines = self.current_shopkeeper.dialogue if self.current_shopkeeper else ["* Welcome to my shop!"]
+        
+        for i, line in enumerate(dialogue_lines[:3]):  # Show max 3 lines
+            text_y = dialogue_y + 20 + i * 30
+            # Use undertale font for authentic feel
+            if undertale_font:
+                text_surface = undertale_font.render_text(line, "normal", BLACK)
+                screen.blit(text_surface, (dialogue_x + 20, text_y))
+            else:
+                # Fallback to regular font
+                text_surface = font.render(line, True, BLACK)
+                screen.blit(text_surface, (dialogue_x + 20, text_y))
+        
+        # Menu options (right side, Undertale style)
+        menu_x = 750
+        menu_y = 400
+        menu_width = 200
+        menu_height = 200
+        
+        # Menu background (white with black border)
+        menu_rect = pygame.Rect(menu_x, menu_y, menu_width, menu_height)
+        pygame.draw.rect(screen, WHITE, menu_rect)
+        pygame.draw.rect(screen, BLACK, menu_rect, 4)
+        
+        # Menu options
+        menu_options = ["❤ Buy", "Sell", "Talk", "Exit"]
+        
+        for i, option in enumerate(menu_options):
+            option_y = menu_y + 20 + i * 40
+            
+            # Highlight selected option (heart indicates selection in Undertale)
+            if (self.shop_mode == "buy" and i == 0) or (self.shop_mode == "sell" and i == 1):
+                # Selected option - already has heart
+                text_color = BLACK
+            elif i == 0 and self.shop_mode != "buy":
+                # Unselected buy option - remove heart
+                option = "Buy"
+                text_color = BLACK
+            else:
+                text_color = BLACK
+            
+            if undertale_font:
+                text_surface = undertale_font.render_text(option, "normal", text_color)
+                screen.blit(text_surface, (menu_x + 20, option_y))
+            else:
+                text_surface = font.render(option, True, text_color)
+                screen.blit(text_surface, (menu_x + 20, option_y))
+        
+        # Show current player and gold (bottom left)
+        current_player = self.players[self.selected_player_idx]
+        player_info_y = SCREEN_HEIGHT - 100
+        
+        player_text = f"Player: {current_player.name}"
+        gold_text = f"Gold: {current_player.gold}G"
+        
+        if undertale_font:
+            player_surface = undertale_font.render_text(player_text, "small", WHITE)
+            gold_surface = undertale_font.render_text(gold_text, "small", (255, 215, 0))  # Gold color
+        else:
+            player_surface = small_font.render(player_text, True, WHITE)
+            gold_surface = small_font.render(gold_text, True, (255, 215, 0))
+        
+        screen.blit(player_surface, (50, player_info_y))
+        screen.blit(gold_surface, (50, player_info_y + 25))
+        
+        # Draw shop inventory or sell items based on mode
+        if self.shop_mode == "buy":
+            self.draw_undertale_shop_buy_items()
+        else:
+            self.draw_undertale_shop_sell_items()
+        
+        # Instructions (bottom right)
         instructions = [
-            "← → : Switch Player", 
-            "↑ ↓ : Navigate Items",
-            "ENTER : Buy/Sell Item",
-            "ESC/Q : Close Shop"
+            "TAB - Switch Buy/Sell",
+            "↑↓ - Navigate items",
+            "← → - Switch player",
+            "ENTER - Confirm",
+            "ESC - Exit"
         ]
         
+        inst_y = SCREEN_HEIGHT - 120
         for i, instruction in enumerate(instructions):
-            key_part, desc_part = instruction.split(":", 1)
-            draw_text_with_shadow(screen, key_part.strip(), 70, 235 + i * 20, ENHANCED_COLORS['accent_gold'], small_font, 1)
-            draw_text_with_shadow(screen, ":" + desc_part, 130, 235 + i * 20, ENHANCED_COLORS['text_secondary'], small_font, 1)
-        
-        # Current player info (adjusted position)
-        current_player = self.players[self.selected_player_idx]
-        player_panel_rect = pygame.Rect(500, 200, 300, 150)
-        draw_gradient_rect(screen, player_panel_rect, ENHANCED_COLORS['primary_dark'], ENHANCED_COLORS['primary_light'])
-        pygame.draw.rect(screen, ENHANCED_COLORS['success_green'], player_panel_rect, width=2, border_radius=6)
-        
-        draw_text_with_shadow(screen, f"{current_player.name}", 520, 215, ENHANCED_COLORS['accent_gold'], font, 1)
-        draw_text_with_shadow(screen, f"Level {current_player.level} {current_player.char_class.title()}", 
-                            520, 240, ENHANCED_COLORS['text_primary'], small_font, 1)
-        draw_text_with_shadow(screen, f"Gold: {current_player.gold}", 520, 265, 
-                            (255, 215, 0), font, 1)  # Gold color for gold amount
-        draw_text_with_shadow(screen, f"HP: {current_player.hp}/{current_player.max_hp}", 
-                            520, 290, GREEN if current_player.hp == current_player.max_hp else RED, small_font, 1)
-        
-        # Main shop panel
-        shop_panel_rect = pygame.Rect(100, 350, SCREEN_WIDTH - 200, SCREEN_HEIGHT - 400)
-        draw_gradient_rect(screen, shop_panel_rect, ENHANCED_COLORS['panel_dark'], ENHANCED_COLORS['panel_light'])
-        pygame.draw.rect(screen, ENHANCED_COLORS['accent_blue'], shop_panel_rect, width=3, border_radius=10)
-        
-        if self.shop_mode == "buy":
-            self.draw_shop_buy_items(shop_panel_rect)
-        else:
-            self.draw_shop_sell_items(shop_panel_rect)
+            if undertale_font:
+                inst_surface = undertale_font.render_text(instruction, "small", WHITE)
+            else:
+                inst_surface = small_font.render(instruction, True, WHITE)
+            screen.blit(inst_surface, (SCREEN_WIDTH - 250, inst_y + i * 20))
         
         pygame.display.flip()
     
-    def draw_shop_buy_items(self, panel_rect):
-        """Draw items available for purchase."""
-        draw_text_with_shadow(screen, f"🛒 {self.current_shopkeeper.name}'s Wares", 
-                            panel_rect.x + 20, panel_rect.y + 20, ENHANCED_COLORS['accent_gold'], font, 1)
+    def draw_temmie_portrait(self, center_x, center_y, scale):
+        """Draw Temmie's layered portrait sprites."""
+        # Draw Temmie body
+        if "spr_5_tembody_0" in sprites:
+            body_sprite = sprites["spr_5_tembody_0"]
+            scaled_body = pygame.transform.scale(body_sprite, 
+                                               (int(body_sprite.get_width() * scale), 
+                                                int(body_sprite.get_height() * scale)))
+            body_x = center_x - scaled_body.get_width() // 2
+            body_y = center_y - scaled_body.get_height() // 2
+            screen.blit(scaled_body, (body_x, body_y))
         
+        # Draw Temmie's hat
+        if "spr_temhat_0" in sprites:
+            hat_sprite = sprites["spr_temhat_0"]
+            scaled_hat = pygame.transform.scale(hat_sprite, 
+                                              (int(hat_sprite.get_width() * scale), 
+                                               int(hat_sprite.get_height() * scale)))
+            hat_x = center_x - scaled_hat.get_width() // 2
+            hat_y = center_y - scaled_hat.get_height() // 2 - int(20 * scale)
+            screen.blit(scaled_hat, (hat_x, hat_y))
+        
+        # Draw animated eyes
+        current_time = pygame.time.get_ticks()
+        eye_frame = (current_time // 500) % 6
+        eye_sprite_name = f"spr_5_eyes{eye_frame + 1}_0"
+        
+        if eye_sprite_name in sprites:
+            eye_sprite = sprites[eye_sprite_name]
+            scaled_eyes = pygame.transform.scale(eye_sprite, 
+                                                (int(eye_sprite.get_width() * scale), 
+                                                 int(eye_sprite.get_height() * scale)))
+            eye_x = center_x - scaled_eyes.get_width() // 2
+            eye_y = center_y - scaled_eyes.get_height() // 2
+            screen.blit(scaled_eyes, (eye_x, eye_y))
+        
+        # Draw animated mouth
+        mouth_frame = (current_time // 800) % 3
+        if mouth_frame == 0 and "spr_5_mouth1_0" in sprites:
+            mouth_sprite = sprites["spr_5_mouth1_0"]
+        elif mouth_frame == 1 and "spr_5_mouth2_0" in sprites:
+            mouth_sprite = sprites["spr_5_mouth2_0"]
+        elif "spr_5_mouth3_0" in sprites:
+            mouth_sprite = sprites["spr_5_mouth3_0"]
+        else:
+            mouth_sprite = None
+            
+        if mouth_sprite:
+            scaled_mouth = pygame.transform.scale(mouth_sprite, 
+                                                 (int(mouth_sprite.get_width() * scale), 
+                                                  int(mouth_sprite.get_height() * scale)))
+            mouth_x = center_x - scaled_mouth.get_width() // 2
+            mouth_y = center_y - scaled_mouth.get_height() // 2 + int(10 * scale)
+            screen.blit(scaled_mouth, (mouth_x, mouth_y))
+    
+    def draw_bratty_catty_portrait(self, center_x, center_y, scale):
+        """Draw Bratty and Catty portrait with body sprites and simple mouth animations."""
+        current_time = pygame.time.get_ticks()
+        
+        # Position for Bratty (left side)
+        bratty_x = center_x - int(80 * scale)
+        bratty_y = center_y - int(5 * scale)
+        
+        # Draw Bratty's body sprite only (no face overlay to avoid tongue out issue)
+        body_frame = (current_time // 1200) % 2  # Slower animation for body (2 frames)
+        bratty_body_sprite_name = f"spr_brattybody_{body_frame}"
+        
+        if bratty_body_sprite_name in sprites:
+            bratty_body_sprite = sprites[bratty_body_sprite_name]
+            scaled_bratty_body = pygame.transform.scale(bratty_body_sprite, 
+                                                (int(bratty_body_sprite.get_width() * scale), 
+                                                 int(bratty_body_sprite.get_height() * scale)))
+            bratty_body_x = bratty_x - scaled_bratty_body.get_width() // 2
+            bratty_body_y = bratty_y - scaled_bratty_body.get_height() // 2
+            screen.blit(scaled_bratty_body, (bratty_body_x, bratty_body_y))
+        
+        # Position for Catty (right side)
+        catty_x = center_x + int(80 * scale)
+        catty_y = center_y - int(5 * scale)
+        
+        # First, draw Catty's body sprite (behind face expressions, in front of background)
+        catty_body_sprite_name = f"spr_cattybody_{body_frame}"
+        
+        if catty_body_sprite_name in sprites:
+            catty_body_sprite = sprites[catty_body_sprite_name]
+            scaled_catty_body = pygame.transform.scale(catty_body_sprite, 
+                                                (int(catty_body_sprite.get_width() * scale), 
+                                                 int(catty_body_sprite.get_height() * scale)))
+            catty_body_x = catty_x - scaled_catty_body.get_width() // 2
+            catty_body_y = catty_y - scaled_catty_body.get_height() // 2
+            screen.blit(scaled_catty_body, (catty_body_x, catty_body_y))
+        
+        # Then, draw Catty's mouth animation (simple open/close)
+        mouth_frame = (current_time // 1500) % 2  # Slower mouth animation (open/close)
+        catty_face_sprite_name = f"spr_cattyface_{mouth_frame}"  # Use only frames 0 and 1
+        
+        if catty_face_sprite_name in sprites:
+            catty_face_sprite = sprites[catty_face_sprite_name]
+            scaled_catty_face = pygame.transform.scale(catty_face_sprite, 
+                                                (int(catty_face_sprite.get_width() * scale), 
+                                                 int(catty_face_sprite.get_height() * scale)))
+            # Position face slightly higher to align with body's face area
+            catty_face_x = catty_x - scaled_catty_face.get_width() // 2
+            catty_face_y = catty_y - scaled_catty_face.get_height() // 2 - int(10 * scale)  # Offset up slightly
+            screen.blit(scaled_catty_face, (catty_face_x, catty_face_y))
+    
+    def draw_snowdin_shopkeeper_portrait(self, center_x, center_y, scale):
+        """Draw Snowdin Shopkeeper portrait using layered components."""
+        # Try to draw shopkeeper using layered sprites  
+        shopkeeper_drawn = False
+        if "spr_shopkeeper1_0" in sprites:
+            # Draw main shopkeeper sprite
+            shopkeeper_sprite = sprites["spr_shopkeeper1_0"]
+            scaled_sprite = pygame.transform.scale(shopkeeper_sprite, 
+                                                 (int(shopkeeper_sprite.get_width() * scale), 
+                                                  int(shopkeeper_sprite.get_height() * scale)))
+            sprite_x = center_x - scaled_sprite.get_width() // 2
+            sprite_y = center_y - scaled_sprite.get_height() // 2
+            screen.blit(scaled_sprite, (sprite_x, sprite_y))
+            shopkeeper_drawn = True
+            
+            # Add animated face if available
+            current_time = pygame.time.get_ticks()
+            face_frame = (current_time // 800) % 7  # Cycle through face expressions
+            face_sprite_name = f"spr_shopkeeper1_face{face_frame}_0"
+            
+            if face_sprite_name in sprites:
+                face_sprite = sprites[face_sprite_name]
+                scaled_face = pygame.transform.scale(face_sprite, 
+                                                    (int(face_sprite.get_width() * scale), 
+                                                     int(face_sprite.get_height() * scale)))
+                # Position face on the shopkeeper body
+                face_x = sprite_x + (scaled_sprite.get_width() - scaled_face.get_width()) // 2
+                face_y = sprite_y + (scaled_sprite.get_height() - scaled_face.get_height()) // 3
+                screen.blit(scaled_face, (face_x, face_y))
+        
+        elif "spr_shopkeeper2_body_0" in sprites:
+            # Try alternative shopkeeper 2 sprites
+            shopkeeper_body = sprites["spr_shopkeeper2_body_0"]
+            scaled_body = pygame.transform.scale(shopkeeper_body, 
+                                                (int(shopkeeper_body.get_width() * scale), 
+                                                 int(shopkeeper_body.get_height() * scale)))
+            body_x = center_x - scaled_body.get_width() // 2
+            body_y = center_y - scaled_body.get_height() // 2
+            screen.blit(scaled_body, (body_x, body_y))
+            shopkeeper_drawn = True
+            
+            # Add eyes if available
+            current_time = pygame.time.get_ticks()
+            eye_frame = (current_time // 600) % 5
+            eye_sprite_name = f"spr_shopkeeper2_eyes_{eye_frame}_0"
+            
+            if eye_sprite_name in sprites:
+                eye_sprite = sprites[eye_sprite_name]
+                scaled_eyes = pygame.transform.scale(eye_sprite, 
+                                                   (int(eye_sprite.get_width() * scale), 
+                                                    int(eye_sprite.get_height() * scale)))
+                eye_x = body_x + (scaled_body.get_width() - scaled_eyes.get_width()) // 2
+                eye_y = body_y + (scaled_body.get_height() - scaled_eyes.get_height()) // 3
+                screen.blit(scaled_eyes, (eye_x, eye_y))
+        
+        # Fallback if no sprites found
+        if not shopkeeper_drawn:
+            self.draw_generic_merchant_sprite(center_x, center_y, scale, "snowdin_shopkeeper")
+    
+    def draw_burgerpants_portrait(self, center_x, center_y, scale):
+        """Draw Burgerpants portrait using layered sprite components with animation."""
+        # Draw Burgerpants using available sprite components
+        burgerpants_drawn = False
+        current_time = pygame.time.get_ticks()
+        
+        # Try multiple face sprite naming patterns with animation
+        face_frame = (current_time // 700) % 8  # Cycle through face expressions
+        
+        # Try different naming patterns for Burgerpants face sprites
+        face_sprite_patterns = [
+            f"spr_bpants_face_{face_frame}_0",
+            f"spr_bpants_face{face_frame}_0", 
+            f"spr_burgerpants_face_{face_frame}_0",
+            f"spr_burgerpants_face{face_frame}_0"
+        ]
+        
+        face_sprite = None
+        for pattern in face_sprite_patterns:
+            if pattern in sprites:
+                face_sprite = sprites[pattern]
+                break
+        
+        # If no animated sprite found, try basic static sprites
+        if not face_sprite:
+            static_patterns = [
+                "spr_bpants_face_0_0",
+                "spr_bpants_face0_0",
+                "spr_bpants_face_0",
+                "spr_burgerpants_face_0",
+                "spr_burgerpants_0"
+            ]
+            for pattern in static_patterns:
+                if pattern in sprites:
+                    face_sprite = sprites[pattern]
+                    break
+        
+        if face_sprite:
+            scaled_face = pygame.transform.scale(face_sprite, 
+                                                (int(face_sprite.get_width() * scale), 
+                                                 int(face_sprite.get_height() * scale)))
+            face_x = center_x - scaled_face.get_width() // 2
+            face_y = center_y - scaled_face.get_height() // 2
+            screen.blit(scaled_face, (face_x, face_y))
+            burgerpants_drawn = True
+            
+            # Add arms if available
+            arms_patterns = [
+                "spr_bpants_arms_0_0",
+                "spr_bpants_arms0_0", 
+                "spr_bpants_arms_0",
+                "spr_burgerpants_arms_0"
+            ]
+            
+            arms_sprite = None
+            for pattern in arms_patterns:
+                if pattern in sprites:
+                    arms_sprite = sprites[pattern]
+                    break
+            
+            if arms_sprite:
+                scaled_arms = pygame.transform.scale(arms_sprite, 
+                                                    (int(arms_sprite.get_width() * scale), 
+                                                     int(arms_sprite.get_height() * scale)))
+                arms_x = center_x - scaled_arms.get_width() // 2
+                arms_y = face_y + scaled_face.get_height() - int(10 * scale)
+                screen.blit(scaled_arms, (arms_x, arms_y))
+        
+        # Fallback if no sprites found
+        if not burgerpants_drawn:
+            self.draw_generic_merchant_sprite(center_x, center_y, scale, "burgerpants")
+    
+    def draw_generic_merchant_sprite(self, center_x, center_y, scale, merchant_name):
+        """Draw a generic merchant sprite as fallback."""
+        if merchant_name == "bratty_catty":
+            # Draw two separate characters for Bratty & Catty
+            rect_size = int(50 * scale)
+            
+            # Draw Bratty (left character)
+            bratty_color = (255, 120, 180)  # Pink
+            bratty_x = center_x - rect_size - int(15 * scale)
+            bratty_y = center_y - rect_size // 2
+            
+            pygame.draw.rect(screen, bratty_color, (bratty_x, bratty_y, rect_size, rect_size))
+            pygame.draw.rect(screen, BLACK, (bratty_x, bratty_y, rect_size, rect_size), 2)
+            
+            # Draw Bratty's face (simple circle) - positioned properly on the face area
+            face_center_x = bratty_x + rect_size // 2
+            face_center_y = bratty_y + int(rect_size * 0.25)  # Move face higher up
+            pygame.draw.circle(screen, BLACK, (face_center_x, face_center_y), int(3 * scale))
+            
+            # Draw Bratty's "B" - positioned below the face
+            if undertale_font:
+                text_surface = undertale_font.render_text("B", "normal", BLACK)
+            else:
+                text_surface = font.render("B", True, BLACK)
+            text_rect = text_surface.get_rect(center=(face_center_x, bratty_y + int(rect_size * 0.7)))
+            screen.blit(text_surface, text_rect)
+            
+            # Draw Catty (right character)
+            catty_color = (150, 100, 255)  # Purple
+            catty_x = center_x + int(15 * scale)
+            catty_y = center_y - rect_size // 2
+            
+            pygame.draw.rect(screen, catty_color, (catty_x, catty_y, rect_size, rect_size))
+            pygame.draw.rect(screen, BLACK, (catty_x, catty_y, rect_size, rect_size), 2)
+            
+            # Draw Catty's face (simple circle) - positioned properly on the face area
+            face_center_x = catty_x + rect_size // 2
+            face_center_y = catty_y + int(rect_size * 0.25)  # Move face higher up
+            pygame.draw.circle(screen, BLACK, (face_center_x, face_center_y), int(3 * scale))
+            
+            # Draw Catty's "C" - positioned below the face
+            if undertale_font:
+                text_surface = undertale_font.render_text("C", "normal", BLACK)
+            else:
+                text_surface = font.render("C", True, BLACK)
+            text_rect = text_surface.get_rect(center=(face_center_x, catty_y + int(rect_size * 0.7)))
+            screen.blit(text_surface, text_rect)
+            
+        elif merchant_name == "burgerpants":
+            # Draw animated Burgerpants character
+            current_time = pygame.time.get_ticks()
+            
+            # Main body
+            body_color = (255, 200, 100)  # Orange/yellow
+            rect_size = int(64 * scale)
+            rect_x = center_x - rect_size // 2
+            rect_y = center_y - rect_size // 2
+            
+            pygame.draw.rect(screen, body_color, (rect_x, rect_y, rect_size, rect_size))
+            pygame.draw.rect(screen, BLACK, (rect_x, rect_y, rect_size, rect_size), 3)
+            
+            # Animated face - cycle through different expressions
+            face_frame = (current_time // 800) % 3  # Change every 800ms
+            face_center_x = center_x
+            face_center_y = rect_y + int(rect_size * 0.3)
+            
+            # Draw different face expressions
+            if face_frame == 0:
+                # Normal face
+                pygame.draw.circle(screen, BLACK, (face_center_x - int(8 * scale), face_center_y), int(2 * scale))  # Left eye
+                pygame.draw.circle(screen, BLACK, (face_center_x + int(8 * scale), face_center_y), int(2 * scale))  # Right eye
+                pygame.draw.arc(screen, BLACK, (face_center_x - int(6 * scale), face_center_y + int(5 * scale), int(12 * scale), int(8 * scale)), 0, 3.14159, 2)  # Mouth
+            elif face_frame == 1:
+                # Tired/annoyed face
+                pygame.draw.line(screen, BLACK, (face_center_x - int(10 * scale), face_center_y), (face_center_x - int(6 * scale), face_center_y), 2)  # Left eye
+                pygame.draw.line(screen, BLACK, (face_center_x + int(6 * scale), face_center_y), (face_center_x + int(10 * scale), face_center_y), 2)  # Right eye
+                pygame.draw.line(screen, BLACK, (face_center_x - int(6 * scale), face_center_y + int(8 * scale)), (face_center_x + int(6 * scale), face_center_y + int(8 * scale)), 2)  # Flat mouth
+            else:
+                # Worried face
+                pygame.draw.circle(screen, BLACK, (face_center_x - int(8 * scale), face_center_y), int(3 * scale))  # Left eye (bigger)
+                pygame.draw.circle(screen, BLACK, (face_center_x + int(8 * scale), face_center_y), int(3 * scale))  # Right eye (bigger)
+                pygame.draw.arc(screen, BLACK, (face_center_x - int(6 * scale), face_center_y + int(8 * scale), int(12 * scale), int(6 * scale)), 3.14159, 6.28, 2)  # Frown
+            
+            # Animated arms - move up and down
+            arm_offset = int(3 * scale * math.sin(current_time * 0.003))  # Slow up-down motion
+            arm_y = rect_y + int(rect_size * 0.5) + arm_offset
+            
+            # Left arm
+            pygame.draw.line(screen, BLACK, (rect_x, arm_y), (rect_x - int(15 * scale), arm_y - int(5 * scale)), 4)
+            # Right arm  
+            pygame.draw.line(screen, BLACK, (rect_x + rect_size, arm_y), (rect_x + rect_size + int(15 * scale), arm_y - int(5 * scale)), 4)
+            
+            # Draw "BP" for Burgerpants
+            if undertale_font:
+                text_surface = undertale_font.render_text("BP", "normal", BLACK)
+            else:
+                text_surface = font.render("BP", True, BLACK)
+            text_rect = text_surface.get_rect(center=(center_x, rect_y + int(rect_size * 0.8)))
+            screen.blit(text_surface, text_rect)
+            
+        else:
+            # Draw single character for other merchants
+            colors = {
+                "snowdin_shopkeeper": (150, 150, 255),  # Light blue
+                "burgerpants": (255, 200, 100)  # Orange/yellow
+            }
+            
+            color = colors.get(merchant_name, (128, 128, 128))  # Default gray
+            rect_size = int(64 * scale)
+            rect_x = center_x - rect_size // 2
+            rect_y = center_y - rect_size // 2
+            
+            # Draw colored rectangle
+            pygame.draw.rect(screen, color, (rect_x, rect_y, rect_size, rect_size))
+            pygame.draw.rect(screen, BLACK, (rect_x, rect_y, rect_size, rect_size), 3)
+            
+            # Draw merchant initial
+            initial = merchant_name[0].upper()
+            if undertale_font:
+                text_surface = undertale_font.render_text(initial, "normal", BLACK)
+            else:
+                text_surface = font.render(initial, True, BLACK)
+            
+            text_rect = text_surface.get_rect(center=(center_x, center_y))
+            screen.blit(text_surface, text_rect)
+    
+    def draw_undertale_shop_buy_items(self):
+        """Draw items available for purchase in Undertale style."""
         if not self.current_shopkeeper.inventory:
-            draw_text_with_shadow(screen, "Shop is sold out!", panel_rect.x + 20, panel_rect.y + 60, 
-                                ENHANCED_COLORS['text_disabled'], small_font, 1)
             return
         
-        y_offset = 60
-        for i, item in enumerate(self.current_shopkeeper.inventory):
-            y_pos = panel_rect.y + y_offset + i * 40
-            if y_pos > panel_rect.y + panel_rect.height - 40:
-                break  # Don't draw items outside the panel
+        # Items display area (below dialogue box)
+        items_x = 50
+        items_y = 570
+        items_width = 600
+        items_height = 150
+        
+        # Items background (white with black border)
+        items_rect = pygame.Rect(items_x, items_y, items_width, items_height)
+        pygame.draw.rect(screen, WHITE, items_rect)
+        pygame.draw.rect(screen, BLACK, items_rect, 4)
+        
+        # Show available items
+        visible_items = self.current_shopkeeper.inventory[:4]  # Show max 4 items
+        current_player = self.players[self.selected_player_idx]
+        
+        for i, item in enumerate(visible_items):
+            item_y = items_y + 15 + i * 30
             
             # Highlight selected item
             if i == self.selected_shop_item_idx:
-                highlight_rect = pygame.Rect(panel_rect.x + 10, y_pos - 5, panel_rect.width - 20, 35)
-                draw_gradient_rect(screen, highlight_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
-                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], highlight_rect, width=2, border_radius=5)
+                highlight_rect = pygame.Rect(items_x + 5, item_y - 5, items_width - 10, 28)
+                pygame.draw.rect(screen, (200, 200, 255), highlight_rect)  # Light blue highlight
             
-            # Draw item sprite if available
-            sprite_x = panel_rect.x + 25
-            text_x = sprite_x + 35
-            
-            if hasattr(item, 'sprite_name') and item.sprite_name:
-                sprite_key = None
-                if isinstance(item, Weapon):
-                    sprite_key = f"weapon_{item.sprite_name}"
-                elif isinstance(item, Armor):
-                    sprite_key = f"armor_{item.sprite_name}"
-                elif isinstance(item, Potion):
-                    sprite_key = "item_potion"
-                
-                if sprite_key and sprite_key in sprites:
-                    sprite = pygame.transform.scale(sprites[sprite_key], (24, 24))
-                    screen.blit(sprite, (sprite_x, y_pos))
-            
-            # Item name and stats with affordability indicators
+            # Item info
             price = self.current_shopkeeper.get_item_price(item)
-            current_player = self.players[self.selected_player_idx]
-            
-            item_text = f"{item.name}"
-            
-            if isinstance(item, Weapon):
-                item_text += f" (ATK +{item.attack_bonus}) - {price}g"
-            elif isinstance(item, Armor):
-                item_text += f" (DEF +{item.defense_bonus}) - {price}g"
-            elif isinstance(item, Potion):
-                item_text += f" (Heals {item.hp_gain} HP) - {price}g"
-            
-            # Color based on affordability and inventory space
             can_afford = current_player.gold >= price
             can_carry = current_player.can_carry_item(item)
             
+            # Item text with stats
+            if isinstance(item, Weapon):
+                item_text = f"{item.name} - ATK+{item.attack_bonus} - {price}G"
+            elif isinstance(item, Armor):
+                item_text = f"{item.name} - DEF+{item.defense_bonus} - {price}G"
+            elif isinstance(item, Potion):
+                item_text = f"{item.name} - Heals {item.hp_gain}HP - {price}G"
+            else:
+                item_text = f"{item.name} - {price}G"
+            
+            # Color based on affordability and inventory space
             if not can_afford:
-                text_color = ENHANCED_COLORS['danger_red']
-                item_text += " [TOO EXPENSIVE]"
+                text_color = (150, 150, 150)  # Gray for unaffordable
             elif not can_carry:
-                text_color = ENHANCED_COLORS['warning_orange']
-                item_text += " [INVENTORY FULL]"
+                text_color = (150, 100, 100)  # Reddish for inventory full
             else:
-                text_color = ENHANCED_COLORS['text_primary']
+                text_color = BLACK
             
-            # Calculate available width and wrap text if needed
-            available_width = panel_rect.width - 70  # Account for margins and sprites
-            
-            if undertale_font.get_text_size(item_text, "small")[0] > available_width:
-                # Wrap the text if it's too long
-                wrapped_lines = wrap_text(item_text, available_width, font_size="small")
-                for line_idx, line in enumerate(wrapped_lines[:2]):  # Show maximum 2 lines
-                    draw_text_with_shadow(screen, line, text_x, y_pos + line_idx * 12, text_color, small_font, 1)
+            # Use text wrapping for long item names
+            max_item_width = items_width - 40
+            if undertale_font:
+                if undertale_font.get_text_size(item_text, "normal")[0] > max_item_width:
+                    wrapped_lines = wrap_text(item_text, max_item_width, font_size="normal")
+                    for j, line in enumerate(wrapped_lines[:1]):  # Show only first line to save space
+                        text_surface = undertale_font.render_text(line, "normal", text_color)
+                        screen.blit(text_surface, (items_x + 15, item_y + j * 15))
+                else:
+                    text_surface = undertale_font.render_text(item_text, "normal", text_color)
+                    screen.blit(text_surface, (items_x + 15, item_y))
             else:
-                draw_text_with_shadow(screen, item_text, text_x, y_pos, text_color, small_font, 1)
+                # Fallback to regular font with wrapping
+                if font.size(item_text)[0] > max_item_width:
+                    wrapped_lines = wrap_text(item_text, max_item_width, font)
+                    for j, line in enumerate(wrapped_lines[:1]):
+                        text_surface = font.render(line, True, text_color)
+                        screen.blit(text_surface, (items_x + 15, item_y + j * 15))
+                else:
+                    text_surface = font.render(item_text, True, text_color)
+                    screen.blit(text_surface, (items_x + 15, item_y))
     
-    def draw_shop_sell_items(self, panel_rect):
-        """Draw player items available for sale."""
+    def draw_undertale_shop_sell_items(self):
+        """Draw player items available for sale in Undertale style."""
         current_player = self.players[self.selected_player_idx]
-        draw_text_with_shadow(screen, f"💰 Sell {current_player.name}'s Items", 
-                            panel_rect.x + 20, panel_rect.y + 20, ENHANCED_COLORS['accent_gold'], font, 1)
-        
         if not current_player.inventory:
-            draw_text_with_shadow(screen, "No items to sell!", panel_rect.x + 20, panel_rect.y + 60, 
-                                ENHANCED_COLORS['text_disabled'], small_font, 1)
             return
         
-        y_offset = 60
-        for i, item in enumerate(current_player.inventory):
-            y_pos = panel_rect.y + y_offset + i * 40
-            if y_pos > panel_rect.y + panel_rect.height - 40:
-                break  # Don't draw items outside the panel
+        # Items display area (below dialogue box)
+        items_x = 50
+        items_y = 570
+        items_width = 600
+        items_height = 150
+        
+        # Items background (white with black border)
+        items_rect = pygame.Rect(items_x, items_y, items_width, items_height)
+        pygame.draw.rect(screen, WHITE, items_rect)
+        pygame.draw.rect(screen, BLACK, items_rect, 4)
+        
+        # Show player's items
+        visible_items = current_player.inventory[:4]  # Show max 4 items
+        
+        for i, item in enumerate(visible_items):
+            item_y = items_y + 15 + i * 30
             
             # Highlight selected item
             if i == self.selected_item_idx:
-                highlight_rect = pygame.Rect(panel_rect.x + 10, y_pos - 5, panel_rect.width - 20, 35)
-                draw_gradient_rect(screen, highlight_rect, ENHANCED_COLORS['accent_gold'], (200, 170, 0))
-                pygame.draw.rect(screen, ENHANCED_COLORS['accent_gold'], highlight_rect, width=2, border_radius=5)
+                highlight_rect = pygame.Rect(items_x + 5, item_y - 5, items_width - 10, 28)
+                pygame.draw.rect(screen, (200, 200, 255), highlight_rect)  # Light blue highlight
             
-            # Draw item sprite if available
-            sprite_x = panel_rect.x + 25
-            text_x = sprite_x + 35
-            
-            if hasattr(item, 'sprite_name') and item.sprite_name:
-                sprite_key = None
-                if isinstance(item, Weapon):
-                    sprite_key = f"weapon_{item.sprite_name}"
-                elif isinstance(item, Armor):
-                    sprite_key = f"armor_{item.sprite_name}"
-                elif isinstance(item, Potion):
-                    sprite_key = "item_potion"
-                
-                if sprite_key and sprite_key in sprites:
-                    sprite = pygame.transform.scale(sprites[sprite_key], (24, 24))
-                    screen.blit(sprite, (sprite_x, y_pos))
-            
-            # Item name and sell price
+            # Item info
             price = self.current_shopkeeper.sell_item_price(item)
-            item_text = f"{item.name}"
+            is_equipped = ((isinstance(item, Weapon) and item == current_player.weapon) or
+                          (isinstance(item, Armor) and item == current_player.armor))
             
+            # Item text with stats
             if isinstance(item, Weapon):
-                item_text += f" (ATK +{item.attack_bonus}) - {price}g"
+                item_text = f"{item.name} - ATK+{item.attack_bonus} - Sell: {price}G"
             elif isinstance(item, Armor):
-                item_text += f" (DEF +{item.defense_bonus}) - {price}g"
+                item_text = f"{item.name} - DEF+{item.defense_bonus} - Sell: {price}G"
             elif isinstance(item, Potion):
-                item_text += f" (Heals {item.hp_gain} HP) - {price}g"
+                item_text = f"{item.name} - Heals {item.hp_gain}HP - Sell: {price}G"
+            else:
+                item_text = f"{item.name} - Sell: {price}G"
             
-            # Show if equipped (can't sell equipped items)
-            is_equipped = hasattr(item, 'equipped') and item.equipped
             if is_equipped:
-                item_text += " [EQUIPPED]"
+                item_text += " [Equipped]"
             
-            text_color = ENHANCED_COLORS['text_disabled'] if is_equipped else ENHANCED_COLORS['text_primary']
+            # Color based on whether item can be sold
+            text_color = (150, 150, 150) if is_equipped else BLACK
             
-            draw_text_with_shadow(screen, item_text, text_x, y_pos, text_color, small_font, 1)
+            # Use text wrapping for long item names
+            max_item_width = items_width - 40
+            if undertale_font:
+                if undertale_font.get_text_size(item_text, "normal")[0] > max_item_width:
+                    wrapped_lines = wrap_text(item_text, max_item_width, font_size="normal")
+                    for j, line in enumerate(wrapped_lines[:1]):  # Show only first line to save space
+                        text_surface = undertale_font.render_text(line, "normal", text_color)
+                        screen.blit(text_surface, (items_x + 15, item_y + j * 15))
+                else:
+                    text_surface = undertale_font.render_text(item_text, "normal", text_color)
+                    screen.blit(text_surface, (items_x + 15, item_y))
+            else:
+                # Fallback to regular font with wrapping
+                if font.size(item_text)[0] > max_item_width:
+                    wrapped_lines = wrap_text(item_text, max_item_width, font)
+                    for j, line in enumerate(wrapped_lines[:1]):
+                        text_surface = font.render(line, True, text_color)
+                        screen.blit(text_surface, (items_x + 15, item_y + j * 15))
+                else:
+                    text_surface = font.render(item_text, True, text_color)
+                    screen.blit(text_surface, (items_x + 15, item_y))
     
     def log_action(self, text):
         """Log action for debugging or history purposes."""
@@ -3762,6 +4570,7 @@ class Game:
                         "x": shopkeeper.x,
                         "y": shopkeeper.y,
                         "name": shopkeeper.name,
+                        "merchant_type": shopkeeper.merchant_type,  # Save merchant type
                         "inventory": []
                     }
                     
@@ -4031,7 +4840,8 @@ class Game:
                 # Restore shopkeepers
                 self.dungeon.shopkeepers = []
                 for shopkeeper_data in dungeon_data["shopkeepers"]:
-                    shopkeeper = Shopkeeper(shopkeeper_data["x"], shopkeeper_data["y"])
+                    merchant_type = shopkeeper_data.get("merchant_type", "temmie")  # Default to temmie if not saved
+                    shopkeeper = Shopkeeper(shopkeeper_data["x"], shopkeeper_data["y"], merchant_type)
                     shopkeeper.name = shopkeeper_data["name"]
                     shopkeeper.inventory = []
                     
@@ -5660,8 +6470,19 @@ class Game:
                 screen_x = GAME_OFFSET_X + (enemy.x - self.camera_x) * TILE_SIZE
                 screen_y = GAME_OFFSET_Y + (enemy.y - self.camera_y) * TILE_SIZE
                 
+                # Draw door guardian glow effect if this is a door guardian
+                if hasattr(enemy, 'is_door_guardian') and enemy.is_door_guardian:
+                    # Draw a pulsing golden glow around door guardians
+                    pulse = int(127 + 127 * math.sin(pygame.time.get_ticks() * 0.005))
+                    glow_color = (255, 215, 0, pulse)  # Golden color with pulsing alpha
+                    glow_surface = pygame.Surface((TILE_SIZE + 8, TILE_SIZE + 8), pygame.SRCALPHA)
+                    pygame.draw.rect(glow_surface, glow_color, (0, 0, TILE_SIZE + 8, TILE_SIZE + 8), 3)
+                    screen.blit(glow_surface, (screen_x - 4, screen_y - 4))
+                
                 if game_settings['use_emojis']:
-                    text = font.render(enemy.icon, True, RED)
+                    # Use different color for door guardians
+                    color = (255, 215, 0) if (hasattr(enemy, 'is_door_guardian') and enemy.is_door_guardian) else RED
+                    text = font.render(enemy.icon, True, color)
                     screen.blit(text, (screen_x, screen_y))
                 else:
                     # Use Undertale enemy sprites
@@ -5676,7 +6497,9 @@ class Game:
                     
                     # Final fallback to colored rectangle if sprite not available
                     if not sprite_drawn:
-                        pygame.draw.rect(screen, RED, (screen_x + 2, screen_y + 2, TILE_SIZE - 4, TILE_SIZE - 4))
+                        # Use golden color for door guardians
+                        color = (255, 215, 0) if (hasattr(enemy, 'is_door_guardian') and enemy.is_door_guardian) else RED
+                        pygame.draw.rect(screen, color, (screen_x + 2, screen_y + 2, TILE_SIZE - 4, TILE_SIZE - 4))
                 
         # Draw shopkeepers (only if visible)
         for shopkeeper in self.dungeon.shopkeepers:
@@ -5688,19 +6511,44 @@ class Game:
                 screen_y = GAME_OFFSET_Y + (shopkeeper.y - self.camera_y) * TILE_SIZE
                 
                 if game_settings['use_emojis']:
-                    # Use temmie emoji for consistency
-                    text = font.render("🐱", True, (255, 215, 0))  # Cat emoji for Temmie
+                    # Use different emojis for different merchant types
+                    merchant_emojis = {
+                        "temmie": "🐱",
+                        "bratty_catty": "👯‍♀️", 
+                        "snowdin_shopkeeper": "❄️",
+                        "burgerpants": "🍔"
+                    }
+                    emoji = merchant_emojis.get(shopkeeper.merchant_type, "🐱")
+                    text = font.render(emoji, True, (255, 215, 0))
                     screen.blit(text, (screen_x, screen_y))
                 else:
-                    # For sprite mode, use temmie sprite
-                    sprite_key = f"monster_{shopkeeper.icon}"
-                    if sprite_key in sprites:
-                        screen.blit(sprites[sprite_key], (screen_x, screen_y))
-                    elif "monster_temmie" in sprites:
-                        screen.blit(sprites["monster_temmie"], (screen_x, screen_y))
-                    else:
-                        # Gold-colored rectangle for merchant as fallback
-                        pygame.draw.rect(screen, (255, 215, 0), (screen_x + 4, screen_y + 4, TILE_SIZE - 8, TILE_SIZE - 8))
+                    # For sprite mode, try multiple sprite key formats for different merchants
+                    sprite_drawn = False
+                    
+                    # Try various sprite naming conventions
+                    sprite_keys = [
+                        f"monster_{shopkeeper.icon}",  # monster_temmie, monster_bratty_catty, etc.
+                        f"spr_{shopkeeper.icon}_0",    # spr_temmie_0, spr_bratty_catty_0, etc.
+                        f"npc_{shopkeeper.icon}",      # npc_temmie, npc_bratty_catty, etc.
+                        f"{shopkeeper.icon}",          # temmie, bratty_catty, etc.
+                    ]
+                    
+                    for sprite_key in sprite_keys:
+                        if sprite_key in sprites:
+                            screen.blit(sprites[sprite_key], (screen_x, screen_y))
+                            sprite_drawn = True
+                            break
+                    
+                    if not sprite_drawn:
+                        # Fallback colored rectangles with different colors per merchant
+                        merchant_colors = {
+                            "temmie": (255, 215, 0),        # Gold
+                            "bratty_catty": (255, 105, 180), # Hot pink
+                            "snowdin_shopkeeper": (173, 216, 230), # Light blue
+                            "burgerpants": (255, 165, 0)    # Orange
+                        }
+                        color = merchant_colors.get(shopkeeper.merchant_type, (255, 215, 0))
+                        pygame.draw.rect(screen, color, (screen_x + 4, screen_y + 4, TILE_SIZE - 8, TILE_SIZE - 8))
 
         # Draw players
         for player in self.players:
@@ -6123,7 +6971,40 @@ class Game:
                     msg = p.gain_xp(xp_per_player)
                     if msg: 
                         self.add_message(msg)
-            # Remove defeated enemies from dungeon
+            # Remove defeated enemies from dungeon and drop special loot for door guardians
+            defeated_enemies = [e for e in self.combat_enemies if not e.is_alive()]
+            for enemy in defeated_enemies:
+                # Door guardians drop special loot
+                if hasattr(enemy, 'is_door_guardian') and enemy.is_door_guardian:
+                    self.add_message(f"The door guardian {enemy.name} has fallen!")
+                    
+                    # Drop special items for door guardians
+                    if hasattr(enemy, 'special_drops') and enemy.special_drops:
+                        for special_item_name in enemy.special_drops:
+                            if special_item_name == "tem_flakes":
+                                # Create special Tem Flakes item
+                                tem_flakes = Potion("Tem Flakes", 30, "rare")
+                                tem_flakes.description = "Temmie's favorite food! Fully restores HP."
+                                tem_flakes.hp_gain = 999  # Full heal
+                                tem_flakes.x = enemy.x
+                                tem_flakes.y = enemy.y
+                                self.dungeon.items.append(tem_flakes)
+                                self.add_message("The door guardian dropped Tem Flakes!")
+                            elif special_item_name == "tem_armor":
+                                # Create special Tem Armor
+                                tem_armor = Armor("Tem Armor", 20, ["warrior", "mage", "archer"], "epic")
+                                tem_armor.description = "Legendary armor made by Temmie!"
+                                tem_armor.x = enemy.x
+                                tem_armor.y = enemy.y
+                                self.dungeon.items.append(tem_armor)
+                                self.add_message("The door guardian dropped legendary Tem Armor!")
+                    
+                    # Door guardians also drop extra gold
+                    bonus_gold = random.randint(50, 100)
+                    current_player = self.players[self.current_player_idx]
+                    current_player.gold += bonus_gold
+                    self.add_message(f"You found {bonus_gold} extra gold from the door guardian!")
+            
             self.dungeon.enemies = [e for e in self.dungeon.enemies if e not in self.combat_enemies]
     
     def player_attack(self):
