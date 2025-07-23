@@ -1,6 +1,6 @@
-# Python RPG Adventure - Pygame Version (v1.22)
+# Python RPG Adventure - Pygame Version (v1.23)
 
-A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and shop system. Created with the help of large language models by **LukesScammell**.
+A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and animated Undertale shop system. Created with the help of large language models by **LukesScammell**.
 
 ## Features
 
@@ -135,6 +135,54 @@ The game includes a comprehensive settings system accessible from the main menu:
 ---
 
 ## Version History & Development Notes
+
+### v1.23: Animated Undertale Shop System & Advanced Character Portraits
+**Complete Undertale Shop Character Integration:**
+- **Specialized Merchant System**: Four unique Undertale merchants with authentic backgrounds and specialized inventories
+  - **Temmie Weapon Shop**: Sells weapons with animated eyes (6 frames), mouth (3 frames), hat, and bobbing tembox counter
+  - **Bratty & Catty Armor Shop**: Sells armor with dual character setup, body animations, and synchronized hovering arm movements
+  - **Snowdin Shopkeeper Potion Shop**: Sells potions with layered face expressions and animated components
+  - **Burgerpants Mixed Shop**: Sells all item types with full 7-frame face cycling animation and hovering arm effects
+- **Advanced Character Animation System**: Mathematical sprite-based animations with individual timing systems
+  - **Multi-layered Rendering**: Body sprites, facial expressions, arm movements, and shop props rendered as separate animated layers
+  - **Sine Wave Motion**: Smooth hovering animations using `math.sin()` functions with character-specific timing (0.002-0.004 Hz)
+  - **Frame-based Animation**: Eye cycling (6 frames), mouth animation (2-3 frames), face expressions (7 frames), body movement (2 frames)
+  - **Synchronized Timing**: Different animation speeds for natural character personality (500-1500ms frame intervals)
+- **Authentic Undertale Shop Atmosphere**: 2.5x scaled backgrounds with proper character positioning and shop props
+  - **Tembox Animation**: Gentle 3-pixel bobbing motion for Temmie's shop counter with sprite support
+  - **Dual Character Positioning**: Bratty positioned left (-80 pixels), Catty positioned right (+80 pixels) with independent arm animations
+  - **Hovering Arm Effects**: Bratty's left/right arm sprites with 5-pixel amplitude, Catty's 3-frame arm cycling with 6-pixel hovering
+  - **Shop Counter Integration**: Authentic shop atmosphere with animated counters and proper sprite layering
+
+**Advanced Sprite Loading & Animation Engine:**
+- **Comprehensive Sprite Discovery**: Enhanced sprite loading system supporting multiple sprite naming patterns
+  - **Multi-source Loading**: Loads from both `assets/sprites/` and `assets/undertale/Shops/` directories
+  - **Fallback Systems**: Robust sprite fallback with wooden counter generation when sprites unavailable  
+  - **Animation Frame Support**: Supports frame-based animations (spr_catarm_0, spr_catarm_1, spr_catarm_2)
+  - **Alternative Sprite Names**: Handles multiple sprite naming conventions (spr_tembox_0, spr_5_tembox_0)
+- **Mathematical Animation Framework**: Professional animation system with smooth motion curves
+  - **Independent Timing Systems**: Each character uses different animation frequencies for natural variation
+  - **Amplitude Control**: Configurable hovering distances (3-8 pixels) scaled by character size multiplier
+  - **Layered Animation**: Multiple simultaneous animations per character (face + arms + props)
+  - **Performance Optimized**: Efficient sine wave calculations with frame-rate independent timing
+
+**Shop System Enhancements:**
+- **Merchant Specialization**: Each merchant type sells specific item categories with appropriate dialogue
+  - **Inventory Filtering**: Temmie (weapons only), Bratty/Catty (armor only), Snowdin (potions only), Burgerpants (all items)
+  - **Dialogue Customization**: Merchant-specific dialogue matching their Undertale personalities
+  - **Background Matching**: Shop backgrounds automatically match merchant type (Bratty/Catty get their unique background)
+- **Testing & Development Features**: Enhanced shop spawn rate (80%) for convenient animation testing and debugging
+  - **Animation Debugging**: Easy shop access for testing all character animations and timing systems
+  - **Sprite Validation**: Comprehensive sprite loading feedback with success/failure reporting
+  - **Performance Monitoring**: Optimized rendering for multiple simultaneous character animations
+
+**Technical Implementation:**
+- Enhanced `load_sprites()` function with tembox sprite integration (added spr_5_tembox_0.png to Temmie sprite list)
+- Created `draw_temmie_portrait()` with 4-layer animation system (body, hat, eyes, mouth, animated counter)
+- Implemented `draw_bratty_catty_portrait()` with dual character rendering and synchronized hovering arms
+- Added mathematical animation calculations using `pygame.time.get_ticks()` with `math.sin()` for smooth motion
+- Enhanced merchant inventory system with specialized item filtering and authentic Undertale shop atmosphere
+- Optimized sprite scaling and positioning with character-specific offsets and proper layering order
 
 ### v1.22: UI Enhancement & Optimization Edition
 **Camera & Viewport Improvements:**
