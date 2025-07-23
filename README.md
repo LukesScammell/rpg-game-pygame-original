@@ -1,4 +1,4 @@
-# Python RPG Adventure - Pygame Version (v1.23)
+# Python RPG Adventure - Pygame Version (v1.24)
 
 A modern graphical RPG adventure game built with Pygame, featuring enhanced visuals, strategic combat, immersive dungeon exploration, and animated Undertale shop system. Created with the help of large language models by **LukesScammell**.
 
@@ -24,7 +24,7 @@ A modern graphical RPG adventure game built with Pygame, featuring enhanced visu
 *   **Exploration & Discovery:** Treasure chests, fog of war system, dynamic camera following, and rare room generation
 *   **Multi-Character Parties:** Create up to 3 heroes with unique classes and individual inventories
 *   **Professional Asset Integration:** Multiple sprite sources including Crawl tiles and Dungeon Crawl Stone Soup Full
-*   **Persistent Game State:** Comprehensive save/load system with settings preservation and auto-save functionality
+*   **Enhanced Multi-Save System:** Comprehensive save/load system with 5 save slots, organized file management, and complete game state preservation
 *   **Cross-Platform Compatibility:** Windows/Linux/Mac support with optimized font and audio handling
 
 ## How to Play
@@ -135,6 +135,55 @@ The game includes a comprehensive settings system accessible from the main menu:
 ---
 
 ## Version History & Development Notes
+
+### v1.24: Enhanced Multi-Save System & Save State Management
+**Complete Save System Overhaul:**
+- **Multiple Save File Support**: Full implementation of multi-save slot system with organized save management
+  - **5 Save Slots**: Dedicated save slots (`save_slot_01.json` through `save_slot_05.json`) in organized `/saves/` directory
+  - **Legacy Save Elimination**: Removed legacy `rpg_save_game.json` system, all saves now use unified new format
+  - **Automatic Save Organization**: Saves automatically organized by timestamp with newest saves displayed first
+  - **Complete Player Data**: All saves include full player state (position, stats, inventory, equipment, level progression)
+- **Enhanced Save Selection Interface**: Professional save selection menu with improved navigation and visual feedback
+  - **Save File Navigation**: Smooth up/down arrow key navigation with proper index wrapping and bounds checking
+  - **Visual Selection Indicators**: Clear highlighting of selected save with gold accent colors and enhanced contrast
+  - **Save File Information**: Detailed save info display showing player name, level, class, dungeon floor, and timestamp
+  - **Immediate Load/Delete**: ENTER key loads selected save, DELETE key removes saves with instant list refresh
+- **Robust Save State Management**: Enhanced save system with proper state management and error handling
+  - **Save Index Reset**: Proper save selection index reset when entering/exiting save menu to prevent navigation issues
+  - **State Cleanup**: Clean save file cache clearing when returning to main menu to ensure fresh data loading
+  - **Error Prevention**: Fixed "stuck on save" issue where selection would persist incorrectly between menu sessions
+  - **Sound Feedback**: Success/error sound effects for save loading and deletion operations with audio confirmation
+
+**Advanced Save Data Structure:**
+- **Complete Game State Preservation**: Enhanced save format capturing full game state including dungeon layout and exploration progress  
+  - **Player Data**: Complete player statistics, inventory contents, equipped items, skill cooldowns, and gold amounts
+  - **Dungeon State**: Full dungeon layout preservation including room structures, enemy positions, and treasure chest states
+  - **Exploration Progress**: Fog of war state, obtained items tracking, camera position, and current dungeon level
+  - **Timestamp Integration**: Automatic timestamp recording for save organization and display purposes
+- **Improved Data Compatibility**: Enhanced item loading system supporting multiple potion data formats
+  - **Potion Data Flexibility**: Supports both "healing" and "hp_gain" potion formats for backward compatibility
+  - **Item Creation Robustness**: Enhanced `create_item_from_data()` method with proper error handling and fallback values
+  - **Save File Validation**: Comprehensive save file structure validation preventing loading errors
+  - **Cross-Version Support**: Maintained compatibility with existing save formats while adding new features
+
+**Save System User Experience:**
+- **Intuitive Controls**: Streamlined save selection interface with clear visual feedback and responsive navigation
+  - **Navigation**: Arrow keys (↑↓) for save selection, ENTER to load, DELETE to remove, ESC to return to main menu
+  - **Visual Feedback**: Selected save highlighted with gold background, clear numbering system (1-5), and readable timestamps
+  - **Error Prevention**: Proper bounds checking prevents selection errors, immediate list refresh after save deletion
+  - **Audio Integration**: Menu sounds for navigation, success sounds for loading, error sounds for failures
+- **Professional Save Management**: Complete save file management system with organized storage and reliable operations
+  - **File Organization**: All saves stored in dedicated `/saves/` directory with consistent naming convention
+  - **Automatic Cleanup**: Old incomplete test saves automatically removed, clean slate with properly formatted saves
+  - **Save File Display**: Professional save list showing character progression, dungeon progress, and save timestamps
+  - **Reliable Loading**: Enhanced save loading with comprehensive error handling and user feedback
+
+**Technical Implementation:**
+- Enhanced `save_selection_menu()` with improved state management and proper save file caching
+- Updated `get_save_files()` method with better file detection and metadata extraction
+- Improved `load_game()` method with enhanced error handling and save format compatibility
+- Added proper save selection index management with bounds checking and state reset functionality
+- Implemented comprehensive save file cleanup and organization system with consistent file naming
 
 ### v1.23: Animated Undertale Shop System & Advanced Character Portraits
 **Complete Undertale Shop Character Integration:**

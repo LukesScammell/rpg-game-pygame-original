@@ -5351,7 +5351,7 @@ class Game:
         
         # Show current display mode and version info
         mode_text = "Display: " + ("Emoji Mode" if game_settings['use_emojis'] else "Sprite Mode")
-        version_text = "Version 1.22 - UI Enhancement & Optimization Edition"
+        version_text = "Version 1.24 - Enhanced Multi-Save System & Save State Management"
         
         mode_surface = small_font.render(mode_text, True, ENHANCED_COLORS['text_secondary'])
         version_surface = small_font.render(version_text, True, ENHANCED_COLORS['text_secondary'])
