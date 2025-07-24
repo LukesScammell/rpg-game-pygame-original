@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 print("--- RUNNING PYGAME VERSION ---")
 
-# =============================================================================
-# IMPORTS AND DEPENDENCIES
-# =============================================================================
+# ANCHOR Imports and Dependencies
 # File: imports.py - Contains all import statements and external dependencies
 import random
 import os
@@ -13,9 +11,7 @@ import math
 from collections import deque
 from datetime import datetime
 
-# =============================================================================
-# GAME CONSTANTS AND CONFIGURATION
-# =============================================================================
+# ANCHOR Game Constants and Configuration
 # File: constants.py - Contains all game constants, colors, and configuration values
 
 # --- Constants ---
@@ -59,9 +55,7 @@ FOG_COLOR = (40, 40, 60)  # Dark blue-ish for unexplored areas
 pygame.init()
 pygame.mixer.init()
 
-# =============================================================================
-# SETTINGS SYSTEM
-# =============================================================================
+# ANCHOR Settings System
 # File: settings.py - Contains settings management functions and configuration
 
 # --- Settings System ---
@@ -147,18 +141,14 @@ def apply_audio_settings():
 
 apply_audio_settings()
 
-# =============================================================================
-# SPRITE LOADING AND GRAPHICS SYSTEM
-# =============================================================================
+# ANCHOR Sprite Loading and Graphics System
 # File: graphics.py - Contains sprite loading, animation system, and graphics utilities
 
 # --- Sprite Loading ---
 sprites = {}
 ui_elements = {}
 
-# =============================================================================
-# ANIMATION SYSTEM
-# =============================================================================
+# ANCHOR Animation System
 # File: animations.py - Contains animation classes and management
 
 # --- Animation System ---
@@ -921,9 +911,7 @@ def load_sprites():
 # Load sprites
 load_sprites()
 
-# =============================================================================
-# UNDERTALE FONT SYSTEM
-# =============================================================================
+# ANCHOR Undertale Font System
 # File: font_system.py - Contains Undertale-style font rendering and text management
 
 # --- Undertale Font System ---
@@ -1038,9 +1026,7 @@ def smooth_color_transition(color1, color2, progress):
     b = int(lerp(color1[2], color2[2], progress))
     return (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
 
-# =============================================================================
-# UTILITY FUNCTIONS AND HELPERS
-# =============================================================================
+# ANCHOR Utility Functions and Helpers
 # File: utils.py - Contains drawing utilities, text helpers, and common functions
 
 def draw_text_with_shadow(surface, text, x, y, color, font_obj=None, shadow_offset=2):
@@ -1244,9 +1230,7 @@ def draw_health_bar_fancy(surface, x, y, width, height, current_hp, max_hp,
     surface.blit(shadow_surface, (text_rect.x + 1, text_rect.y + 1))
     surface.blit(text_surface, text_rect)
 
-# =============================================================================
-# PARTICLE EFFECTS SYSTEM
-# =============================================================================
+# ANCHOR Particle Effects System
 # File: particles.py - Contains particle effect creation and management
 
 def create_particle_effect(x, y, color, count=10, speed_range=(1, 3)):
@@ -1290,9 +1274,7 @@ def update_and_draw_particles(surface, particles):
         else:
             particles.remove(particle)
 
-# =============================================================================
-# COLOR SCHEMES AND UI THEMES
-# =============================================================================
+# ANCHOR Color Schemes and UI Themes
 # File: ui_themes.py - Contains color schemes and UI theming
 
 # Enhanced color scheme
@@ -1319,9 +1301,7 @@ ENHANCED_COLORS = {
     'button_selected': (70, 130, 180)
 }
 
-# =============================================================================
-# ADVANCED ANIMATION MANAGER
-# =============================================================================
+# ANCHOR Advanced Animation Manager
 # File: animation_manager.py - Contains advanced animation system for smooth effects
 
 # Animation system
@@ -1424,9 +1404,7 @@ MUSIC_CONFIG = {
     "combat_asgore": "Dummy!_music.ogg"
 }
 
-# =============================================================================
-# AUDIO SYSTEM AND SOUND MANAGEMENT
-# =============================================================================
+# ANCHOR Audio System and Sound Management
 # File: audio.py - Contains sound loading, music management, and audio utilities
 
 def load_sounds():
@@ -1637,6 +1615,7 @@ CLASSES = {
     "archer": {"hp": 85, "attack": 10, "defense": 6, "icon": UI["archer"], "weapon": "Bow", "mana": 0}
 }
 
+# ANCHOR Enemy Definitions
 # --- Enemy Types ---
 ENEMIES = {
     # Early game enemies (Levels 1-2)
@@ -1688,9 +1667,7 @@ ENEMIES = {
     "dragon": {"hp": 300, "attack": 35, "defense": 18, "xp": 200, "icon": UI["dragon"]}
 }
 
-# =============================================================================
-# ITEM SYSTEM AND EQUIPMENT
-# =============================================================================
+# ANCHOR Item System and Equipment
 # File: items.py - Contains all item classes, weapons, armor, potions, and treasure
 
 # --- Items ---
@@ -1744,7 +1721,7 @@ class Treasure:
         self.items = items or []
         self.opened = False
         self.icon = "💰"  # Treasure chest icon
-
+# ANCHOR Weapon and Equipment Definitions
 # --- Enhanced Weapon Definitions ---
 WARRIOR_WEAPONS = [
     Weapon("Rusty Dagger", 2, ["warrior"], "common", "dagger"),
@@ -1817,10 +1794,7 @@ POTIONS = [
 ALL_WEAPONS = WARRIOR_WEAPONS + ARCHER_WEAPONS + MAGE_WEAPONS
 ALL_ARMOR = LIGHT_ARMOR + MEDIUM_ARMOR + HEAVY_ARMOR
 ALL_POTIONS = POTIONS
-
-# =============================================================================
-# ENTITY SYSTEM AND GAME CHARACTERS
-# =============================================================================
+# ANCHOR Entity System and Game Characters
 # File: entities.py - Contains base Entity class, Player, Enemy, and Shopkeeper classes
 
 # --- Entities ---
@@ -2258,9 +2232,7 @@ class Rect:
         return (self.x1 <= other.x2 and self.x2 >= other.x1 and
                 self.y1 <= other.y2 and self.y2 >= other.y1)
 
-# =============================================================================
-# DUNGEON GENERATION AND WORLD BUILDING
-# =============================================================================
+# ANCHOR Dungeon Generation and World Building
 # File: dungeon.py - Contains dungeon generation algorithms and world management
 
 class Dungeon:
@@ -2994,9 +2966,7 @@ class Dungeon:
         # Only allow spawning on floor tiles
         return tile_type == UI["floor"]
 
-# =============================================================================
-# MAIN GAME CLASS AND GAME LOOP
-# =============================================================================
+# ANCHOR Main Game Class and Game Loop
 # File: game.py - Contains the main Game class with game loop, state management, 
 #                  UI rendering, combat system, and all game logic
 
@@ -4679,9 +4649,7 @@ class Game:
             print(f"Error deleting save file: {e}")
         return False
 
-    # =========================================================================
-    # SAVE AND LOAD SYSTEM
-    # =========================================================================
+    # ANCHOR Save and Load System
     # Methods for saving and loading game state, managing save files
 
     def save_game(self):
@@ -5277,9 +5245,7 @@ class Game:
         
         screen.blit(text_surface, (x, y))
 
-    # =========================================================================
-    # MENU SYSTEMS AND USER INTERFACE
-    # =========================================================================
+    # ANCHOR Menu Systems and User Interface
     # Methods for main menu, settings, pause menu, and all UI screens
 
     def main_menu(self):
@@ -6296,6 +6262,7 @@ class Game:
         self.update_camera()  # Initialize camera and fog of war
         self.add_message(f"You have entered dungeon level {self.dungeon_level}.")
 
+    # ANCHOR Core Game Loop and Gameplay
     def main_loop(self):
         # Start with menu music
         play_music("menu")
@@ -7283,9 +7250,7 @@ class Game:
         minimap_text = small_font.render("Map", True, WHITE)
         screen.blit(minimap_text, (minimap_x, minimap_y - 20))
 
-    # =========================================================================
-    # GAME RENDERING AND DRAWING SYSTEM
-    # =========================================================================
+    # ANCHOR Game Rendering and Drawing System
     # Methods for drawing UI, game world, minimap, and all visual elements
 
     def draw_ui(self):
@@ -7503,9 +7468,7 @@ class Game:
                         current_control_y += 25
 
 
-    # =========================================================================
-    # COMBAT SYSTEM
-    # =========================================================================
+    # ANCHOR Combat System
     # Methods for turn-based combat, player/enemy actions, and battle management
 
     def start_combat(self, enemies):
