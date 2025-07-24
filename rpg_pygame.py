@@ -172,8 +172,97 @@ class PortraitAnimation:
             return None
         return self.frames[self.current_frame]
 
+class DamageNumber:
+    """Animated damage number that floats up and fades away."""
+    def __init__(self, x, y, damage, is_critical=False):
+        self.x = float(x)
+        self.y = float(y)
+        self.start_y = float(y)
+        self.damage = damage
+        self.is_critical = is_critical
+        self.creation_time = pygame.time.get_ticks()
+        self.lifetime = 2000  # 2 seconds
+        self.float_speed = -50  # Pixels per second upward
+        self.fade_speed = 255 / self.lifetime  # Alpha fade rate
+        self.alpha = 255
+        self.wobble_offset = 0
+        self.scale = 1.5 if is_critical else 1.0
+        
+        # Create damage text surface
+        font_size = 32 if is_critical else 24
+        font = pygame.font.Font(None, font_size)
+        color = (255, 100, 100) if is_critical else (255, 255, 255)  # Red for crits, white for normal
+        self.text_surface = font.render(str(damage), True, color)
+        
+        # Scale the surface if it's a critical hit
+        if is_critical:
+            original_size = self.text_surface.get_size()
+            new_size = (int(original_size[0] * self.scale), int(original_size[1] * self.scale))
+            self.text_surface = pygame.transform.scale(self.text_surface, new_size)
+    
+    def update(self, dt):
+        """Update the damage number animation."""
+        current_time = pygame.time.get_ticks()
+        elapsed = current_time - self.creation_time
+        
+        if elapsed >= self.lifetime:
+            return False  # Mark for removal
+        
+        # Move upward
+        self.y += self.float_speed * dt / 1000.0
+        
+        # Add slight wobble effect
+        self.wobble_offset = math.sin(elapsed * 0.01) * 5
+        
+        # Fade out
+        progress = elapsed / self.lifetime
+        self.alpha = max(0, 255 * (1 - progress))
+        
+        # Scale effect for critical hits
+        if self.is_critical:
+            bounce_factor = 1 + 0.3 * math.sin(elapsed * 0.015)
+            self.scale = 1.5 * bounce_factor
+        
+        return True  # Still alive
+    
+    def draw(self, screen, camera_x=0, camera_y=0):
+        """Draw the damage number on screen."""
+        if self.alpha <= 0:
+            return
+        
+        # Apply alpha to the surface
+        temp_surface = self.text_surface.copy()
+        temp_surface.set_alpha(int(self.alpha))
+        
+        # Calculate screen position with camera offset and wobble
+        screen_x = self.x - camera_x + self.wobble_offset
+        screen_y = self.y - camera_y
+        
+        # Center the text
+        rect = temp_surface.get_rect()
+        rect.centerx = screen_x
+        rect.centery = screen_y
+        
+        screen.blit(temp_surface, rect)
+
 # Global animation storage
 portrait_animations = {}
+damage_numbers = []  # List to store active damage numbers
+
+def add_damage_number(x, y, damage, is_critical=False):
+    """Add a new damage number to the display."""
+    global damage_numbers
+    damage_numbers.append(DamageNumber(x, y, damage, is_critical))
+
+def update_damage_numbers(dt):
+    """Update all active damage numbers and remove expired ones."""
+    global damage_numbers
+    damage_numbers = [dn for dn in damage_numbers if dn.update(dt)]
+
+def draw_damage_numbers(screen, camera_x=0, camera_y=0):
+    """Draw all active damage numbers."""
+    for damage_number in damage_numbers:
+        damage_number.draw(screen, camera_x, camera_y)
 
 def load_sprites():
     """Load all sprite images with Undertale character system."""
@@ -500,6 +589,19 @@ def load_sprites():
             "path": os.path.join("assets", "undertale", "Characters", "Onionsan"),
             "files": ["spr_onionsan_bright_0.png"],
             "portrait_files": ["spr_onionsan_bright_0.png", "spr_onionsan_bright_1.png", "spr_onionsan_kawaii_0.png", "spr_onionsan_kawaii_1.png"]
+        },
+        
+        # Dog enemies
+        "lesser_dog": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "02 - Snowdin", "Snowdin Town"),
+            "files": ["spr_dogamy_npc_0.png"],
+            "portrait_files": ["spr_dogamy_npc_0.png", "spr_dogamy_npc_1.png"]
+        },
+        
+        "greater_dog": {
+            "path": os.path.join("assets", "undertale", "Characters", "# NPCs", "02 - Snowdin", "Snowdin Town"),
+            "files": ["spr_dogaressa_npc_0.png"],
+            "portrait_files": ["spr_dogaressa_npc_0.png", "spr_dogaressa_npc_1.png"]
         }
     }
     
@@ -1131,6 +1233,12 @@ def draw_undertale_text(surface, text, x, y, color=WHITE, font_size="normal", sh
 
 def draw_gradient_rect(surface, rect, color1, color2, vertical=True):
     """Draw a rectangle with a gradient fill."""
+    # Convert RGBA to RGB if needed (pygame drawing functions don't support alpha in color tuples)
+    if len(color1) > 3:
+        color1 = color1[:3]
+    if len(color2) > 3:
+        color2 = color2[:3]
+        
     if vertical:
         for y in range(rect.height):
             progress = y / rect.height
@@ -3368,6 +3476,9 @@ class Game:
                 
                 messages_shown += 1
                 current_y += 5  # Extra spacing between messages
+        
+        # Draw damage numbers
+        draw_damage_numbers(screen)
                     
         pygame.display.flip()
     
@@ -6318,6 +6429,10 @@ class Game:
         # Update animations and camera
         animation_manager.update()
         
+        # Update damage numbers
+        dt = self.clock.get_time()
+        update_damage_numbers(dt)
+        
         # Update portrait animations
         for animation in portrait_animations.values():
             animation.update()
@@ -7181,6 +7296,9 @@ class Game:
         # Draw particle effects on top of everything
         animation_manager.draw_particles(screen)
         
+        # Draw damage numbers with camera offset
+        draw_damage_numbers(screen, self.camera_x * TILE_SIZE, self.camera_y * TILE_SIZE)
+        
         pygame.display.flip()
 
     def draw_minimap(self):
@@ -7486,6 +7604,10 @@ class Game:
 
     def run_combat(self):
         """Run the enhanced turn-based combat system."""
+        # Update damage numbers
+        dt = self.clock.get_time()
+        update_damage_numbers(dt)
+        
         # Draw the combat screen
         self.draw_combat_screen()
         
@@ -7627,8 +7749,21 @@ class Game:
             base_damage = player.attack + random.randint(0, 3)  # Add small random variance
             defense_reduction = min(0.75, target.defense * 0.05)  # Max 75% damage reduction
             damage = max(1, int(base_damage * (1 - defense_reduction)))  # Minimum 1 damage
+            
+            # Check for critical hit (20% chance)
+            is_critical = random.random() < 0.2
+            if is_critical:
+                damage = int(damage * 1.5)  # 50% more damage on crit
+            
             target.take_damage(damage)
-            self.add_message(f"{player.name} hits {target.name} for {damage} damage.")
+            self.add_message(f"{player.name} hits {target.name} for {damage} damage{'!' if is_critical else '.'}")
+            
+            # Add damage number animation at enemy position
+            # Convert enemy position to screen coordinates
+            enemy_screen_x = target.x * TILE_SIZE + TILE_SIZE // 2
+            enemy_screen_y = target.y * TILE_SIZE + TILE_SIZE // 2
+            add_damage_number(enemy_screen_x, enemy_screen_y, damage, is_critical)
+            
         self.next_turn()
 
     def enemy_attack(self, enemy):
@@ -7646,8 +7781,21 @@ class Game:
             base_damage = enemy.attack + random.randint(0, 2)  # Add small random variance
             defense_reduction = min(0.75, target.defense * 0.05)  # Max 75% damage reduction
             damage = max(1, int(base_damage * (1 - defense_reduction)))  # Minimum 1 damage
+            
+            # Enemies have lower crit chance (10%)
+            is_critical = random.random() < 0.1
+            if is_critical:
+                damage = int(damage * 1.3)  # 30% more damage on crit for enemies
+            
             target.take_damage(damage)
-            self.add_message(f"{enemy.name} hits {target.name} for {damage} damage.")
+            self.add_message(f"{enemy.name} hits {target.name} for {damage} damage{'!' if is_critical else '.'}")
+            
+            # Add damage number animation at player position
+            # Convert player position to screen coordinates
+            player_screen_x = target.x * TILE_SIZE + TILE_SIZE // 2
+            player_screen_y = target.y * TILE_SIZE + TILE_SIZE // 2
+            add_damage_number(player_screen_x, player_screen_y, damage, is_critical)
+            
         self.next_turn()
 
     def next_turn(self):
@@ -7685,8 +7833,18 @@ class Game:
             base_damage = (player.attack * 2) + random.randint(2, 6)
             defense_reduction = min(0.75, target.defense * 0.05)
             damage = max(2, int(base_damage * (1 - defense_reduction)))
+            
+            # Always critical for power strike visual effect
+            is_critical = True
+            
             target.take_damage(damage)
             self.add_message(f"{player.name} uses Power Strike on {target.name} for {damage} damage!")
+            
+            # Add damage number animation at enemy position
+            enemy_screen_x = target.x * TILE_SIZE + TILE_SIZE // 2
+            enemy_screen_y = target.y * TILE_SIZE + TILE_SIZE // 2
+            add_damage_number(enemy_screen_x, enemy_screen_y, damage, is_critical)
+            
             player.skill_cooldown = 3
         elif player.char_class == "mage":
             if player.level < 3:
@@ -7702,8 +7860,20 @@ class Game:
                 base_damage = int(player.attack * 0.8) + random.randint(3, 7)
                 defense_reduction = min(0.75, enemy.defense * 0.05)
                 damage = max(2, int(base_damage * (1 - defense_reduction)))
+                
+                # Fireball has chance for critical hits
+                is_critical = random.random() < 0.3  # 30% crit chance for magic
+                if is_critical:
+                    damage = int(damage * 1.4)  # 40% more damage on crit for fireball
+                
                 enemy.take_damage(damage)
-                self.add_message(f"Fireball hits {enemy.name} for {damage} damage.")
+                self.add_message(f"Fireball hits {enemy.name} for {damage} damage{'!' if is_critical else '.'}")
+                
+                # Add damage number animation at enemy position
+                enemy_screen_x = enemy.x * TILE_SIZE + TILE_SIZE // 2
+                enemy_screen_y = enemy.y * TILE_SIZE + TILE_SIZE // 2
+                add_damage_number(enemy_screen_x, enemy_screen_y, damage, is_critical)
+                
             player.mana -= 10
         elif player.char_class == "archer":
             if player.level < 2:
@@ -7714,15 +7884,27 @@ class Game:
                 return
             play_random_sound(["sword_attack", "sword_attack2"], 0.5)
             self.add_message(f"{player.name} uses Double Shot!")
-            for _ in range(2):
+            for shot_num in range(2):
                 if alive_enemies:  # Check if there are still alive enemies for each shot
                     target = random.choice(alive_enemies)
                     # Double Shot: Normal damage per shot with balanced calculation
                     base_damage = player.attack + random.randint(1, 4)
                     defense_reduction = min(0.75, target.defense * 0.05)
                     damage = max(1, int(base_damage * (1 - defense_reduction)))
+                    
+                    # Check for critical hit (25% chance per shot)
+                    is_critical = random.random() < 0.25
+                    if is_critical:
+                        damage = int(damage * 1.5)  # 50% more damage on crit
+                    
                     target.take_damage(damage)
-                    self.add_message(f"{player.name} shoots {target.name} for {damage} damage.")
+                    self.add_message(f"{player.name} shoots {target.name} for {damage} damage{'!' if is_critical else '.'}")
+                    
+                    # Add damage number animation at enemy position with slight offset for multiple shots
+                    enemy_screen_x = target.x * TILE_SIZE + TILE_SIZE // 2 + (shot_num * 15)  # Offset multiple shots
+                    enemy_screen_y = target.y * TILE_SIZE + TILE_SIZE // 2 - (shot_num * 10)
+                    add_damage_number(enemy_screen_x, enemy_screen_y, damage, is_critical)
+                    
                     # Update alive enemies list in case the target died
                     alive_enemies = [e for e in enemies if e.is_alive()]
             player.skill_cooldown = 2
