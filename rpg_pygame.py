@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 print("--- RUNNING PYGAME VERSION ---")
+
+# =============================================================================
+# IMPORTS AND DEPENDENCIES
+# =============================================================================
+# File: imports.py - Contains all import statements and external dependencies
 import random
 import os
 import json
@@ -7,6 +12,11 @@ import pygame
 import math
 from collections import deque
 from datetime import datetime
+
+# =============================================================================
+# GAME CONSTANTS AND CONFIGURATION
+# =============================================================================
+# File: constants.py - Contains all game constants, colors, and configuration values
 
 # --- Constants ---
 SCREEN_WIDTH = 1920  # Increased for larger display
@@ -45,9 +55,14 @@ DARK_GRAY = (64, 64, 64)
 LIGHT_GRAY = (192, 192, 192)
 FOG_COLOR = (40, 40, 60)  # Dark blue-ish for unexplored areas
 
-# --- Pygame Setup ---
+# Pygame Setup ---
 pygame.init()
 pygame.mixer.init()
+
+# =============================================================================
+# SETTINGS SYSTEM
+# =============================================================================
+# File: settings.py - Contains settings management functions and configuration
 
 # --- Settings System ---
 def load_settings():
@@ -132,9 +147,19 @@ def apply_audio_settings():
 
 apply_audio_settings()
 
+# =============================================================================
+# SPRITE LOADING AND GRAPHICS SYSTEM
+# =============================================================================
+# File: graphics.py - Contains sprite loading, animation system, and graphics utilities
+
 # --- Sprite Loading ---
 sprites = {}
 ui_elements = {}
+
+# =============================================================================
+# ANIMATION SYSTEM
+# =============================================================================
+# File: animations.py - Contains animation classes and management
 
 # --- Animation System ---
 class PortraitAnimation:
@@ -896,6 +921,11 @@ def load_sprites():
 # Load sprites
 load_sprites()
 
+# =============================================================================
+# UNDERTALE FONT SYSTEM
+# =============================================================================
+# File: font_system.py - Contains Undertale-style font rendering and text management
+
 # --- Undertale Font System ---
 class UndertaleFontRenderer:
     def __init__(self):
@@ -1007,6 +1037,11 @@ def smooth_color_transition(color1, color2, progress):
     g = int(lerp(color1[1], color2[1], progress))
     b = int(lerp(color1[2], color2[2], progress))
     return (max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+
+# =============================================================================
+# UTILITY FUNCTIONS AND HELPERS
+# =============================================================================
+# File: utils.py - Contains drawing utilities, text helpers, and common functions
 
 def draw_text_with_shadow(surface, text, x, y, color, font_obj=None, shadow_offset=2):
     """Draw text with a subtle shadow for better readability using Undertale font system."""
@@ -1209,6 +1244,11 @@ def draw_health_bar_fancy(surface, x, y, width, height, current_hp, max_hp,
     surface.blit(shadow_surface, (text_rect.x + 1, text_rect.y + 1))
     surface.blit(text_surface, text_rect)
 
+# =============================================================================
+# PARTICLE EFFECTS SYSTEM
+# =============================================================================
+# File: particles.py - Contains particle effect creation and management
+
 def create_particle_effect(x, y, color, count=10, speed_range=(1, 3)):
     """Create particle effect data for animations."""
     particles = []
@@ -1250,6 +1290,11 @@ def update_and_draw_particles(surface, particles):
         else:
             particles.remove(particle)
 
+# =============================================================================
+# COLOR SCHEMES AND UI THEMES
+# =============================================================================
+# File: ui_themes.py - Contains color schemes and UI theming
+
 # Enhanced color scheme
 ENHANCED_COLORS = {
     'primary_dark': (25, 30, 35),
@@ -1273,6 +1318,11 @@ ENHANCED_COLORS = {
     'button_hover': (55, 60, 65),
     'button_selected': (70, 130, 180)
 }
+
+# =============================================================================
+# ADVANCED ANIMATION MANAGER
+# =============================================================================
+# File: animation_manager.py - Contains advanced animation system for smooth effects
 
 # Animation system
 class AnimationManager:
@@ -1373,6 +1423,11 @@ MUSIC_CONFIG = {
     "combat_troll": "Heartache_music.ogg", 
     "combat_asgore": "Dummy!_music.ogg"
 }
+
+# =============================================================================
+# AUDIO SYSTEM AND SOUND MANAGEMENT
+# =============================================================================
+# File: audio.py - Contains sound loading, music management, and audio utilities
 
 def load_sounds():
     """Load all sound effects from the RPG Sound Pack."""
@@ -1633,6 +1688,11 @@ ENEMIES = {
     "dragon": {"hp": 300, "attack": 35, "defense": 18, "xp": 200, "icon": UI["dragon"]}
 }
 
+# =============================================================================
+# ITEM SYSTEM AND EQUIPMENT
+# =============================================================================
+# File: items.py - Contains all item classes, weapons, armor, potions, and treasure
+
 # --- Items ---
 class Item:
     def __init__(self, name, icon):
@@ -1757,6 +1817,11 @@ POTIONS = [
 ALL_WEAPONS = WARRIOR_WEAPONS + ARCHER_WEAPONS + MAGE_WEAPONS
 ALL_ARMOR = LIGHT_ARMOR + MEDIUM_ARMOR + HEAVY_ARMOR
 ALL_POTIONS = POTIONS
+
+# =============================================================================
+# ENTITY SYSTEM AND GAME CHARACTERS
+# =============================================================================
+# File: entities.py - Contains base Entity class, Player, Enemy, and Shopkeeper classes
 
 # --- Entities ---
 class Entity:
@@ -2192,6 +2257,11 @@ class Rect:
     def intersects(self, other):
         return (self.x1 <= other.x2 and self.x2 >= other.x1 and
                 self.y1 <= other.y2 and self.y2 >= other.y1)
+
+# =============================================================================
+# DUNGEON GENERATION AND WORLD BUILDING
+# =============================================================================
+# File: dungeon.py - Contains dungeon generation algorithms and world management
 
 class Dungeon:
     def __init__(self, width, height, level):
@@ -2923,6 +2993,12 @@ class Dungeon:
         
         # Only allow spawning on floor tiles
         return tile_type == UI["floor"]
+
+# =============================================================================
+# MAIN GAME CLASS AND GAME LOOP
+# =============================================================================
+# File: game.py - Contains the main Game class with game loop, state management, 
+#                  UI rendering, combat system, and all game logic
 
 # --- Game ---
 class Game:
@@ -4603,6 +4679,11 @@ class Game:
             print(f"Error deleting save file: {e}")
         return False
 
+    # =========================================================================
+    # SAVE AND LOAD SYSTEM
+    # =========================================================================
+    # Methods for saving and loading game state, managing save files
+
     def save_game(self):
         """Save the current game state including dungeon layout."""
         try:
@@ -5195,6 +5276,11 @@ class Game:
             screen.blit(padding_surface, (padded_rect.x, padded_rect.y))
         
         screen.blit(text_surface, (x, y))
+
+    # =========================================================================
+    # MENU SYSTEMS AND USER INTERFACE
+    # =========================================================================
+    # Methods for main menu, settings, pause menu, and all UI screens
 
     def main_menu(self):
         # Enhanced background with gradient
@@ -7197,6 +7283,11 @@ class Game:
         minimap_text = small_font.render("Map", True, WHITE)
         screen.blit(minimap_text, (minimap_x, minimap_y - 20))
 
+    # =========================================================================
+    # GAME RENDERING AND DRAWING SYSTEM
+    # =========================================================================
+    # Methods for drawing UI, game world, minimap, and all visual elements
+
     def draw_ui(self):
         # Enhanced UI with better alignment and spacing
         
@@ -7411,6 +7502,11 @@ class Game:
                         draw_text_with_shadow(screen, control_text, info_x, current_control_y, color)
                         current_control_y += 25
 
+
+    # =========================================================================
+    # COMBAT SYSTEM
+    # =========================================================================
+    # Methods for turn-based combat, player/enemy actions, and battle management
 
     def start_combat(self, enemies):
         """Start turn-based combat with enhanced UI."""
@@ -7792,6 +7888,11 @@ class Game:
                         self.game_over = True
                         waiting = False
 
+
+# =============================================================================
+# MAIN PROGRAM EXECUTION
+# =============================================================================
+# Entry point for the game - creates Game instance and starts main loop
 
 if __name__ == "__main__":
     game = Game()
